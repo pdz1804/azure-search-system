@@ -1,0 +1,1668 @@
+[
+    {
+        "id": "fc6afc8a-c4c9-4845-a6a8-2db9dec6f956",
+        "full_name": "Chuong Boi",
+        "email": "tranngocchuongtnc@gmail.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=36",
+        "role": "admin",
+        "created_at": "2021-03-09 12:42:06",
+        "liked_articles": [
+        "03634a31-5f41-40ff-9c5b-1e43e302aada",
+        "0c20bd38-c294-45ea-a377-66122259a1cb",
+        "93063adb-68d1-41e9-82cc-897c3c4f6f32",
+        "e31e54dd-239c-4e6c-9532-6c999dd87097",
+        "e7f7d6dd-b2c6-4c57-9f7f-5ddef4b45ba4"
+        ],
+        "disliked_articles": [],
+        "bookmarked_articles": [
+        "03634a31-5f41-40ff-9c5b-1e43e302aada",
+        "93063adb-68d1-41e9-82cc-897c3c4f6f32",
+        "94f15513-0160-40bc-8427-57baaf0109b3",
+        "e31e54dd-239c-4e6c-9532-6c999dd87097"
+        ],
+        "following": [
+        "d5edfb5f-c592-4448-a7f3-c050b1509461"
+        ],
+        "followers": [
+        "c1c9e6f5-c23c-49fe-8793-69e139d368a8",
+        "e19c3df6-51ad-42c8-8083-d4082fec3e06",
+        "e1cfd8e7-ac0a-44c5-b275-ee14ee6ac203"
+        ]
+    },
+    {
+        "id": "aff53f52-d204-48ac-a5e7-390163c1aa01",
+        "full_name": "Nancy Ross",
+        "email": "nancy.ross.2@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=12",
+        "role": "user",
+        "created_at": "2020-04-08 17:53:19",
+        "liked_articles": [
+        "23113ef1-3147-402c-93e8-cc1d49bdc948",
+        "6b131eca-0acb-4677-90fa-09dd002536f6",
+        "899eb39f-95ae-4900-bddb-6c6f7375162a",
+        "e7f7d6dd-b2c6-4c57-9f7f-5ddef4b45ba4",
+        "f91d23f4-0afc-4899-b9df-bb60420bfb3f"
+        ],
+        "disliked_articles": [
+        "034e089d-65f0-47b9-ad27-59c22fa1cb33",
+        "c3082802-ece8-4faf-875d-02fe9121fce2"
+        ],
+        "bookmarked_articles": [
+        "23113ef1-3147-402c-93e8-cc1d49bdc948",
+        "a80a2224-cd3f-4c17-b19b-04eab9d0d9ec",
+        "e7f7d6dd-b2c6-4c57-9f7f-5ddef4b45ba4",
+        "f91d23f4-0afc-4899-b9df-bb60420bfb3f"
+        ],
+        "following": [
+        "39faf808-4583-4d22-a1c8-b2d94c1cd528",
+        "d5edfb5f-c592-4448-a7f3-c050b1509461",
+        "d7c3e8a4-5acd-41df-a2de-dc0afee73fa4",
+        "e247c1c3-9e8c-4943-8d40-05a1d51ebcc6"
+        ],
+        "followers": [
+        "8db8034f-05b0-42c7-97d3-cfb0e723d300",
+        "e95d5e53-bdd2-4579-b6a7-df71d42dac6c",
+        "ea00bf14-67a5-4405-aebd-7679385aeedf"
+        ]
+    },
+    {
+        "id": "b7a75e73-c2cc-424a-9e46-3228be1b220e",
+        "full_name": "Diana Lopez",
+        "email": "diana.lopez.3@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=28",
+        "role": "writer",
+        "created_at": "2020-03-23 10:39:55",
+        "liked_articles": [
+        "3f055cad-0d7b-4635-afc6-52b2e27142f3",
+        "4fcdd25c-327e-4109-9db5-02ebbad2ecfc",
+        "84e71f84-8ee8-4b37-99ba-9f43564532c8"
+        ],
+        "disliked_articles": [],
+        "bookmarked_articles": [],
+        "following": [],
+        "followers": [
+        "07be0f3f-c80b-412f-8891-bf61fdb047aa",
+        "0946f084-f233-4bb3-b7d9-07fd428e378c",
+        "8ccfb794-8117-46ad-9103-42a92872d3d9",
+        "e19c3df6-51ad-42c8-8083-d4082fec3e06",
+        "e247c1c3-9e8c-4943-8d40-05a1d51ebcc6",
+        "f096bdd9-140c-435b-880b-354c99654971"
+        ]
+    },
+    {
+        "id": "6d89f96d-765a-4e22-a3bc-23df3fd7dd8d",
+        "full_name": "Vanessa Baker",
+        "email": "vanessa.baker.4@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=70",
+        "role": "user",
+        "created_at": "2023-10-27 15:27:14",
+        "liked_articles": [
+        "0507b7e8-5e54-4e99-aaf3-387fbb14a69c",
+        "320a39eb-c6bc-4cc1-8b49-e95be477aca4",
+        "628f7872-6323-4942-a151-1d161305ad10",
+        "6b131eca-0acb-4677-90fa-09dd002536f6",
+        "9cc99ed9-94ca-403f-a565-9663734705ce",
+        "a56bbd3d-feed-474b-a044-b0c510600d4f",
+        "c19041fd-fd9d-461c-a13e-8e52056f6523",
+        "fd3254f3-9ff9-45b9-9693-4742476a1dd7"
+        ],
+        "disliked_articles": [
+        "3e1398d4-8f50-449f-9ab5-791f0223657e",
+        "c3082802-ece8-4faf-875d-02fe9121fce2"
+        ],
+        "bookmarked_articles": [],
+        "following": [],
+        "followers": [
+        "fb9b140e-2f48-47a0-8134-92ba2b08a75e"
+        ]
+    },
+    {
+        "id": "d5edfb5f-c592-4448-a7f3-c050b1509461",
+        "full_name": "Caroline Lewis",
+        "email": "caroline.lewis.5@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=1",
+        "role": "user",
+        "created_at": "2021-05-11 01:03:40",
+        "liked_articles": [
+        "2133d8f9-6802-4555-9210-fb7c2f9f8131",
+        "f532d5aa-b50c-48ed-827f-fee8f857c5f9"
+        ],
+        "disliked_articles": [
+        "2c9450b5-13c6-46f8-8fa0-026c3f417077"
+        ],
+        "bookmarked_articles": [],
+        "following": [
+        "07be0f3f-c80b-412f-8891-bf61fdb047aa",
+        "40b34e33-7048-40dc-8ba0-d8c9f1dd8f0c",
+        "8ccfb794-8117-46ad-9103-42a92872d3d9",
+        "91b87c0e-edbb-44c7-b8a4-2f3218d23382"
+        ],
+        "followers": [
+        "25c1265a-1c40-4f32-9a53-9f973cef6f8e",
+        "80c82664-505a-4462-916d-26acadab2712",
+        "aff53f52-d204-48ac-a5e7-390163c1aa01",
+        "e1cfd8e7-ac0a-44c5-b275-ee14ee6ac203",
+        "e4c5d3b1-b227-45b7-8d14-503ca82ca375",
+        "fc6afc8a-c4c9-4845-a6a8-2db9dec6f956"
+        ]
+    },
+    {
+        "id": "d3727246-ae47-402a-86fc-b542bb6e3b7d",
+        "full_name": "Christopher Turner",
+        "email": "christopher.turner.6@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=36",
+        "role": "writer",
+        "created_at": "2022-11-11 18:18:31",
+        "liked_articles": [
+        "9cc99ed9-94ca-403f-a565-9663734705ce",
+        "c0294b17-a701-4aa1-b8dc-09d4fd9dc1eb",
+        "c3082802-ece8-4faf-875d-02fe9121fce2"
+        ],
+        "disliked_articles": [
+        "034e089d-65f0-47b9-ad27-59c22fa1cb33",
+        "2c9450b5-13c6-46f8-8fa0-026c3f417077",
+        "5b205664-91ce-4a7f-851c-5fb27c179e18"
+        ],
+        "bookmarked_articles": [
+        "43ea7393-3fe1-4d96-94cb-f40008cb3b63",
+        "c3082802-ece8-4faf-875d-02fe9121fce2"
+        ],
+        "following": [],
+        "followers": [
+        "80c82664-505a-4462-916d-26acadab2712",
+        "f096bdd9-140c-435b-880b-354c99654971",
+        "fb9b140e-2f48-47a0-8134-92ba2b08a75e"
+        ]
+    },
+    {
+        "id": "80c82664-505a-4462-916d-26acadab2712",
+        "full_name": "Nancy Lopez",
+        "email": "nancy.lopez.7@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=49",
+        "role": "writer",
+        "created_at": "2022-12-04 15:11:51",
+        "liked_articles": [
+        "0010a4e8-294d-4cf0-a9b6-029753ca353d",
+        "03634a31-5f41-40ff-9c5b-1e43e302aada",
+        "94f15513-0160-40bc-8427-57baaf0109b3",
+        "ad1dbf81-b05f-4224-8dab-259ca7f30ed9",
+        "c19041fd-fd9d-461c-a13e-8e52056f6523",
+        "cefb84b5-4ad7-4383-873f-e891d913a8c0"
+        ],
+        "disliked_articles": [],
+        "bookmarked_articles": [
+        "ad1dbf81-b05f-4224-8dab-259ca7f30ed9",
+        "c19041fd-fd9d-461c-a13e-8e52056f6523",
+        "cefb84b5-4ad7-4383-873f-e891d913a8c0"
+        ],
+        "following": [
+        "373d9e88-d55b-4994-ae69-aa3b7525e07c",
+        "65129fe5-f09c-4e78-9953-528c1cc6ca1f",
+        "d3727246-ae47-402a-86fc-b542bb6e3b7d",
+        "d5edfb5f-c592-4448-a7f3-c050b1509461"
+        ],
+        "followers": [
+        "3973dfc1-b8ff-4633-a641-b60d64103d0c",
+        "609d63de-be9a-4c4e-ab97-fa02e3e66e5e",
+        "834ec69a-ca85-440a-a7f2-e7ad72aeed36"
+        ]
+    },
+    {
+        "id": "8dc72fa1-0b4b-40ae-bebb-2499358557b9",
+        "full_name": "Emily Jones",
+        "email": "emily.jones.8@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=6",
+        "role": "user",
+        "created_at": "2024-07-24 00:03:52",
+        "liked_articles": [
+        "13006997-e576-40f2-8633-5f73b35c7c90",
+        "6f20890a-a5bd-4733-947f-97d903191f78",
+        "a56bbd3d-feed-474b-a044-b0c510600d4f",
+        "a80a2224-cd3f-4c17-b19b-04eab9d0d9ec",
+        "b2f55020-0ed0-4a21-b265-c8d2679a0825",
+        "fd3254f3-9ff9-45b9-9693-4742476a1dd7"
+        ],
+        "disliked_articles": [],
+        "bookmarked_articles": [
+        "94f15513-0160-40bc-8427-57baaf0109b3",
+        "ec9f8c74-2dc6-4de6-88b0-7eb37d3a1b17"
+        ],
+        "following": [],
+        "followers": [
+        "4adaec0b-3d64-4fef-a6b0-7ec4ed948922",
+        "e1cfd8e7-ac0a-44c5-b275-ee14ee6ac203",
+        "ea00bf14-67a5-4405-aebd-7679385aeedf"
+        ]
+    },
+    {
+        "id": "4adaec0b-3d64-4fef-a6b0-7ec4ed948922",
+        "full_name": "Patricia Carter",
+        "email": "patricia.carter.9@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=11",
+        "role": "user",
+        "created_at": "2023-01-28 13:27:43",
+        "liked_articles": [
+        "0010a4e8-294d-4cf0-a9b6-029753ca353d",
+        "0507b7e8-5e54-4e99-aaf3-387fbb14a69c",
+        "10b7a44f-f7bf-4077-aa51-c0128512557d",
+        "5bc6f237-8b92-4fdc-8077-de3872eac512",
+        "6b131eca-0acb-4677-90fa-09dd002536f6",
+        "9cc99ed9-94ca-403f-a565-9663734705ce",
+        "e31e54dd-239c-4e6c-9532-6c999dd87097",
+        "f8330412-d39d-4b63-980f-eec4d3e9b36c"
+        ],
+        "disliked_articles": [],
+        "bookmarked_articles": [
+        "0ec6f41f-24b3-4077-8cde-f9bbbb9aa81f",
+        "0f62dd5a-932a-4345-9a8e-0ff4196b35b1",
+        "5bc6f237-8b92-4fdc-8077-de3872eac512",
+        "9cc99ed9-94ca-403f-a565-9663734705ce",
+        "f8330412-d39d-4b63-980f-eec4d3e9b36c"
+        ],
+        "following": [
+        "48762781-bf56-42ef-bbf9-1e5e5961c79e",
+        "834ec69a-ca85-440a-a7f2-e7ad72aeed36",
+        "8dc72fa1-0b4b-40ae-bebb-2499358557b9",
+        "9fe36862-fcb1-4bb7-b293-e9c8a7d72bf8",
+        "ef86d8b6-ff92-4497-976a-91f10dc1b967"
+        ],
+        "followers": [
+        "3973dfc1-b8ff-4633-a641-b60d64103d0c",
+        "40b34e33-7048-40dc-8ba0-d8c9f1dd8f0c",
+        "65129fe5-f09c-4e78-9953-528c1cc6ca1f",
+        "8ccfb794-8117-46ad-9103-42a92872d3d9",
+        "c0d91e15-c4bb-401f-a6ae-9724e80140c3"
+        ]
+    },
+    {
+        "id": "f096bdd9-140c-435b-880b-354c99654971",
+        "full_name": "Alexandra Adams",
+        "email": "alexandra.adams.10@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=9",
+        "role": "admin",
+        "created_at": "2021-12-09 01:19:36",
+        "liked_articles": [
+        "0f62dd5a-932a-4345-9a8e-0ff4196b35b1",
+        "1199319f-cc39-4340-a170-aa05131144f9",
+        "1f69977b-a5c0-4b3d-aad9-6b72a2beca23",
+        "b296c8f0-ba8c-4e2d-aad0-daa9a2faf4cc",
+        "c19041fd-fd9d-461c-a13e-8e52056f6523",
+        "e8c96467-7e8f-40c9-a3a8-74a77c228a10",
+        "f56c014b-2bda-43bd-8d78-050e06c193e3"
+        ],
+        "disliked_articles": [],
+        "bookmarked_articles": [
+        "0507b7e8-5e54-4e99-aaf3-387fbb14a69c",
+        "1f34b0a7-e888-4118-ab96-60328929b6a1",
+        "f56c014b-2bda-43bd-8d78-050e06c193e3"
+        ],
+        "following": [
+        "22cc28b1-905d-4b45-8a11-b3f015d62761",
+        "804b02eb-2d33-41f7-9413-4a20ec3527f0",
+        "b7a75e73-c2cc-424a-9e46-3228be1b220e",
+        "d3727246-ae47-402a-86fc-b542bb6e3b7d"
+        ],
+        "followers": [
+        "07be0f3f-c80b-412f-8891-bf61fdb047aa",
+        "804b02eb-2d33-41f7-9413-4a20ec3527f0",
+        "8ccfb794-8117-46ad-9103-42a92872d3d9",
+        "9fe36862-fcb1-4bb7-b293-e9c8a7d72bf8"
+        ]
+    },
+    {
+        "id": "9646c255-1ee7-4bda-86aa-28d4784b2679",
+        "full_name": "Lawrence King",
+        "email": "lawrence.king.11@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=30",
+        "role": "user",
+        "created_at": "2023-03-27 00:15:57",
+        "liked_articles": [
+        "034e089d-65f0-47b9-ad27-59c22fa1cb33",
+        "2c9450b5-13c6-46f8-8fa0-026c3f417077",
+        "33f12844-779f-47bb-9e3a-6f6be5912815",
+        "6f20890a-a5bd-4733-947f-97d903191f78",
+        "87c9e434-9751-45e0-b241-44174e321950",
+        "add93561-684e-4266-b077-69f8cac110b1",
+        "eb9536e0-5f81-45c8-b73c-d92401054ad5",
+        "ec9f8c74-2dc6-4de6-88b0-7eb37d3a1b17"
+        ],
+        "disliked_articles": [
+        "f91d23f4-0afc-4899-b9df-bb60420bfb3f"
+        ],
+        "bookmarked_articles": [
+        "13006997-e576-40f2-8633-5f73b35c7c90",
+        "320a39eb-c6bc-4cc1-8b49-e95be477aca4",
+        "87c9e434-9751-45e0-b241-44174e321950",
+        "add93561-684e-4266-b077-69f8cac110b1",
+        "eb9536e0-5f81-45c8-b73c-d92401054ad5"
+        ],
+        "following": [
+        "3cd9e75a-2ccf-4a33-9468-d08d9eadaee4",
+        "48762781-bf56-42ef-bbf9-1e5e5961c79e",
+        "8ccfb794-8117-46ad-9103-42a92872d3d9",
+        "d7c3e8a4-5acd-41df-a2de-dc0afee73fa4",
+        "ef86d8b6-ff92-4497-976a-91f10dc1b967"
+        ],
+        "followers": [
+        "40b34e33-7048-40dc-8ba0-d8c9f1dd8f0c",
+        "609d63de-be9a-4c4e-ab97-fa02e3e66e5e",
+        "804b02eb-2d33-41f7-9413-4a20ec3527f0",
+        "b69578fa-ae16-4aba-a86d-d975509ca195"
+        ]
+    },
+    {
+        "id": "91b87c0e-edbb-44c7-b8a4-2f3218d23382",
+        "full_name": "Jonathan James",
+        "email": "jonathan.james.12@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=47",
+        "role": "writer",
+        "created_at": "2023-01-08 18:54:13",
+        "liked_articles": [
+        "02589654-b1f4-46b0-9ddd-145a48df3a9f",
+        "299f03d7-49e4-4505-8c66-de2c0bb429be",
+        "2f7216a0-b6ca-44a2-90b8-976988cbc13b",
+        "ad1dbf81-b05f-4224-8dab-259ca7f30ed9",
+        "cd918d63-c4f2-4fd9-81e8-2c55e4989563",
+        "e31e54dd-239c-4e6c-9532-6c999dd87097",
+        "f91d23f4-0afc-4899-b9df-bb60420bfb3f",
+        "fd3254f3-9ff9-45b9-9693-4742476a1dd7"
+        ],
+        "disliked_articles": [
+        "0c20bd38-c294-45ea-a377-66122259a1cb",
+        "9e49d6fe-a45d-41a2-8db1-4a376c00eb6f",
+        "ec9f8c74-2dc6-4de6-88b0-7eb37d3a1b17"
+        ],
+        "bookmarked_articles": [],
+        "following": [
+        "0946f084-f233-4bb3-b7d9-07fd428e378c"
+        ],
+        "followers": [
+        "d5edfb5f-c592-4448-a7f3-c050b1509461",
+        "e95d5e53-bdd2-4579-b6a7-df71d42dac6c",
+        "ea00bf14-67a5-4405-aebd-7679385aeedf"
+        ]
+    },
+    {
+        "id": "65129fe5-f09c-4e78-9953-528c1cc6ca1f",
+        "full_name": "Amanda Kelly",
+        "email": "amanda.kelly.13@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=10",
+        "role": "user",
+        "created_at": "2021-06-15 17:01:20",
+        "liked_articles": [
+        "33f12844-779f-47bb-9e3a-6f6be5912815",
+        "89988f53-8e6d-4b99-9470-3ebc14bfe128",
+        "a80a2224-cd3f-4c17-b19b-04eab9d0d9ec",
+        "c3082802-ece8-4faf-875d-02fe9121fce2",
+        "cd918d63-c4f2-4fd9-81e8-2c55e4989563",
+        "f56c014b-2bda-43bd-8d78-050e06c193e3"
+        ],
+        "disliked_articles": [
+        "10b7a44f-f7bf-4077-aa51-c0128512557d",
+        "c0294b17-a701-4aa1-b8dc-09d4fd9dc1eb",
+        "e2703053-983c-423a-b5d1-b270a1c107f8"
+        ],
+        "bookmarked_articles": [],
+        "following": [
+        "3cd9e75a-2ccf-4a33-9468-d08d9eadaee4",
+        "4adaec0b-3d64-4fef-a6b0-7ec4ed948922",
+        "834ec69a-ca85-440a-a7f2-e7ad72aeed36",
+        "9fe36862-fcb1-4bb7-b293-e9c8a7d72bf8",
+        "d7c3e8a4-5acd-41df-a2de-dc0afee73fa4"
+        ],
+        "followers": [
+        "25c1265a-1c40-4f32-9a53-9f973cef6f8e",
+        "80c82664-505a-4462-916d-26acadab2712"
+        ]
+    },
+    {
+        "id": "c41f3e65-8563-4109-a8ba-3e6c587c4940",
+        "full_name": "Robert Hall",
+        "email": "robert.hall.14@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=21",
+        "role": "user",
+        "created_at": "2022-04-18 16:46:07",
+        "liked_articles": [
+        "8747be53-aa4e-4167-b956-24074136b443",
+        "94f15513-0160-40bc-8427-57baaf0109b3",
+        "c0129305-4409-4b44-9de1-a297b9eb526a",
+        "c3082802-ece8-4faf-875d-02fe9121fce2",
+        "c94a1618-f0a1-42f5-ba14-c22239bd7755",
+        "e7f7d6dd-b2c6-4c57-9f7f-5ddef4b45ba4",
+        "f56c014b-2bda-43bd-8d78-050e06c193e3",
+        "ffdb3ca3-572c-49ba-b7f0-13f2ce128a9b"
+        ],
+        "disliked_articles": [],
+        "bookmarked_articles": [],
+        "following": [
+        "609d63de-be9a-4c4e-ab97-fa02e3e66e5e",
+        "b69578fa-ae16-4aba-a86d-d975509ca195",
+        "d7c3e8a4-5acd-41df-a2de-dc0afee73fa4",
+        "e19c3df6-51ad-42c8-8083-d4082fec3e06",
+        "ea00bf14-67a5-4405-aebd-7679385aeedf"
+        ],
+        "followers": [
+        "1815d196-8950-4735-aba3-07e4adf1e429",
+        "840d72c9-d256-4d16-9624-c10c5c4a98fa",
+        "c0d91e15-c4bb-401f-a6ae-9724e80140c3"
+        ]
+    },
+    {
+        "id": "1fd620b1-4dee-4a52-8fed-c5e22cddad9a",
+        "full_name": "Vanessa Edwards",
+        "email": "vanessa.edwards.15@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=42",
+        "role": "user",
+        "created_at": "2020-06-22 19:02:08",
+        "liked_articles": [
+        "0ec6f41f-24b3-4077-8cde-f9bbbb9aa81f",
+        "1f34b0a7-e888-4118-ab96-60328929b6a1",
+        "299f03d7-49e4-4505-8c66-de2c0bb429be",
+        "406fc543-afab-47dd-b88a-0462e890cbaa",
+        "f8330412-d39d-4b63-980f-eec4d3e9b36c",
+        "fd3254f3-9ff9-45b9-9693-4742476a1dd7"
+        ],
+        "disliked_articles": [
+        "87c9e434-9751-45e0-b241-44174e321950",
+        "c3082802-ece8-4faf-875d-02fe9121fce2",
+        "e2703053-983c-423a-b5d1-b270a1c107f8"
+        ],
+        "bookmarked_articles": [
+        "0c20bd38-c294-45ea-a377-66122259a1cb",
+        "0ec6f41f-24b3-4077-8cde-f9bbbb9aa81f",
+        "23113ef1-3147-402c-93e8-cc1d49bdc948",
+        "899eb39f-95ae-4900-bddb-6c6f7375162a",
+        "fd3254f3-9ff9-45b9-9693-4742476a1dd7"
+        ],
+        "following": [],
+        "followers": [
+        "0946f084-f233-4bb3-b7d9-07fd428e378c",
+        "6dd2fa3b-d527-4e18-9c10-37907bdcb483"
+        ]
+    },
+    {
+        "id": "5fe685a4-47dd-4b5f-8278-7c5f37c94c6e",
+        "full_name": "David Evans",
+        "email": "david.evans.16@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=41",
+        "role": "user",
+        "created_at": "2020-07-24 15:22:48",
+        "liked_articles": [
+        "02589654-b1f4-46b0-9ddd-145a48df3a9f",
+        "3e1398d4-8f50-449f-9ab5-791f0223657e",
+        "b38003b1-93a2-4adc-9f97-78ce4aceb7c1"
+        ],
+        "disliked_articles": [
+        "84e71f84-8ee8-4b37-99ba-9f43564532c8",
+        "e7f7d6dd-b2c6-4c57-9f7f-5ddef4b45ba4"
+        ],
+        "bookmarked_articles": [
+        "2365896a-9470-4ba9-aace-4fbf61af95c4",
+        "b38003b1-93a2-4adc-9f97-78ce4aceb7c1",
+        "c0129305-4409-4b44-9de1-a297b9eb526a",
+        "d8b456cd-8852-49f5-bacb-84ef170cbdd3"
+        ],
+        "following": [],
+        "followers": [
+        "609d63de-be9a-4c4e-ab97-fa02e3e66e5e",
+        "804b02eb-2d33-41f7-9413-4a20ec3527f0",
+        "e4c5d3b1-b227-45b7-8d14-503ca82ca375"
+        ]
+    },
+    {
+        "id": "834ec69a-ca85-440a-a7f2-e7ad72aeed36",
+        "full_name": "Brian Reed",
+        "email": "brian.reed.17@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=28",
+        "role": "user",
+        "created_at": "2023-05-14 04:27:09",
+        "liked_articles": [
+        "628f7872-6323-4942-a151-1d161305ad10",
+        "cd918d63-c4f2-4fd9-81e8-2c55e4989563",
+        "f4f2ede3-efc9-4675-837a-3bcef7ca2383"
+        ],
+        "disliked_articles": [
+        "e8c96467-7e8f-40c9-a3a8-74a77c228a10"
+        ],
+        "bookmarked_articles": [
+        "c0129305-4409-4b44-9de1-a297b9eb526a"
+        ],
+        "following": [
+        "48762781-bf56-42ef-bbf9-1e5e5961c79e",
+        "804b02eb-2d33-41f7-9413-4a20ec3527f0",
+        "80c82664-505a-4462-916d-26acadab2712"
+        ],
+        "followers": [
+        "3973dfc1-b8ff-4633-a641-b60d64103d0c",
+        "40b34e33-7048-40dc-8ba0-d8c9f1dd8f0c",
+        "4adaec0b-3d64-4fef-a6b0-7ec4ed948922",
+        "65129fe5-f09c-4e78-9953-528c1cc6ca1f",
+        "c0d91e15-c4bb-401f-a6ae-9724e80140c3",
+        "ea00bf14-67a5-4405-aebd-7679385aeedf",
+        "fb9b140e-2f48-47a0-8134-92ba2b08a75e"
+        ]
+    },
+    {
+        "id": "3cd9e75a-2ccf-4a33-9468-d08d9eadaee4",
+        "full_name": "Gregory Smith",
+        "email": "gregory.smith.18@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=34",
+        "role": "writer",
+        "created_at": "2024-10-10 02:38:31",
+        "liked_articles": [
+        "0010a4e8-294d-4cf0-a9b6-029753ca353d",
+        "1f69977b-a5c0-4b3d-aad9-6b72a2beca23",
+        "70fd2b09-c071-4111-854b-647ad2ee443a",
+        "c890170d-523f-4b0c-ad97-3f3b0e3848a8",
+        "fde1e8be-1199-456e-8006-d2e97fb1e3c2"
+        ],
+        "disliked_articles": [
+        "1f34b0a7-e888-4118-ab96-60328929b6a1",
+        "4fcdd25c-327e-4109-9db5-02ebbad2ecfc",
+        "f532d5aa-b50c-48ed-827f-fee8f857c5f9"
+        ],
+        "bookmarked_articles": [
+        "1f69977b-a5c0-4b3d-aad9-6b72a2beca23",
+        "2f7216a0-b6ca-44a2-90b8-976988cbc13b",
+        "9cc99ed9-94ca-403f-a565-9663734705ce",
+        "9d50b72e-b6bf-4597-8d24-e8b2a126621f",
+        "c890170d-523f-4b0c-ad97-3f3b0e3848a8"
+        ],
+        "following": [],
+        "followers": [
+        "25c1265a-1c40-4f32-9a53-9f973cef6f8e",
+        "39faf808-4583-4d22-a1c8-b2d94c1cd528",
+        "609d63de-be9a-4c4e-ab97-fa02e3e66e5e",
+        "65129fe5-f09c-4e78-9953-528c1cc6ca1f",
+        "9646c255-1ee7-4bda-86aa-28d4784b2679",
+        "9fe36862-fcb1-4bb7-b293-e9c8a7d72bf8",
+        "e19c3df6-51ad-42c8-8083-d4082fec3e06"
+        ]
+    },
+    {
+        "id": "c0d91e15-c4bb-401f-a6ae-9724e80140c3",
+        "full_name": "Robert Jones",
+        "email": "robert.jones.19@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=55",
+        "role": "user",
+        "created_at": "2023-05-25 21:27:37",
+        "liked_articles": [
+        "0336f18d-1353-41a8-a4be-ef3be31032fa",
+        "0c20bd38-c294-45ea-a377-66122259a1cb",
+        "7c400472-64b9-40f6-9e4f-63f4cc35227e",
+        "cd918d63-c4f2-4fd9-81e8-2c55e4989563"
+        ],
+        "disliked_articles": [
+        "2365896a-9470-4ba9-aace-4fbf61af95c4",
+        "84e71f84-8ee8-4b37-99ba-9f43564532c8",
+        "86c0ff26-2eb4-4a9c-b780-82daedba7dd3"
+        ],
+        "bookmarked_articles": [
+        "7c400472-64b9-40f6-9e4f-63f4cc35227e",
+        "d2031bd3-514c-4082-9511-0138dc3da005"
+        ],
+        "following": [
+        "07be0f3f-c80b-412f-8891-bf61fdb047aa",
+        "4adaec0b-3d64-4fef-a6b0-7ec4ed948922",
+        "834ec69a-ca85-440a-a7f2-e7ad72aeed36",
+        "c41f3e65-8563-4109-a8ba-3e6c587c4940"
+        ],
+        "followers": [
+        "9fe36862-fcb1-4bb7-b293-e9c8a7d72bf8",
+        "b69578fa-ae16-4aba-a86d-d975509ca195"
+        ]
+    },
+    {
+        "id": "e4c5d3b1-b227-45b7-8d14-503ca82ca375",
+        "full_name": "Uma Edwards",
+        "email": "uma.edwards.20@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=18",
+        "role": "user",
+        "created_at": "2020-10-09 10:41:49",
+        "liked_articles": [
+        "0daa4372-89fe-45b7-847d-63aa42cd97de",
+        "1199319f-cc39-4340-a170-aa05131144f9",
+        "23113ef1-3147-402c-93e8-cc1d49bdc948",
+        "34a0cfdb-d921-4652-bc81-03a3546660f7",
+        "788562bb-322b-464e-bf0f-e3a6c1cc7f54",
+        "86c0ff26-2eb4-4a9c-b780-82daedba7dd3",
+        "b30da639-b78d-49c6-9d0a-259b5ead0314",
+        "ec9f8c74-2dc6-4de6-88b0-7eb37d3a1b17"
+        ],
+        "disliked_articles": [
+        "034e089d-65f0-47b9-ad27-59c22fa1cb33",
+        "4f361911-b15b-4041-b872-b03673c856f0"
+        ],
+        "bookmarked_articles": [
+        "23113ef1-3147-402c-93e8-cc1d49bdc948",
+        "34a0cfdb-d921-4652-bc81-03a3546660f7",
+        "788562bb-322b-464e-bf0f-e3a6c1cc7f54",
+        "86c0ff26-2eb4-4a9c-b780-82daedba7dd3",
+        "b2f55020-0ed0-4a21-b265-c8d2679a0825",
+        "b30da639-b78d-49c6-9d0a-259b5ead0314"
+        ],
+        "following": [
+        "5fe685a4-47dd-4b5f-8278-7c5f37c94c6e",
+        "d5edfb5f-c592-4448-a7f3-c050b1509461"
+        ],
+        "followers": [
+        "3973dfc1-b8ff-4633-a641-b60d64103d0c",
+        "6dd2fa3b-d527-4e18-9c10-37907bdcb483",
+        "d7c3e8a4-5acd-41df-a2de-dc0afee73fa4"
+        ]
+    },
+    {
+        "id": "b69578fa-ae16-4aba-a86d-d975509ca195",
+        "full_name": "Grace O'Connor",
+        "email": "grace.oconnor.21@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=20",
+        "role": "user",
+        "created_at": "2023-08-04 14:31:42",
+        "liked_articles": [
+        "4f361911-b15b-4041-b872-b03673c856f0"
+        ],
+        "disliked_articles": [
+        "10b7a44f-f7bf-4077-aa51-c0128512557d",
+        "43ea7393-3fe1-4d96-94cb-f40008cb3b63"
+        ],
+        "bookmarked_articles": [
+        "1860abac-8252-4876-a927-e079884af4fc"
+        ],
+        "following": [
+        "9646c255-1ee7-4bda-86aa-28d4784b2679",
+        "c0d91e15-c4bb-401f-a6ae-9724e80140c3"
+        ],
+        "followers": [
+        "c41f3e65-8563-4109-a8ba-3e6c587c4940"
+        ]
+    },
+    {
+        "id": "d7c3e8a4-5acd-41df-a2de-dc0afee73fa4",
+        "full_name": "Daniel Jackson",
+        "email": "daniel.jackson.22@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=50",
+        "role": "user",
+        "created_at": "2023-12-25 04:19:44",
+        "liked_articles": [
+        "0336f18d-1353-41a8-a4be-ef3be31032fa",
+        "1860abac-8252-4876-a927-e079884af4fc",
+        "43070a7b-5285-4268-a334-639a9a5fae4d",
+        "4fcdd25c-327e-4109-9db5-02ebbad2ecfc",
+        "add93561-684e-4266-b077-69f8cac110b1",
+        "fde1e8be-1199-456e-8006-d2e97fb1e3c2"
+        ],
+        "disliked_articles": [
+        "320a39eb-c6bc-4cc1-8b49-e95be477aca4",
+        "b296c8f0-ba8c-4e2d-aad0-daa9a2faf4cc"
+        ],
+        "bookmarked_articles": [
+        "0336f18d-1353-41a8-a4be-ef3be31032fa",
+        "2133d8f9-6802-4555-9210-fb7c2f9f8131",
+        "43070a7b-5285-4268-a334-639a9a5fae4d",
+        "9e49d6fe-a45d-41a2-8db1-4a376c00eb6f",
+        "e7f7d6dd-b2c6-4c57-9f7f-5ddef4b45ba4"
+        ],
+        "following": [
+        "8db8034f-05b0-42c7-97d3-cfb0e723d300",
+        "e247c1c3-9e8c-4943-8d40-05a1d51ebcc6",
+        "e4c5d3b1-b227-45b7-8d14-503ca82ca375"
+        ],
+        "followers": [
+        "25c1265a-1c40-4f32-9a53-9f973cef6f8e",
+        "65129fe5-f09c-4e78-9953-528c1cc6ca1f",
+        "9646c255-1ee7-4bda-86aa-28d4784b2679",
+        "aff53f52-d204-48ac-a5e7-390163c1aa01",
+        "c41f3e65-8563-4109-a8ba-3e6c587c4940",
+        "e19c3df6-51ad-42c8-8083-d4082fec3e06",
+        "e95d5e53-bdd2-4579-b6a7-df71d42dac6c",
+        "ea00bf14-67a5-4405-aebd-7679385aeedf"
+        ]
+    },
+    {
+        "id": "c1c9e6f5-c23c-49fe-8793-69e139d368a8",
+        "full_name": "Priscilla Irving",
+        "email": "priscilla.irving.23@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=2",
+        "role": "user",
+        "created_at": "2020-12-21 21:35:48",
+        "liked_articles": [
+        "0f62dd5a-932a-4345-9a8e-0ff4196b35b1",
+        "2133d8f9-6802-4555-9210-fb7c2f9f8131",
+        "2365896a-9470-4ba9-aace-4fbf61af95c4",
+        "2d3cba66-3691-46ad-84d5-f50b23b48187",
+        "add93561-684e-4266-b077-69f8cac110b1",
+        "f91d23f4-0afc-4899-b9df-bb60420bfb3f",
+        "ffdb3ca3-572c-49ba-b7f0-13f2ce128a9b"
+        ],
+        "disliked_articles": [],
+        "bookmarked_articles": [
+        "2133d8f9-6802-4555-9210-fb7c2f9f8131",
+        "cd918d63-c4f2-4fd9-81e8-2c55e4989563"
+        ],
+        "following": [
+        "0946f084-f233-4bb3-b7d9-07fd428e378c",
+        "609d63de-be9a-4c4e-ab97-fa02e3e66e5e",
+        "8ccfb794-8117-46ad-9103-42a92872d3d9",
+        "fc6afc8a-c4c9-4845-a6a8-2db9dec6f956"
+        ],
+        "followers": [
+        "39faf808-4583-4d22-a1c8-b2d94c1cd528"
+        ]
+    },
+    {
+        "id": "3973dfc1-b8ff-4633-a641-b60d64103d0c",
+        "full_name": "Robert Kelly",
+        "email": "robert.kelly.24@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=44",
+        "role": "writer",
+        "created_at": "2023-09-12 18:26:49",
+        "liked_articles": [
+        "02589654-b1f4-46b0-9ddd-145a48df3a9f",
+        "b30da639-b78d-49c6-9d0a-259b5ead0314",
+        "b38003b1-93a2-4adc-9f97-78ce4aceb7c1",
+        "feae7fcb-6309-44db-8d92-2e35a2ff2ac0"
+        ],
+        "disliked_articles": [
+        "2133d8f9-6802-4555-9210-fb7c2f9f8131",
+        "23113ef1-3147-402c-93e8-cc1d49bdc948",
+        "e8c96467-7e8f-40c9-a3a8-74a77c228a10"
+        ],
+        "bookmarked_articles": [
+        "02589654-b1f4-46b0-9ddd-145a48df3a9f",
+        "1f69977b-a5c0-4b3d-aad9-6b72a2beca23",
+        "6b131eca-0acb-4677-90fa-09dd002536f6",
+        "788562bb-322b-464e-bf0f-e3a6c1cc7f54",
+        "b30da639-b78d-49c6-9d0a-259b5ead0314"
+        ],
+        "following": [
+        "0946f084-f233-4bb3-b7d9-07fd428e378c",
+        "1815d196-8950-4735-aba3-07e4adf1e429",
+        "4adaec0b-3d64-4fef-a6b0-7ec4ed948922",
+        "80c82664-505a-4462-916d-26acadab2712",
+        "834ec69a-ca85-440a-a7f2-e7ad72aeed36",
+        "e4c5d3b1-b227-45b7-8d14-503ca82ca375"
+        ],
+        "followers": [
+        "07be0f3f-c80b-412f-8891-bf61fdb047aa",
+        "e247c1c3-9e8c-4943-8d40-05a1d51ebcc6"
+        ]
+    },
+    {
+        "id": "cbc7c96f-efa6-4391-b22c-40ee3c9438a2",
+        "full_name": "Ursula James",
+        "email": "ursula.james.25@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=1",
+        "role": "user",
+        "created_at": "2022-03-29 07:42:38",
+        "liked_articles": [
+        "0c20bd38-c294-45ea-a377-66122259a1cb",
+        "238099e0-5512-40cb-9326-ba100ce10f9d",
+        "2d3cba66-3691-46ad-84d5-f50b23b48187",
+        "b296c8f0-ba8c-4e2d-aad0-daa9a2faf4cc",
+        "eb9536e0-5f81-45c8-b73c-d92401054ad5"
+        ],
+        "disliked_articles": [
+        "a56bbd3d-feed-474b-a044-b0c510600d4f",
+        "e27a30e0-6f3b-4ff4-8405-04a7e959aecd",
+        "f8330412-d39d-4b63-980f-eec4d3e9b36c"
+        ],
+        "bookmarked_articles": [
+        "2d3cba66-3691-46ad-84d5-f50b23b48187",
+        "add93561-684e-4266-b077-69f8cac110b1",
+        "b296c8f0-ba8c-4e2d-aad0-daa9a2faf4cc",
+        "fd3254f3-9ff9-45b9-9693-4742476a1dd7"
+        ],
+        "following": [],
+        "followers": []
+    },
+    {
+        "id": "78cf19a5-eaea-4c69-8905-64e920432a37",
+        "full_name": "Matthew Wilson",
+        "email": "matthew.wilson.26@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=65",
+        "role": "user",
+        "created_at": "2022-07-16 05:39:22",
+        "liked_articles": [
+        "034e089d-65f0-47b9-ad27-59c22fa1cb33",
+        "0c20bd38-c294-45ea-a377-66122259a1cb",
+        "2365896a-9470-4ba9-aace-4fbf61af95c4",
+        "743a3f02-2bd9-4835-99dc-7e9019c7c354",
+        "9a6cd590-b328-455c-b0fb-3d1d08458562",
+        "9cc99ed9-94ca-403f-a565-9663734705ce",
+        "cefb84b5-4ad7-4383-873f-e891d913a8c0",
+        "e2703053-983c-423a-b5d1-b270a1c107f8"
+        ],
+        "disliked_articles": [
+        "7c400472-64b9-40f6-9e4f-63f4cc35227e",
+        "add93561-684e-4266-b077-69f8cac110b1",
+        "e27a30e0-6f3b-4ff4-8405-04a7e959aecd"
+        ],
+        "bookmarked_articles": [
+        "034e089d-65f0-47b9-ad27-59c22fa1cb33",
+        "9a6cd590-b328-455c-b0fb-3d1d08458562"
+        ],
+        "following": [],
+        "followers": [
+        "25c1265a-1c40-4f32-9a53-9f973cef6f8e",
+        "39faf808-4583-4d22-a1c8-b2d94c1cd528"
+        ]
+    },
+    {
+        "id": "9fe36862-fcb1-4bb7-b293-e9c8a7d72bf8",
+        "full_name": "Matthew Baker",
+        "email": "matthew.baker.27@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=20",
+        "role": "user",
+        "created_at": "2021-05-16 21:58:09",
+        "liked_articles": [
+        "2c9450b5-13c6-46f8-8fa0-026c3f417077",
+        "67b8aaa7-2561-4553-97ae-385a67593317",
+        "788562bb-322b-464e-bf0f-e3a6c1cc7f54",
+        "9a6cd590-b328-455c-b0fb-3d1d08458562",
+        "a15c25e1-c24d-424b-957e-10e23a3c77b6",
+        "a80a2224-cd3f-4c17-b19b-04eab9d0d9ec",
+        "ad1dbf81-b05f-4224-8dab-259ca7f30ed9",
+        "e8c96467-7e8f-40c9-a3a8-74a77c228a10"
+        ],
+        "disliked_articles": [],
+        "bookmarked_articles": [
+        "10b7a44f-f7bf-4077-aa51-c0128512557d",
+        "4c0ff83a-ff70-415a-86b7-a74f5ce8c987",
+        "5bc6f237-8b92-4fdc-8077-de3872eac512",
+        "87c9e434-9751-45e0-b241-44174e321950",
+        "9eb1b6a0-2453-4863-9c30-0b274a87f7ea",
+        "ad1dbf81-b05f-4224-8dab-259ca7f30ed9"
+        ],
+        "following": [
+        "1815d196-8950-4735-aba3-07e4adf1e429",
+        "373d9e88-d55b-4994-ae69-aa3b7525e07c",
+        "3cd9e75a-2ccf-4a33-9468-d08d9eadaee4",
+        "c0d91e15-c4bb-401f-a6ae-9724e80140c3",
+        "f096bdd9-140c-435b-880b-354c99654971"
+        ],
+        "followers": [
+        "373d9e88-d55b-4994-ae69-aa3b7525e07c",
+        "4adaec0b-3d64-4fef-a6b0-7ec4ed948922",
+        "65129fe5-f09c-4e78-9953-528c1cc6ca1f",
+        "e95d5e53-bdd2-4579-b6a7-df71d42dac6c"
+        ]
+    },
+    {
+        "id": "22cc28b1-905d-4b45-8a11-b3f015d62761",
+        "full_name": "Sophia Powell",
+        "email": "sophia.powell.28@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=1",
+        "role": "user",
+        "created_at": "2024-02-27 01:04:56",
+        "liked_articles": [
+        "034e089d-65f0-47b9-ad27-59c22fa1cb33",
+        "10b7a44f-f7bf-4077-aa51-c0128512557d",
+        "13006997-e576-40f2-8633-5f73b35c7c90",
+        "2c9450b5-13c6-46f8-8fa0-026c3f417077",
+        "c0129305-4409-4b44-9de1-a297b9eb526a",
+        "fd3254f3-9ff9-45b9-9693-4742476a1dd7"
+        ],
+        "disliked_articles": [
+        "0010a4e8-294d-4cf0-a9b6-029753ca353d"
+        ],
+        "bookmarked_articles": [],
+        "following": [
+        "8db8034f-05b0-42c7-97d3-cfb0e723d300"
+        ],
+        "followers": [
+        "8ccfb794-8117-46ad-9103-42a92872d3d9",
+        "e19c3df6-51ad-42c8-8083-d4082fec3e06",
+        "e1cfd8e7-ac0a-44c5-b275-ee14ee6ac203",
+        "f096bdd9-140c-435b-880b-354c99654971"
+        ]
+    },
+    {
+        "id": "840d72c9-d256-4d16-9624-c10c5c4a98fa",
+        "full_name": "Charlie O'Connor",
+        "email": "charlie.oconnor.29@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=47",
+        "role": "user",
+        "created_at": "2022-08-13 09:54:55",
+        "liked_articles": [
+        "02589654-b1f4-46b0-9ddd-145a48df3a9f",
+        "0437c250-4200-4381-a01b-8c333bc385b4",
+        "67b8aaa7-2561-4553-97ae-385a67593317",
+        "93063adb-68d1-41e9-82cc-897c3c4f6f32",
+        "a15c25e1-c24d-424b-957e-10e23a3c77b6",
+        "ffdb3ca3-572c-49ba-b7f0-13f2ce128a9b"
+        ],
+        "disliked_articles": [
+        "c0129305-4409-4b44-9de1-a297b9eb526a"
+        ],
+        "bookmarked_articles": [],
+        "following": [
+        "ac6698fb-3667-4d9c-a5b5-60c46215bc63",
+        "c41f3e65-8563-4109-a8ba-3e6c587c4940"
+        ],
+        "followers": [
+        "40b34e33-7048-40dc-8ba0-d8c9f1dd8f0c"
+        ]
+    },
+    {
+        "id": "fb9b140e-2f48-47a0-8134-92ba2b08a75e",
+        "full_name": "Elizabeth Harris",
+        "email": "elizabeth.harris.30@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=31",
+        "role": "user",
+        "created_at": "2020-09-01 16:33:04",
+        "liked_articles": [
+        "0437c250-4200-4381-a01b-8c333bc385b4",
+        "1199319f-cc39-4340-a170-aa05131144f9",
+        "1eff8fc0-b3f9-491c-bd59-6e7e154354cf",
+        "320a39eb-c6bc-4cc1-8b49-e95be477aca4",
+        "34a0cfdb-d921-4652-bc81-03a3546660f7",
+        "6f20890a-a5bd-4733-947f-97d903191f78",
+        "743a3f02-2bd9-4835-99dc-7e9019c7c354",
+        "7c400472-64b9-40f6-9e4f-63f4cc35227e"
+        ],
+        "disliked_articles": [
+        "1f34b0a7-e888-4118-ab96-60328929b6a1",
+        "3e1398d4-8f50-449f-9ab5-791f0223657e",
+        "c890170d-523f-4b0c-ad97-3f3b0e3848a8"
+        ],
+        "bookmarked_articles": [],
+        "following": [
+        "07be0f3f-c80b-412f-8891-bf61fdb047aa",
+        "6d89f96d-765a-4e22-a3bc-23df3fd7dd8d",
+        "834ec69a-ca85-440a-a7f2-e7ad72aeed36",
+        "d3727246-ae47-402a-86fc-b542bb6e3b7d",
+        "e1cfd8e7-ac0a-44c5-b275-ee14ee6ac203"
+        ],
+        "followers": [
+        "ac6698fb-3667-4d9c-a5b5-60c46215bc63"
+        ]
+    },
+    {
+        "id": "e19c3df6-51ad-42c8-8083-d4082fec3e06",
+        "full_name": "Kevin Martin",
+        "email": "kevin.martin.31@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=9",
+        "role": "user",
+        "created_at": "2024-07-13 01:27:02",
+        "liked_articles": [
+        "1f34b0a7-e888-4118-ab96-60328929b6a1",
+        "4ff7632a-fef1-444b-9b55-434067aa116e",
+        "628f7872-6323-4942-a151-1d161305ad10",
+        "7c400472-64b9-40f6-9e4f-63f4cc35227e",
+        "899eb39f-95ae-4900-bddb-6c6f7375162a",
+        "9cc99ed9-94ca-403f-a565-9663734705ce",
+        "e7f7d6dd-b2c6-4c57-9f7f-5ddef4b45ba4",
+        "f8330412-d39d-4b63-980f-eec4d3e9b36c"
+        ],
+        "disliked_articles": [
+        "2f7216a0-b6ca-44a2-90b8-976988cbc13b",
+        "4fcdd25c-327e-4109-9db5-02ebbad2ecfc",
+        "c3082802-ece8-4faf-875d-02fe9121fce2"
+        ],
+        "bookmarked_articles": [
+        "628f7872-6323-4942-a151-1d161305ad10",
+        "87c9e434-9751-45e0-b241-44174e321950",
+        "b30da639-b78d-49c6-9d0a-259b5ead0314",
+        "e7f7d6dd-b2c6-4c57-9f7f-5ddef4b45ba4"
+        ],
+        "following": [
+        "22cc28b1-905d-4b45-8a11-b3f015d62761",
+        "3cd9e75a-2ccf-4a33-9468-d08d9eadaee4",
+        "b7a75e73-c2cc-424a-9e46-3228be1b220e",
+        "d7c3e8a4-5acd-41df-a2de-dc0afee73fa4",
+        "fc6afc8a-c4c9-4845-a6a8-2db9dec6f956"
+        ],
+        "followers": [
+        "0946f084-f233-4bb3-b7d9-07fd428e378c",
+        "c41f3e65-8563-4109-a8ba-3e6c587c4940"
+        ]
+    },
+    {
+        "id": "40b34e33-7048-40dc-8ba0-d8c9f1dd8f0c",
+        "full_name": "Quincy Quinn",
+        "email": "quincy.quinn.32@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=61",
+        "role": "user",
+        "created_at": "2021-05-28 00:45:30",
+        "liked_articles": [
+        "238099e0-5512-40cb-9326-ba100ce10f9d",
+        "320a39eb-c6bc-4cc1-8b49-e95be477aca4",
+        "6b131eca-0acb-4677-90fa-09dd002536f6",
+        "86c0ff26-2eb4-4a9c-b780-82daedba7dd3",
+        "d8b456cd-8852-49f5-bacb-84ef170cbdd3"
+        ],
+        "disliked_articles": [
+        "0f62dd5a-932a-4345-9a8e-0ff4196b35b1",
+        "899eb39f-95ae-4900-bddb-6c6f7375162a",
+        "f532d5aa-b50c-48ed-827f-fee8f857c5f9"
+        ],
+        "bookmarked_articles": [
+        "9a6cd590-b328-455c-b0fb-3d1d08458562",
+        "c94a1618-f0a1-42f5-ba14-c22239bd7755",
+        "d8b456cd-8852-49f5-bacb-84ef170cbdd3"
+        ],
+        "following": [
+        "1815d196-8950-4735-aba3-07e4adf1e429",
+        "4adaec0b-3d64-4fef-a6b0-7ec4ed948922",
+        "834ec69a-ca85-440a-a7f2-e7ad72aeed36",
+        "840d72c9-d256-4d16-9624-c10c5c4a98fa",
+        "9646c255-1ee7-4bda-86aa-28d4784b2679",
+        "e95d5e53-bdd2-4579-b6a7-df71d42dac6c"
+        ],
+        "followers": [
+        "d5edfb5f-c592-4448-a7f3-c050b1509461"
+        ]
+    },
+    {
+        "id": "e1cfd8e7-ac0a-44c5-b275-ee14ee6ac203",
+        "full_name": "Henry Powell",
+        "email": "henry.powell.33@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=55",
+        "role": "user",
+        "created_at": "2024-08-02 12:49:51",
+        "liked_articles": [
+        "2365896a-9470-4ba9-aace-4fbf61af95c4",
+        "406fc543-afab-47dd-b88a-0462e890cbaa",
+        "4ff7632a-fef1-444b-9b55-434067aa116e",
+        "899eb39f-95ae-4900-bddb-6c6f7375162a",
+        "c890170d-523f-4b0c-ad97-3f3b0e3848a8",
+        "f56c014b-2bda-43bd-8d78-050e06c193e3",
+        "fde1e8be-1199-456e-8006-d2e97fb1e3c2"
+        ],
+        "disliked_articles": [],
+        "bookmarked_articles": [],
+        "following": [
+        "1815d196-8950-4735-aba3-07e4adf1e429",
+        "22cc28b1-905d-4b45-8a11-b3f015d62761",
+        "8dc72fa1-0b4b-40ae-bebb-2499358557b9",
+        "d5edfb5f-c592-4448-a7f3-c050b1509461",
+        "fc6afc8a-c4c9-4845-a6a8-2db9dec6f956"
+        ],
+        "followers": [
+        "39faf808-4583-4d22-a1c8-b2d94c1cd528",
+        "fb9b140e-2f48-47a0-8134-92ba2b08a75e"
+        ]
+    },
+    {
+        "id": "07be0f3f-c80b-412f-8891-bf61fdb047aa",
+        "full_name": "Zachary Phillips",
+        "email": "zachary.phillips.34@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=52",
+        "role": "user",
+        "created_at": "2023-03-06 04:15:03",
+        "liked_articles": [
+        "0437c250-4200-4381-a01b-8c333bc385b4",
+        "0f62dd5a-932a-4345-9a8e-0ff4196b35b1",
+        "3f055cad-0d7b-4635-afc6-52b2e27142f3",
+        "ad1dbf81-b05f-4224-8dab-259ca7f30ed9",
+        "c890170d-523f-4b0c-ad97-3f3b0e3848a8",
+        "feae7fcb-6309-44db-8d92-2e35a2ff2ac0"
+        ],
+        "disliked_articles": [
+        "d8b456cd-8852-49f5-bacb-84ef170cbdd3"
+        ],
+        "bookmarked_articles": [],
+        "following": [
+        "3973dfc1-b8ff-4633-a641-b60d64103d0c",
+        "b7a75e73-c2cc-424a-9e46-3228be1b220e",
+        "e247c1c3-9e8c-4943-8d40-05a1d51ebcc6",
+        "ef86d8b6-ff92-4497-976a-91f10dc1b967",
+        "f096bdd9-140c-435b-880b-354c99654971"
+        ],
+        "followers": [
+        "c0d91e15-c4bb-401f-a6ae-9724e80140c3",
+        "d5edfb5f-c592-4448-a7f3-c050b1509461",
+        "fb9b140e-2f48-47a0-8134-92ba2b08a75e"
+        ]
+    },
+    {
+        "id": "8ccfb794-8117-46ad-9103-42a92872d3d9",
+        "full_name": "Edward Perry",
+        "email": "edward.perry.35@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=58",
+        "role": "writer",
+        "created_at": "2021-11-29 02:38:52",
+        "liked_articles": [
+        "0daa4372-89fe-45b7-847d-63aa42cd97de",
+        "320a39eb-c6bc-4cc1-8b49-e95be477aca4",
+        "7c400472-64b9-40f6-9e4f-63f4cc35227e",
+        "9a6cd590-b328-455c-b0fb-3d1d08458562",
+        "f532d5aa-b50c-48ed-827f-fee8f857c5f9"
+        ],
+        "disliked_articles": [
+        "03634a31-5f41-40ff-9c5b-1e43e302aada",
+        "6b131eca-0acb-4677-90fa-09dd002536f6"
+        ],
+        "bookmarked_articles": [
+        "0daa4372-89fe-45b7-847d-63aa42cd97de",
+        "7c400472-64b9-40f6-9e4f-63f4cc35227e"
+        ],
+        "following": [
+        "22cc28b1-905d-4b45-8a11-b3f015d62761",
+        "4adaec0b-3d64-4fef-a6b0-7ec4ed948922",
+        "b7a75e73-c2cc-424a-9e46-3228be1b220e",
+        "f096bdd9-140c-435b-880b-354c99654971"
+        ],
+        "followers": [
+        "9646c255-1ee7-4bda-86aa-28d4784b2679",
+        "c1c9e6f5-c23c-49fe-8793-69e139d368a8",
+        "d5edfb5f-c592-4448-a7f3-c050b1509461",
+        "ea00bf14-67a5-4405-aebd-7679385aeedf"
+        ]
+    },
+    {
+        "id": "e247c1c3-9e8c-4943-8d40-05a1d51ebcc6",
+        "full_name": "Ivan Turner",
+        "email": "ivan.turner.36@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=3",
+        "role": "user",
+        "created_at": "2021-12-15 22:35:53",
+        "liked_articles": [
+        "b2f55020-0ed0-4a21-b265-c8d2679a0825",
+        "b30da639-b78d-49c6-9d0a-259b5ead0314",
+        "f4f2ede3-efc9-4675-837a-3bcef7ca2383",
+        "feae7fcb-6309-44db-8d92-2e35a2ff2ac0"
+        ],
+        "disliked_articles": [
+        "6b131eca-0acb-4677-90fa-09dd002536f6",
+        "9eb1b6a0-2453-4863-9c30-0b274a87f7ea",
+        "c890170d-523f-4b0c-ad97-3f3b0e3848a8"
+        ],
+        "bookmarked_articles": [],
+        "following": [
+        "3973dfc1-b8ff-4633-a641-b60d64103d0c",
+        "b7a75e73-c2cc-424a-9e46-3228be1b220e"
+        ],
+        "followers": [
+        "07be0f3f-c80b-412f-8891-bf61fdb047aa",
+        "373d9e88-d55b-4994-ae69-aa3b7525e07c",
+        "aff53f52-d204-48ac-a5e7-390163c1aa01",
+        "d7c3e8a4-5acd-41df-a2de-dc0afee73fa4"
+        ]
+    },
+    {
+        "id": "1815d196-8950-4735-aba3-07e4adf1e429",
+        "full_name": "Caroline Edwards",
+        "email": "caroline.edwards.37@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=1",
+        "role": "admin",
+        "created_at": "2020-07-01 21:56:46",
+        "liked_articles": [
+        "299f03d7-49e4-4505-8c66-de2c0bb429be",
+        "6b131eca-0acb-4677-90fa-09dd002536f6",
+        "84e71f84-8ee8-4b37-99ba-9f43564532c8"
+        ],
+        "disliked_articles": [
+        "0daa4372-89fe-45b7-847d-63aa42cd97de",
+        "2f7216a0-b6ca-44a2-90b8-976988cbc13b"
+        ],
+        "bookmarked_articles": [
+        "299f03d7-49e4-4505-8c66-de2c0bb429be",
+        "a80a2224-cd3f-4c17-b19b-04eab9d0d9ec",
+        "c0129305-4409-4b44-9de1-a297b9eb526a"
+        ],
+        "following": [
+        "ac6698fb-3667-4d9c-a5b5-60c46215bc63",
+        "c41f3e65-8563-4109-a8ba-3e6c587c4940"
+        ],
+        "followers": [
+        "3973dfc1-b8ff-4633-a641-b60d64103d0c",
+        "40b34e33-7048-40dc-8ba0-d8c9f1dd8f0c",
+        "9fe36862-fcb1-4bb7-b293-e9c8a7d72bf8",
+        "e1cfd8e7-ac0a-44c5-b275-ee14ee6ac203"
+        ]
+    },
+    {
+        "id": "48762781-bf56-42ef-bbf9-1e5e5961c79e",
+        "full_name": "David Jackson",
+        "email": "david.jackson.38@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=5",
+        "role": "user",
+        "created_at": "2020-08-08 03:30:25",
+        "liked_articles": [
+        "add93561-684e-4266-b077-69f8cac110b1"
+        ],
+        "disliked_articles": [],
+        "bookmarked_articles": [
+        "31aadeab-8dca-425f-ac05-814b3d2f95c1",
+        "9a6cd590-b328-455c-b0fb-3d1d08458562"
+        ],
+        "following": [
+        "0946f084-f233-4bb3-b7d9-07fd428e378c"
+        ],
+        "followers": [
+        "4adaec0b-3d64-4fef-a6b0-7ec4ed948922",
+        "834ec69a-ca85-440a-a7f2-e7ad72aeed36",
+        "9646c255-1ee7-4bda-86aa-28d4784b2679"
+        ]
+    },
+    {
+        "id": "ef86d8b6-ff92-4497-976a-91f10dc1b967",
+        "full_name": "Natalie Green",
+        "email": "natalie.green.39@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=36",
+        "role": "user",
+        "created_at": "2021-10-27 14:39:15",
+        "liked_articles": [
+        "2c9450b5-13c6-46f8-8fa0-026c3f417077",
+        "34a0cfdb-d921-4652-bc81-03a3546660f7",
+        "628f7872-6323-4942-a151-1d161305ad10",
+        "67b8aaa7-2561-4553-97ae-385a67593317",
+        "9eb1b6a0-2453-4863-9c30-0b274a87f7ea"
+        ],
+        "disliked_articles": [
+        "4fcdd25c-327e-4109-9db5-02ebbad2ecfc",
+        "93063adb-68d1-41e9-82cc-897c3c4f6f32"
+        ],
+        "bookmarked_articles": [
+        "67b8aaa7-2561-4553-97ae-385a67593317",
+        "b30da639-b78d-49c6-9d0a-259b5ead0314"
+        ],
+        "following": [],
+        "followers": [
+        "07be0f3f-c80b-412f-8891-bf61fdb047aa",
+        "4adaec0b-3d64-4fef-a6b0-7ec4ed948922",
+        "9646c255-1ee7-4bda-86aa-28d4784b2679"
+        ]
+    },
+    {
+        "id": "373d9e88-d55b-4994-ae69-aa3b7525e07c",
+        "full_name": "Sophia Quinn",
+        "email": "sophia.quinn.40@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=61",
+        "role": "writer",
+        "created_at": "2024-01-09 11:25:06",
+        "liked_articles": [
+        "0507b7e8-5e54-4e99-aaf3-387fbb14a69c",
+        "2f7216a0-b6ca-44a2-90b8-976988cbc13b",
+        "6f20890a-a5bd-4733-947f-97d903191f78",
+        "9a6cd590-b328-455c-b0fb-3d1d08458562",
+        "9e49d6fe-a45d-41a2-8db1-4a376c00eb6f",
+        "b296c8f0-ba8c-4e2d-aad0-daa9a2faf4cc",
+        "d8b456cd-8852-49f5-bacb-84ef170cbdd3",
+        "e27a30e0-6f3b-4ff4-8405-04a7e959aecd"
+        ],
+        "disliked_articles": [
+        "0f62dd5a-932a-4345-9a8e-0ff4196b35b1",
+        "4f361911-b15b-4041-b872-b03673c856f0",
+        "84e71f84-8ee8-4b37-99ba-9f43564532c8"
+        ],
+        "bookmarked_articles": [
+        "2f7216a0-b6ca-44a2-90b8-976988cbc13b",
+        "9a6cd590-b328-455c-b0fb-3d1d08458562"
+        ],
+        "following": [
+        "9fe36862-fcb1-4bb7-b293-e9c8a7d72bf8",
+        "e247c1c3-9e8c-4943-8d40-05a1d51ebcc6"
+        ],
+        "followers": [
+        "80c82664-505a-4462-916d-26acadab2712",
+        "9fe36862-fcb1-4bb7-b293-e9c8a7d72bf8"
+        ]
+    },
+    {
+        "id": "804b02eb-2d33-41f7-9413-4a20ec3527f0",
+        "full_name": "Adrian Adams",
+        "email": "adrian.adams.41@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=13",
+        "role": "writer",
+        "created_at": "2023-09-01 05:30:21",
+        "liked_articles": [
+        "13006997-e576-40f2-8633-5f73b35c7c90",
+        "299f03d7-49e4-4505-8c66-de2c0bb429be",
+        "5bc6f237-8b92-4fdc-8077-de3872eac512",
+        "9a6cd590-b328-455c-b0fb-3d1d08458562",
+        "9d50b72e-b6bf-4597-8d24-e8b2a126621f",
+        "b2f55020-0ed0-4a21-b265-c8d2679a0825",
+        "eb9536e0-5f81-45c8-b73c-d92401054ad5"
+        ],
+        "disliked_articles": [],
+        "bookmarked_articles": [
+        "13006997-e576-40f2-8633-5f73b35c7c90",
+        "eb9536e0-5f81-45c8-b73c-d92401054ad5"
+        ],
+        "following": [
+        "39faf808-4583-4d22-a1c8-b2d94c1cd528",
+        "5fe685a4-47dd-4b5f-8278-7c5f37c94c6e",
+        "9646c255-1ee7-4bda-86aa-28d4784b2679",
+        "f096bdd9-140c-435b-880b-354c99654971"
+        ],
+        "followers": [
+        "834ec69a-ca85-440a-a7f2-e7ad72aeed36",
+        "f096bdd9-140c-435b-880b-354c99654971"
+        ]
+    },
+    {
+        "id": "e95d5e53-bdd2-4579-b6a7-df71d42dac6c",
+        "full_name": "Teresa Graham",
+        "email": "teresa.graham.42@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=53",
+        "role": "user",
+        "created_at": "2020-06-17 07:17:46",
+        "liked_articles": [
+        "23113ef1-3147-402c-93e8-cc1d49bdc948",
+        "2d3cba66-3691-46ad-84d5-f50b23b48187",
+        "89988f53-8e6d-4b99-9470-3ebc14bfe128"
+        ],
+        "disliked_articles": [
+        "6f20890a-a5bd-4733-947f-97d903191f78",
+        "899eb39f-95ae-4900-bddb-6c6f7375162a",
+        "f532d5aa-b50c-48ed-827f-fee8f857c5f9"
+        ],
+        "bookmarked_articles": [
+        "0daa4372-89fe-45b7-847d-63aa42cd97de",
+        "3e1398d4-8f50-449f-9ab5-791f0223657e",
+        "89988f53-8e6d-4b99-9470-3ebc14bfe128"
+        ],
+        "following": [
+        "39faf808-4583-4d22-a1c8-b2d94c1cd528",
+        "91b87c0e-edbb-44c7-b8a4-2f3218d23382",
+        "9fe36862-fcb1-4bb7-b293-e9c8a7d72bf8",
+        "aff53f52-d204-48ac-a5e7-390163c1aa01",
+        "d7c3e8a4-5acd-41df-a2de-dc0afee73fa4",
+        "ea00bf14-67a5-4405-aebd-7679385aeedf"
+        ],
+        "followers": [
+        "39faf808-4583-4d22-a1c8-b2d94c1cd528",
+        "40b34e33-7048-40dc-8ba0-d8c9f1dd8f0c"
+        ]
+    },
+    {
+        "id": "609d63de-be9a-4c4e-ab97-fa02e3e66e5e",
+        "full_name": "Michael Harris",
+        "email": "michael.harris.43@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=52",
+        "role": "user",
+        "created_at": "2020-12-05 11:41:22",
+        "liked_articles": [
+        "1860abac-8252-4876-a927-e079884af4fc",
+        "788562bb-322b-464e-bf0f-e3a6c1cc7f54",
+        "89988f53-8e6d-4b99-9470-3ebc14bfe128",
+        "a56bbd3d-feed-474b-a044-b0c510600d4f",
+        "e27a30e0-6f3b-4ff4-8405-04a7e959aecd",
+        "f532d5aa-b50c-48ed-827f-fee8f857c5f9"
+        ],
+        "disliked_articles": [
+        "4ff7632a-fef1-444b-9b55-434067aa116e",
+        "a15c25e1-c24d-424b-957e-10e23a3c77b6",
+        "b296c8f0-ba8c-4e2d-aad0-daa9a2faf4cc"
+        ],
+        "bookmarked_articles": [
+        "02589654-b1f4-46b0-9ddd-145a48df3a9f",
+        "e27a30e0-6f3b-4ff4-8405-04a7e959aecd"
+        ],
+        "following": [
+        "0946f084-f233-4bb3-b7d9-07fd428e378c",
+        "39faf808-4583-4d22-a1c8-b2d94c1cd528",
+        "3cd9e75a-2ccf-4a33-9468-d08d9eadaee4",
+        "5fe685a4-47dd-4b5f-8278-7c5f37c94c6e",
+        "80c82664-505a-4462-916d-26acadab2712",
+        "9646c255-1ee7-4bda-86aa-28d4784b2679"
+        ],
+        "followers": [
+        "c1c9e6f5-c23c-49fe-8793-69e139d368a8",
+        "c41f3e65-8563-4109-a8ba-3e6c587c4940"
+        ]
+    },
+    {
+        "id": "0946f084-f233-4bb3-b7d9-07fd428e378c",
+        "full_name": "Frederick Adams",
+        "email": "frederick.adams.44@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=25",
+        "role": "user",
+        "created_at": "2021-03-11 12:44:59",
+        "liked_articles": [
+        "0437c250-4200-4381-a01b-8c333bc385b4",
+        "d8b456cd-8852-49f5-bacb-84ef170cbdd3"
+        ],
+        "disliked_articles": [
+        "a56bbd3d-feed-474b-a044-b0c510600d4f"
+        ],
+        "bookmarked_articles": [
+        "31aadeab-8dca-425f-ac05-814b3d2f95c1",
+        "d8b456cd-8852-49f5-bacb-84ef170cbdd3"
+        ],
+        "following": [
+        "1fd620b1-4dee-4a52-8fed-c5e22cddad9a",
+        "b7a75e73-c2cc-424a-9e46-3228be1b220e",
+        "e19c3df6-51ad-42c8-8083-d4082fec3e06"
+        ],
+        "followers": [
+        "3973dfc1-b8ff-4633-a641-b60d64103d0c",
+        "39faf808-4583-4d22-a1c8-b2d94c1cd528",
+        "48762781-bf56-42ef-bbf9-1e5e5961c79e",
+        "609d63de-be9a-4c4e-ab97-fa02e3e66e5e",
+        "91b87c0e-edbb-44c7-b8a4-2f3218d23382",
+        "c1c9e6f5-c23c-49fe-8793-69e139d368a8"
+        ]
+    },
+    {
+        "id": "ac6698fb-3667-4d9c-a5b5-60c46215bc63",
+        "full_name": "Christopher Young",
+        "email": "christopher.young.45@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=36",
+        "role": "user",
+        "created_at": "2020-08-22 05:06:17",
+        "liked_articles": [
+        "6f20890a-a5bd-4733-947f-97d903191f78",
+        "788562bb-322b-464e-bf0f-e3a6c1cc7f54",
+        "b296c8f0-ba8c-4e2d-aad0-daa9a2faf4cc"
+        ],
+        "disliked_articles": [],
+        "bookmarked_articles": [
+        "6f20890a-a5bd-4733-947f-97d903191f78",
+        "788562bb-322b-464e-bf0f-e3a6c1cc7f54"
+        ],
+        "following": [
+        "fb9b140e-2f48-47a0-8134-92ba2b08a75e"
+        ],
+        "followers": [
+        "1815d196-8950-4735-aba3-07e4adf1e429",
+        "840d72c9-d256-4d16-9624-c10c5c4a98fa"
+        ]
+    },
+    {
+        "id": "6dd2fa3b-d527-4e18-9c10-37907bdcb483",
+        "full_name": "Edward Miller",
+        "email": "edward.miller.46@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=7",
+        "role": "user",
+        "created_at": "2024-08-06 13:09:28",
+        "liked_articles": [
+        "135c6fed-20f5-49d3-beff-86813098e9e9",
+        "fde1e8be-1199-456e-8006-d2e97fb1e3c2"
+        ],
+        "disliked_articles": [
+        "93063adb-68d1-41e9-82cc-897c3c4f6f32"
+        ],
+        "bookmarked_articles": [
+        "e7f7d6dd-b2c6-4c57-9f7f-5ddef4b45ba4"
+        ],
+        "following": [
+        "1fd620b1-4dee-4a52-8fed-c5e22cddad9a",
+        "e4c5d3b1-b227-45b7-8d14-503ca82ca375"
+        ],
+        "followers": []
+    },
+    {
+        "id": "8db8034f-05b0-42c7-97d3-cfb0e723d300",
+        "full_name": "Bob Lopez",
+        "email": "bob.lopez.47@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=31",
+        "role": "writer",
+        "created_at": "2024-02-17 20:01:37",
+        "liked_articles": [
+        "1eff8fc0-b3f9-491c-bd59-6e7e154354cf",
+        "299f03d7-49e4-4505-8c66-de2c0bb429be",
+        "788562bb-322b-464e-bf0f-e3a6c1cc7f54",
+        "899eb39f-95ae-4900-bddb-6c6f7375162a",
+        "9e49d6fe-a45d-41a2-8db1-4a376c00eb6f",
+        "9e693177-f6c4-4fbc-b49f-a9b9f5ce1274",
+        "9eb1b6a0-2453-4863-9c30-0b274a87f7ea",
+        "e8c96467-7e8f-40c9-a3a8-74a77c228a10"
+        ],
+        "disliked_articles": [
+        "02589654-b1f4-46b0-9ddd-145a48df3a9f",
+        "a80a2224-cd3f-4c17-b19b-04eab9d0d9ec",
+        "c890170d-523f-4b0c-ad97-3f3b0e3848a8"
+        ],
+        "bookmarked_articles": [
+        "1eff8fc0-b3f9-491c-bd59-6e7e154354cf",
+        "87c9e434-9751-45e0-b241-44174e321950",
+        "9cc99ed9-94ca-403f-a565-9663734705ce"
+        ],
+        "following": [
+        "aff53f52-d204-48ac-a5e7-390163c1aa01"
+        ],
+        "followers": [
+        "22cc28b1-905d-4b45-8a11-b3f015d62761",
+        "d7c3e8a4-5acd-41df-a2de-dc0afee73fa4"
+        ]
+    },
+    {
+        "id": "25c1265a-1c40-4f32-9a53-9f973cef6f8e",
+        "full_name": "Jennifer Douglas",
+        "email": "jennifer.douglas.48@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=52",
+        "role": "user",
+        "created_at": "2021-05-26 12:14:00",
+        "liked_articles": [
+        "320a39eb-c6bc-4cc1-8b49-e95be477aca4"
+        ],
+        "disliked_articles": [
+        "84e71f84-8ee8-4b37-99ba-9f43564532c8",
+        "e7f7d6dd-b2c6-4c57-9f7f-5ddef4b45ba4"
+        ],
+        "bookmarked_articles": [
+        "1eff8fc0-b3f9-491c-bd59-6e7e154354cf",
+        "1f69977b-a5c0-4b3d-aad9-6b72a2beca23",
+        "2365896a-9470-4ba9-aace-4fbf61af95c4",
+        "320a39eb-c6bc-4cc1-8b49-e95be477aca4",
+        "3f055cad-0d7b-4635-afc6-52b2e27142f3",
+        "e2703053-983c-423a-b5d1-b270a1c107f8"
+        ],
+        "following": [
+        "3cd9e75a-2ccf-4a33-9468-d08d9eadaee4",
+        "65129fe5-f09c-4e78-9953-528c1cc6ca1f",
+        "78cf19a5-eaea-4c69-8905-64e920432a37",
+        "d5edfb5f-c592-4448-a7f3-c050b1509461",
+        "d7c3e8a4-5acd-41df-a2de-dc0afee73fa4"
+        ],
+        "followers": []
+    },
+    {
+        "id": "39faf808-4583-4d22-a1c8-b2d94c1cd528",
+        "full_name": "Whitney Anderson",
+        "email": "whitney.anderson.49@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=50",
+        "role": "writer",
+        "created_at": "2023-11-14 15:52:59",
+        "liked_articles": [
+        "f532d5aa-b50c-48ed-827f-fee8f857c5f9"
+        ],
+        "disliked_articles": [
+        "02589654-b1f4-46b0-9ddd-145a48df3a9f",
+        "a80a2224-cd3f-4c17-b19b-04eab9d0d9ec",
+        "ec9f8c74-2dc6-4de6-88b0-7eb37d3a1b17"
+        ],
+        "bookmarked_articles": [
+        "3f055cad-0d7b-4635-afc6-52b2e27142f3",
+        "8747be53-aa4e-4167-b956-24074136b443",
+        "f532d5aa-b50c-48ed-827f-fee8f857c5f9"
+        ],
+        "following": [
+        "0946f084-f233-4bb3-b7d9-07fd428e378c",
+        "3cd9e75a-2ccf-4a33-9468-d08d9eadaee4",
+        "78cf19a5-eaea-4c69-8905-64e920432a37",
+        "c1c9e6f5-c23c-49fe-8793-69e139d368a8",
+        "e1cfd8e7-ac0a-44c5-b275-ee14ee6ac203",
+        "e95d5e53-bdd2-4579-b6a7-df71d42dac6c"
+        ],
+        "followers": [
+        "609d63de-be9a-4c4e-ab97-fa02e3e66e5e",
+        "804b02eb-2d33-41f7-9413-4a20ec3527f0",
+        "aff53f52-d204-48ac-a5e7-390163c1aa01",
+        "e95d5e53-bdd2-4579-b6a7-df71d42dac6c"
+        ]
+    },
+    {
+        "id": "ea00bf14-67a5-4405-aebd-7679385aeedf",
+        "full_name": "Katherine Graham",
+        "email": "katherine.graham.50@example.com",
+        "password": "$2a$10$AbCdEfGhIjKlMnOpQrStUvWxYz1234567890",
+        "avatar_url": "https://i.pravatar.cc/150?img=63",
+        "role": "writer",
+        "created_at": "2022-07-10 20:08:21",
+        "liked_articles": [
+        "4c0ff83a-ff70-415a-86b7-a74f5ce8c987",
+        "89988f53-8e6d-4b99-9470-3ebc14bfe128",
+        "9cc99ed9-94ca-403f-a565-9663734705ce"
+        ],
+        "disliked_articles": [],
+        "bookmarked_articles": [
+        "4c0ff83a-ff70-415a-86b7-a74f5ce8c987",
+        "c0294b17-a701-4aa1-b8dc-09d4fd9dc1eb"
+        ],
+        "following": [
+        "834ec69a-ca85-440a-a7f2-e7ad72aeed36",
+        "8ccfb794-8117-46ad-9103-42a92872d3d9",
+        "8dc72fa1-0b4b-40ae-bebb-2499358557b9",
+        "91b87c0e-edbb-44c7-b8a4-2f3218d23382",
+        "aff53f52-d204-48ac-a5e7-390163c1aa01",
+        "d7c3e8a4-5acd-41df-a2de-dc0afee73fa4"
+        ],
+        "followers": [
+        "c41f3e65-8563-4109-a8ba-3e6c587c4940",
+        "e95d5e53-bdd2-4579-b6a7-df71d42dac6c"
+        ]
+    }
+]
