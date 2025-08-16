@@ -13,7 +13,7 @@ from app.services.embeddings import encode
 from utils.timeparse import parse_sql_datetime
 
 def _article_to_doc(a: Dict[str, Any]) -> Dict[str, Any]:
-    """Transform a Cosmos DB article document to Azure AI Search format."""
+    """Transform a Cosmos DB article document to optimized Azure AI Search format."""
     title = a.get("title", "")
     abstract = a.get("abstract", "")
     content = a.get("content", "")
@@ -21,24 +21,27 @@ def _article_to_doc(a: Dict[str, Any]) -> Dict[str, Any]:
 
     updated = a.get("updated_at")
     created = a.get("created_at")
-    business_date: datetime = parse_sql_datetime(updated) if updated else parse_sql_datetime(created)
+    try:
+        business_date: datetime = (
+            parse_sql_datetime(updated) if updated else (
+                parse_sql_datetime(created) if created else datetime.utcnow()
+            )
+        )
+    except Exception:
+        business_date = datetime.utcnow()
 
+    # Only include fields that exist in the optimized index schema
     doc = {
         "id": a["id"],
         "title": title,
         "abstract": abstract,
         "content": content,
         "author_name": a.get("author_name"),
-        "author_id": a.get("author_id"),
         "status": a.get("status"),
         "tags": a.get("tags", []),
-        "likes": a.get("likes", 0),
-        "dislikes": a.get("dislikes", 0),
-        "views": a.get("views", 0),
-        "created_at": parse_sql_datetime(created),
+        "created_at": parse_sql_datetime(created) if created else None,
         "updated_at": parse_sql_datetime(updated) if updated else None,
         "business_date": business_date,
-        "image": a.get("image"),
         "searchable_text": searchable_text,
     }
     
@@ -52,15 +55,15 @@ def _article_to_doc(a: Dict[str, Any]) -> Dict[str, Any]:
     return doc
 
 def _author_to_doc(u: Dict[str, Any]) -> Dict[str, Any]:
-    """Transform a Cosmos DB user document to Azure AI Search author format."""
+    """Transform a Cosmos DB user document to optimized Azure AI Search author format."""
     full_name = u.get("full_name", "")
+    
+    # Only include fields that exist in the optimized index schema
     doc = {
         "id": u["id"],
         "full_name": full_name,
-        "email": u.get("email"),
-        "avatar_url": u.get("avatar_url"),
         "role": u.get("role"),
-        "created_at": parse_sql_datetime(u["created_at"]),
+        "created_at": parse_sql_datetime(u["created_at"]) if u.get("created_at") else None,
         "searchable_text": full_name,
     }
     

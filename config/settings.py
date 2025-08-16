@@ -1,5 +1,28 @@
 """
-Typed settings loader. Keeps configuration out of business logic.
+Configuration Settings Management
+
+This module handles centralized configuration for the Azure AI Search integration.
+It loads settings from environment variables with sensible defaults when possible.
+
+Features:
+- Type-safe settings with dataclass representation
+- Automatic environment variable loading with dotenv support
+- Grouped configuration (search, cosmos, embeddings, weights)
+- Clear documentation of all expected environment variables
+- Helper functions for parsing special types (bool, float, etc.)
+
+Usage:
+    from config.settings import SETTINGS
+    
+    # Access settings as typed properties
+    endpoint = SETTINGS.search_endpoint
+    weights = (SETTINGS.w_semantic, SETTINGS.w_bm25, SETTINGS.w_vector, SETTINGS.w_business)
+
+Required Environment Variables:
+    AZURE_SEARCH_ENDPOINT: URL for Azure AI Search service
+    AZURE_SEARCH_KEY: API key for Azure AI Search
+    COSMOS_ENDPOINT: URL for Cosmos DB account
+    COSMOS_KEY: Key for Cosmos DB account
 """
 
 from dataclasses import dataclass
@@ -15,44 +38,56 @@ def _get_bool(name: str, default: bool = False) -> bool:
 
 @dataclass(frozen=True)
 class Settings:
-    # Search
-    search_endpoint: str = os.environ["AZURE_SEARCH_ENDPOINT"]
-    search_key: str = os.environ["AZURE_SEARCH_KEY"]
+    # Azure AI Search settings
+    search_endpoint: str = os.environ["AZURE_SEARCH_ENDPOINT"]  # Required: Full URL to search service
+    search_key: str = os.environ["AZURE_SEARCH_KEY"]  # Required: Admin API key
 
-    # Cosmos
-    cosmos_endpoint: str = os.environ["COSMOS_ENDPOINT"]
-    cosmos_key: str = os.environ["COSMOS_KEY"]
-    cosmos_db: str = os.environ.get("COSMOS_DB", "blogs")
-    cosmos_articles: str = os.environ.get("COSMOS_ARTICLES", "articles")
-    cosmos_users: str = os.environ.get("COSMOS_USERS", "users")
+    # Cosmos DB settings
+    cosmos_endpoint: str = os.environ["COSMOS_ENDPOINT"]  # Required: Full URL to Cosmos DB account
+    cosmos_key: str = os.environ["COSMOS_KEY"]  # Required: Primary or secondary key
+    cosmos_db: str = os.environ.get("COSMOS_DB", "blogs")  # Database name
+    cosmos_articles: str = os.environ.get("COSMOS_ARTICLES", "articles")  # Articles container
+    cosmos_users: str = os.environ.get("COSMOS_USERS", "users")  # Users container
 
-    # Embeddings provider
+    # Embeddings configuration
     embedding_provider: str = os.environ.get("EMBEDDING_PROVIDER", "openai").lower()  # "openai" or "hf"
-    embedding_model: str = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
-    hf_model_name: str = os.environ.get("HF_MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")
-    embedding_dim_env: str | None = os.environ.get("EMBEDDING_DIM")
-    enable_embeddings: bool = _get_bool("ENABLE_EMBEDDINGS", True)
+    embedding_model: str = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")  # OpenAI model name
+    hf_model_name: str = os.environ.get("HF_MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")  # Hugging Face model
+    embedding_dim_env: str | None = os.environ.get("EMBEDDING_DIM")  # Optional override for embedding dimension
+    enable_embeddings: bool = _get_bool("ENABLE_EMBEDDINGS", True)  # Toggle vector search
 
-    # OpenAI specifics
-    openai_key: str = os.environ.get("OPENAI_API_KEY", "")
-    openai_base_url: str | None = os.environ.get("OPENAI_BASE_URL")
-    openai_api_version: str | None = os.environ.get("OPENAI_API_VERSION")
+    # OpenAI API configuration
+    openai_key: str = os.environ.get("OPENAI_API_KEY", "")  # OpenAI API key or Azure OpenAI key
+    openai_base_url: str | None = os.environ.get("OPENAI_BASE_URL")  # For Azure OpenAI endpoints
+    openai_api_version: str | None = os.environ.get("OPENAI_API_VERSION")  # For Azure OpenAI API version
+    
+    # Azure OpenAI specific settings for indexer skills
+    azure_openai_endpoint: str = os.environ.get("AZURE_OPENAI_ENDPOINT", "")  # Azure OpenAI resource endpoint
+    azure_openai_key: str = os.environ.get("AZURE_OPENAI_API_KEY", "")  # Azure OpenAI API key
+    azure_openai_deployment: str = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "2024-12-01-preview")  # Deployment name
+    azure_openai_model_name: str = os.environ.get("AZURE_OPENAI_MODELNAME", "text-embedding-3-small")  # Model name for skillsets
+    azure_openai_api_version: str = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")  # API version for skillsets
+    
+    # Custom embedding API endpoint for Hugging Face provider
+    # NOTE: Azure AI Search WebApiSkill cannot use localhost URLs
+    # For development, use ngrok or deploy to cloud service
+    custom_embedding_api_url: str = os.environ.get("CUSTOM_EMBEDDING_API_URL", "https://your-app.ngrok.io/api/embeddings")  # Custom API endpoint
 
-    # Weights - articles
-    w_semantic: float = float(os.environ.get("WEIGHT_SEMANTIC", 0.5))
-    w_bm25: float = float(os.environ.get("WEIGHT_BM25", 0.3))
-    w_vector: float = float(os.environ.get("WEIGHT_VECTOR", 0.1))
-    w_business: float = float(os.environ.get("WEIGHT_BUSINESS", 0.1))
+    # Score weights for articles search (must sum to 1.0)
+    w_semantic: float = float(os.environ.get("WEIGHT_SEMANTIC", 0.5))  # Semantic search weight
+    w_bm25: float = float(os.environ.get("WEIGHT_BM25", 0.3))  # Keyword matching weight
+    w_vector: float = float(os.environ.get("WEIGHT_VECTOR", 0.1))  # Vector similarity weight
+    w_business: float = float(os.environ.get("WEIGHT_BUSINESS", 0.1))  # Business logic weight
 
-    # Weights - authors
-    aw_semantic: float = float(os.environ.get("AUTHORS_WEIGHT_SEMANTIC", 0.6))
-    aw_bm25: float = float(os.environ.get("AUTHORS_WEIGHT_BM25", 0.4))
-    aw_vector: float = float(os.environ.get("AUTHORS_WEIGHT_VECTOR", 0.0))
-    aw_business: float = float(os.environ.get("AUTHORS_WEIGHT_BUSINESS", 0.0))
+    # Score weights for authors search (must sum to 1.0)
+    aw_semantic: float = float(os.environ.get("AUTHORS_WEIGHT_SEMANTIC", 0.6))  # Semantic search weight
+    aw_bm25: float = float(os.environ.get("AUTHORS_WEIGHT_BM25", 0.4))  # Keyword matching weight
+    aw_vector: float = float(os.environ.get("AUTHORS_WEIGHT_VECTOR", 0.0))  # Vector similarity weight (default off)
+    aw_business: float = float(os.environ.get("AUTHORS_WEIGHT_BUSINESS", 0.0))  # Business logic weight (default off)
 
-    # Freshness
-    freshness_halflife_days: float = float(os.environ.get("FRESHNESS_HALFLIFE_DAYS", 250))
-    freshness_window_days: int = int(os.environ.get("FRESHNESS_WINDOW_DAYS", 365))
+    # Content freshness parameters for business scoring
+    freshness_halflife_days: float = float(os.environ.get("FRESHNESS_HALFLIFE_DAYS", 250))  # Decay rate for content
+    freshness_window_days: int = int(os.environ.get("FRESHNESS_WINDOW_DAYS", 365))  # Max time window for scoring
 
 SETTINGS = Settings()
 

@@ -104,138 +104,117 @@ def business_freshness(business_date: datetime | str | None) -> float:
         print(f"❌ Error calculating freshness score: {e}")
         return 0.0
 
-def fuse_articles(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _fuse_scores(rows: List[Dict[str, Any]], entity_type: str = "generic", 
+                 w_semantic: float = 0.5, w_bm25: float = 0.3, 
+                 w_vector: float = 0.1, w_business: float = 0.1) -> List[Dict[str, Any]]:
     """
-    Fuse article scores: final = 0.5*semantic + 0.3*bm25 + 0.1*vector + 0.1*business
-    If semantic scores are all zero (semantic search unavailable), redistribute weight to BM25.
+    Generic score fusion function for both articles and authors.
+    Combines semantic, BM25, vector, and business scores with configurable weights.
+    If semantic scores are all zero, redistributes weight to BM25.
+    
+    Args:
+        rows: List of search result rows to fuse
+        entity_type: String describing entity type for logging (e.g., "article", "author")
+        w_semantic: Weight for semantic score component
+        w_bm25: Weight for BM25 score component  
+        w_vector: Weight for vector score component
+        w_business: Weight for business score component
+        
+    Returns:
+        List of rows sorted by final score
     """
     if not rows:
-        print("⚠️ No articles to fuse")
+        print(f"⚠️ No {entity_type}s to fuse")
         return []
     
-    print(f"⚖️ Fusing {len(rows)} article results...")
-    print(f"📋 Article weights: semantic={SETTINGS.w_semantic}, bm25={SETTINGS.w_bm25}, vector={SETTINGS.w_vector}, business={SETTINGS.w_business}")
+    print(f"⚖️ Fusing {len(rows)} {entity_type} results...")
+    print(f"📋 {entity_type.title()} weights: semantic={w_semantic}, bm25={w_bm25}, vector={w_vector}, business={w_business}")
     
     try:
-        bm25s  = [r.get("_bm25", 0.0) for r in rows]
-        sems   = [r.get("_semantic", 0.0) for r in rows]
-        vecs   = [r.get("_vector", 0.0) for r in rows]
+        bm25s = [r.get("_bm25", 0.0) for r in rows]
+        sems = [r.get("_semantic", 0.0) for r in rows]
+        vecs = [r.get("_vector", 0.0) for r in rows]
 
         # Check if semantic scores are all zero (semantic search not available)
         semantic_available = any(sem > 0.0 for sem in sems)
         
         if not semantic_available:
-            print("⚠️ No semantic scores available - redistributing semantic weight to BM25")
-            # Redistribute semantic weight to BM25
+            print("⚠️ No semantic scores available - redistributing semantic weight to BM25 and vector")
+            # Redistribute semantic weight to vector for articles, BM25 for authors
             w_semantic_adj = 0.0
-            w_bm25_adj = SETTINGS.w_bm25 
-            w_vector_adj = SETTINGS.w_vector + SETTINGS.w_semantic
-            w_business_adj = SETTINGS.w_business
+            w_bm25_adj = w_bm25
+            w_vector_adj = w_vector + w_semantic
+            w_business_adj = w_business
         else:
-            w_semantic_adj = SETTINGS.w_semantic
-            w_bm25_adj = SETTINGS.w_bm25
-            w_vector_adj = SETTINGS.w_vector
-            w_business_adj = SETTINGS.w_business
+            w_semantic_adj = w_semantic
+            w_bm25_adj = w_bm25
+            w_vector_adj = w_vector
+            w_business_adj = w_business
 
-        bm_rng  = _minmax(bm25s)
+        bm_rng = _minmax(bm25s)
         sem_rng = _minmax(sems)
         vec_rng = _minmax(vecs)
         
         print(f"📊 Score ranges - BM25: {bm_rng[0]:.3f}-{bm_rng[1]:.3f}, Semantic: {sem_rng[0]:.3f}-{sem_rng[1]:.3f}, Vector: {vec_rng[0]:.3f}-{vec_rng[1]:.3f}")
         print(f"📋 Adjusted weights: semantic={w_semantic_adj}, bm25={w_bm25_adj}, vector={w_vector_adj}, business={w_business_adj}")
 
-        for r in rows:
-            nbm  = _norm(r.get("_bm25", 0.0), bm_rng)
-            nsem = _norm(r.get("_semantic", 0.0), sem_rng)
-            nvec = _norm(r.get("_vector", 0.0), vec_rng)
-            b    = r.get("_business", 0.0)
-
-            r["_final"] = (
-                w_semantic_adj * nsem +
-                w_bm25_adj     * nbm +
-                w_vector_adj   * nvec +
-                w_business_adj * b
-            )
-
-        sorted_results = sorted(rows, key=lambda x: x["_final"], reverse=True)
-        if sorted_results:
-            top_score = sorted_results[0]["_final"]
-            print(f"✅ Article fusion complete, top score: {top_score:.3f}")
-        
-        return sorted_results
-        
-    except Exception as e:
-        print(f"❌ Article fusion failed: {e}")
-        raise
-
-def fuse_authors(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Fuse author scores: default final = 0.6*semantic + 0.4*bm25 (configurable)
-    """
-    if not rows:
-        print("⚠️ No authors to fuse")
-        return []
-    
-    print(f"⚖️ Fusing {len(rows)} author results...")
-    print(f"📋 Author weights: semantic={SETTINGS.aw_semantic}, bm25={SETTINGS.aw_bm25}, vector={SETTINGS.aw_vector}, business={SETTINGS.aw_business}")
-    
-    try:
-        bm25s  = [r.get("_bm25", 0.0) for r in rows]
-        sems   = [r.get("_semantic", 0.0) for r in rows]
-        vecs   = [r.get("_vector", 0.0) for r in rows]
-
-        # Check if semantic scores are all zero (semantic search not available)
-        semantic_available = any(sem > 0.0 for sem in sems)
-        
-        if not semantic_available:
-            print("⚠️ No semantic scores available - redistributing semantic weight to BM25")
-            # Redistribute semantic weight to BM25
-            w_semantic_adj = 0.0
-            w_bm25_adj = SETTINGS.aw_bm25 + SETTINGS.aw_semantic
-            w_vector_adj = SETTINGS.aw_vector
-            w_business_adj = SETTINGS.aw_business
-        else:
-            w_semantic_adj = SETTINGS.aw_semantic
-            w_bm25_adj = SETTINGS.aw_bm25
-            w_vector_adj = SETTINGS.aw_vector
-            w_business_adj = SETTINGS.aw_business
-        bm_rng  = _minmax(bm25s)
-        sem_rng = _minmax(sems)
-        vec_rng = _minmax(vecs)
-
-        print(f"📊 Score ranges - BM25: {bm_rng[0]:.3f}-{bm_rng[1]:.3f}, Semantic: {sem_rng[0]:.3f}-{sem_rng[1]:.3f}, Vector: {vec_rng[0]:.3f}-{vec_rng[1]:.3f}")
-        print(f"📋 Adjusted weights: semantic={w_semantic_adj}, bm25={w_bm25_adj}, vector={w_vector_adj}, business={w_business_adj}")
-
-        # If semantic not available, prefer a direct scaling of BM25 by max value to preserve granularity
+        # For authors without semantic scores, preserve BM25 range if requested
         bm25_max = max(bm25s) if bm25s else 0.0
-
+        
         for r in rows:
+            # Handle special BM25 normalization for authors
             if not semantic_available and bm25_max > 0:
-                # Scale BM25 by max to preserve relative magnitudes instead of min-max collapsing to zero
+                # Scale BM25 by max to preserve relative magnitudes 
                 nbm = r.get("_bm25", 0.0) / bm25_max
             else:
                 nbm = _norm(r.get("_bm25", 0.0), bm_rng)
 
             nsem = _norm(r.get("_semantic", 0.0), sem_rng)
             nvec = _norm(r.get("_vector", 0.0), vec_rng)
-            b    = r.get("_business", 0.0)
+            b = r.get("_business", 0.0)
 
             r["_final"] = (
                 w_semantic_adj * nsem +
-                w_bm25_adj     * nbm +
-                w_vector_adj   * nvec +
+                w_bm25_adj * nbm +
+                w_vector_adj * nvec +
                 w_business_adj * b
             )
 
         sorted_results = sorted(rows, key=lambda x: x["_final"], reverse=True)
         if sorted_results:
             top_score = sorted_results[0]["_final"]
-            print(f"✅ Author fusion complete, top score: {top_score:.3f}")
-            
+            print(f"✅ {entity_type.title()} fusion complete, top score: {top_score:.3f}")
+        
         return sorted_results
         
     except Exception as e:
-        print(f"❌ Author fusion failed: {e}")
+        print(f"❌ {entity_type.title()} fusion failed: {e}")
         raise
 
+def fuse_articles(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Fuse article scores: final = 0.5*semantic + 0.3*bm25 + 0.1*vector + 0.1*business
+    If semantic scores are all zero (semantic search unavailable), redistribute weight to vector.
+    """
+    return _fuse_scores(
+        rows,
+        entity_type="article",
+        w_semantic=SETTINGS.w_semantic,
+        w_bm25=SETTINGS.w_bm25,
+        w_vector=SETTINGS.w_vector,
+        w_business=SETTINGS.w_business
+    )
 
+def fuse_authors(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Fuse author scores: default final = 0.6*semantic + 0.4*bm25 (configurable)
+    If semantic scores are all zero (semantic search unavailable), redistribute weight to BM25.
+    """
+    return _fuse_scores(
+        rows,
+        entity_type="author",
+        w_semantic=SETTINGS.aw_semantic,
+        w_bm25=SETTINGS.aw_bm25,
+        w_vector=SETTINGS.aw_vector,
+        w_business=SETTINGS.aw_business
+    )

@@ -1,7 +1,21 @@
 """
-Embedding abstraction supporting OpenAI and Hugging Face (SentenceTransformers).
-- Resolve embedding dimension for index creation.
-- Provide a simple .encode(text) -> List[float]
+Embedding Service for Text-to-Vector Encoding
+
+This module provides a unified abstraction layer for text embedding generation
+with support for multiple providers:
+
+1. OpenAI API embeddings (text-embedding-3-small, text-embedding-3-large, etc.)
+2. Hugging Face SentenceTransformers (local inference)
+
+Key Features:
+- Lazy loading of dependencies to minimize startup time
+- Automatic dimension resolution for index creation
+- Simple unified API: encode(text) -> List[float]
+- Proper error handling and logging
+- Support for custom OpenAI base URLs (Azure OpenAI Service)
+- Configurable via environment variables
+
+Configuration is managed via settings.py with sensible defaults.
 """
 
 from __future__ import annotations
@@ -50,14 +64,18 @@ def resolve_embedding_dim() -> int:
 def _ensure_openai():
     global _openai
     if _openai is None:
-        print("🔑 Initializing OpenAI client...")
-        from openai import OpenAI
-        kwargs = {"api_key": SETTINGS.openai_key}
-        if SETTINGS.openai_base_url:
-            kwargs["base_url"] = SETTINGS.openai_base_url
-            print(f"🌐 Using custom OpenAI base URL: {SETTINGS.openai_base_url}")
-        _openai = OpenAI(**kwargs)
-        print("✅ OpenAI client initialized")
+        print("🔑 Initializing Azure OpenAI client...")
+        from openai import AzureOpenAI
+        kwargs = {
+            "api_key": SETTINGS.azure_openai_key,
+            "api_version": SETTINGS.azure_openai_api_version,
+            "azure_endpoint": SETTINGS.azure_openai_endpoint,
+            "azure_deployment": SETTINGS.azure_openai_model_name,
+            
+        }
+        print(f"🌐 Using Azure OpenAI endpoint: {SETTINGS.azure_openai_endpoint}")
+        _openai = AzureOpenAI(**kwargs)
+        print("✅ Azure OpenAI client initialized")
     return _openai
 
 def _ensure_st():
@@ -88,7 +106,7 @@ def encode(text: str) -> List[float]:
             if len(text) > 100_000:
                 print(f"⚠️ Text truncated from {len(text)} to 100,000 characters")
             
-            resp = cli.embeddings.create(model=SETTINGS.embedding_model, input=truncated_text)
+            resp = cli.embeddings.create(input=truncated_text, model=SETTINGS.azure_openai_model_name)
             embedding = resp.data[0].embedding
             print(f"✅ OpenAI embedding generated (dim={len(embedding)})")
             return embedding

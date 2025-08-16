@@ -4,7 +4,8 @@ env/
 myenv/
 logs/
 .roo/
-.github
+.github/
+.windsurf/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

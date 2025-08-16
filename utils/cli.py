@@ -89,6 +89,44 @@ Examples:
         help='Number of worker processes (default: 1)'
     )
     
+    # Azure Indexers command
+    indexers_parser = subparsers.add_parser(
+        'setup-indexers', 
+        help='Setup Azure AI Search indexers for automatic Cosmos DB sync'
+    )
+    indexers_parser.add_argument(
+        '--reset', 
+        action='store_true', 
+        help='Delete existing indexers before creating new ones'
+    )
+    indexers_parser.add_argument(
+        '--verbose', 
+        action='store_true', 
+        help='Enable verbose output during indexer setup'
+    )
+    
+    # Check indexers status command
+    status_parser = subparsers.add_parser(
+        'check-indexers', 
+        help='Check status of Azure AI Search indexers'
+    )
+    status_parser.add_argument(
+        '--verbose', 
+        action='store_true', 
+        help='Enable verbose status output'
+    )
+    
+    # Health check command
+    health_parser = subparsers.add_parser(
+        'health', 
+        help='Check health status of indexes, indexers, and search service'
+    )
+    health_parser.add_argument(
+        '--verbose', 
+        action='store_true', 
+        help='Enable detailed health information'
+    )
+    
     return parser
 
 def parse_args(args: Optional[list] = None) -> argparse.Namespace:

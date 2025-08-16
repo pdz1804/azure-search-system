@@ -76,23 +76,30 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
         print("--- end debug ---\n")
 
     # -------- ARTICLES --------
+    # Optimized schema based on actual data structure and search requirements
     article_fields = [
+        # Primary key
         SimpleField(name="id", type=SearchFieldDataType.String, key=True),
+        
+        # Core searchable content fields
         SearchableField(name="title", type=SearchFieldDataType.String, analyzer_name="en.lucene", sortable=True),
         SearchableField(name="abstract", type=SearchFieldDataType.String, analyzer_name="en.lucene"),
         SearchableField(name="content", type=SearchFieldDataType.String, analyzer_name="en.lucene"),
-        SearchableField(name="author_name", type=SearchFieldDataType.String, analyzer_name="en.lucene", sortable=True),
-        SimpleField(name="author_id", type=SearchFieldDataType.String, filterable=True, facetable=True),
+        SearchableField(name="author_name", type=SearchFieldDataType.String, analyzer_name="en.lucene", sortable=True, filterable=True),
+        
+        # Filtering and faceting fields
         SimpleField(name="status", type=SearchFieldDataType.String, filterable=True, facetable=True),
         SimpleField(name="tags", type=SearchFieldDataType.Collection(SearchFieldDataType.String), filterable=True, facetable=True),
-        SimpleField(name="likes", type=SearchFieldDataType.Int32, filterable=True, sortable=True),
-        SimpleField(name="dislikes", type=SearchFieldDataType.Int32, filterable=True, sortable=True),
-        SimpleField(name="views", type=SearchFieldDataType.Int32, filterable=True, sortable=True),
+        
+        # Temporal fields for sorting and freshness scoring
         SimpleField(name="created_at", type=SearchFieldDataType.DateTimeOffset, filterable=True, sortable=True),
         SimpleField(name="updated_at", type=SearchFieldDataType.DateTimeOffset, filterable=True, sortable=True),
         SimpleField(name="business_date", type=SearchFieldDataType.DateTimeOffset, filterable=True, sortable=True),
+        
+        # Consolidated searchable text for highlighting
         SearchableField(name="searchable_text", type=SearchFieldDataType.String, analyzer_name="en.lucene"),
-        SimpleField(name="image", type=SearchFieldDataType.String),
+        
+        # Vector field for hybrid search
         SearchField(
             name="content_vector",
             type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
@@ -134,14 +141,22 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
     )
 
     # -------- AUTHORS --------
+    # Optimized schema for author/user search based on actual data structure
     author_fields = [
+        # Primary key
         SimpleField(name="id", type=SearchFieldDataType.String, key=True),
+        
+        # Core searchable fields
         SearchableField(name="full_name", type=SearchFieldDataType.String, analyzer_name="en.lucene", sortable=True),
-        SimpleField(name="email", type=SearchFieldDataType.String, filterable=True),
-        SimpleField(name="avatar_url", type=SearchFieldDataType.String),
+        
+        # Filtering fields
         SimpleField(name="role", type=SearchFieldDataType.String, filterable=True, facetable=True),
         SimpleField(name="created_at", type=SearchFieldDataType.DateTimeOffset, filterable=True, sortable=True),
+        
+        # Consolidated searchable text
         SearchableField(name="searchable_text", type=SearchFieldDataType.String, analyzer_name="en.lucene"),
+        
+        # Vector field for semantic search
         SearchField(
             name="name_vector",
             type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
@@ -182,23 +197,38 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
             client.create_index(idx)
             print(f"Successfully created index: {idx.name}")
         except HttpResponseError as hre:
-            print(f"HttpResponseError creating index {idx.name}: {type(hre).__name__}: {hre}")
-            if verbose:
+            # Check if it's a resource already exists error
+            if hre.status_code == 409 or "already exists" in str(hre).lower():
+                if verbose:
+                    print(f"Index {idx.name} already exists, updating...")
                 try:
-                    # Some HttpResponseError objects include .response or .error
-                    if hasattr(hre, 'response') and hre.response is not None:
-                        try:
-                            body = hre.response.text()
-                            print(f"Response body: {body}")
-                        except Exception:
-                            print("Unable to read hre.response.text()")
-                    if hasattr(hre, 'error') and hre.error is not None:
-                        print(f"Error model: {hre.error}")
-                except Exception:
-                    pass
-            traceback.print_exc()
+                    client.create_or_update_index(idx)
+                    print(f"Successfully updated index: {idx.name}")
+                except Exception as update_error:
+                    print(f"Failed to update index {idx.name}: {update_error}")
+                    if verbose:
+                        traceback.print_exc()
+                    raise
+            else:
+                print(f"HttpResponseError creating index {idx.name}: {type(hre).__name__}: {hre}")
+                if verbose:
+                    try:
+                        # Some HttpResponseError objects include .response or .error
+                        if hasattr(hre, 'response') and hre.response is not None:
+                            try:
+                                body = hre.response.text()
+                                print(f"Response body: {body}")
+                            except Exception:
+                                print("Unable to read hre.response.text()")
+                        if hasattr(hre, 'error') and hre.error is not None:
+                            print(f"Error model: {hre.error}")
+                    except Exception:
+                        pass
+                    traceback.print_exc()
+                raise
         except Exception as e:
             print(f"Unexpected error creating index {idx.name}: {type(e).__name__}: {e}")
             traceback.print_exc()
+            raise
 
     print(f"Created indexes with vector dim={dim}: articles-index, authors-index")

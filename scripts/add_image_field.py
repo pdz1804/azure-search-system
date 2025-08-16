@@ -1,11 +1,28 @@
+#!/usr/bin/env python
+"""
+Add image fields to articles in a JSON dataset.
+
+This utility script adds a random image URL to each article in the blog_seed.json file,
+creating an updated version with image fields. The images are sourced from picsum.photos
+with fixed seeds for reproducibility.
+
+Usage:
+    python add_image_field.py
+
+Input: blog_seed.json in the project root
+Output: blog_seed_UPDATED.json in the project root
+"""
+
 import json
 import os
 import random
 
+# Path configuration
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INPUT = os.path.join(ROOT, 'blog_seed.json')
 OUTPUT = os.path.join(ROOT, 'blog_seed_UPDATED.json')
 
+# Sample image URLs with fixed seeds for reproducibility
 images = [
     "https://picsum.photos/seed/2d6a77ae-05c0-4145-9614-614c3df49101/800/400",
     "https://picsum.photos/seed/a4d7c1cb-3429-4640-bd37-24962eb2fa10/800/400",
@@ -20,14 +37,31 @@ images = [
     "https://picsum.photos/seed/b6f87dee-0c9b-4efc-bff4-dcf7e02daa5a/800/400"
 ]
 
-with open(INPUT, 'r', encoding='utf-8') as f:
-    data = json.load(f)
+# Main execution
+def main():
+    """Add image field to each article and save the updated data."""
+    try:
+        # Load the source data
+        with open(INPUT, 'r', encoding='utf-8') as f:
+            data = json.load(f)
 
-articles = data.get('Articles', [])
-for a in articles:
-    a['image'] = random.choice(images)
+        # Add image field to each article
+        articles = data.get('Articles', [])
+        for article in articles:
+            article['image'] = random.choice(images)
 
-with open(OUTPUT, 'w', encoding='utf-8') as f:
-    json.dump(data, f, indent=2, ensure_ascii=False)
+        # Save the updated data
+        with open(OUTPUT, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
 
-print(f'Wrote {len(articles)} articles to {OUTPUT}')
+        print(f'✅ Success! Added images to {len(articles)} articles.')
+        print(f'📄 Output saved to: {OUTPUT}')
+    
+    except Exception as e:
+        print(f'❌ Error: {e}')
+        return 1
+    
+    return 0
+
+if __name__ == '__main__':
+    exit(main())
