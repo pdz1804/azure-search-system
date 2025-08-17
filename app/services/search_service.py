@@ -304,7 +304,7 @@ class SearchService:
         normalized_query = query_enhancement["normalized_query"]
         search_params = query_enhancement["search_parameters"]
         
-        print(f"Search params: {search_kwargs}")
+        print(f"Search params: {search_params}")
         
         # Handle pagination parameters
         if page_index is not None and page_size is not None:

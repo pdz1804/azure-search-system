@@ -68,11 +68,6 @@ class Settings:
     azure_openai_model_name: str = os.environ.get("AZURE_OPENAI_MODELNAME", "text-embedding-3-small")  # Model name for skillsets
     azure_openai_api_version: str = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")  # API version for skillsets
     
-    # Custom embedding API endpoint for Hugging Face provider
-    # NOTE: Azure AI Search WebApiSkill cannot use localhost URLs
-    # For development, use ngrok or deploy to cloud service
-    custom_embedding_api_url: str = os.environ.get("CUSTOM_EMBEDDING_API_URL", "https://your-app.ngrok.io/api/embeddings")  # Custom API endpoint
-
     # Score weights for articles search (must sum to 1.0)
     w_semantic: float = float(os.environ.get("WEIGHT_SEMANTIC", 0.5))  # Semantic search weight
     w_bm25: float = float(os.environ.get("WEIGHT_BM25", 0.3))  # Keyword matching weight

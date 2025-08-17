@@ -12,6 +12,12 @@ comprehensive answers based on retrieved search results.
 from typing import Dict, Any, Optional, List
 from openai import AzureOpenAI
 from config.settings import SETTINGS
+from config.prompts import (
+    SYSTEM_PROMPT_NORMALIZE,
+    SYSTEM_PROMPT_ANSWER,
+    USER_PROMPT_NORMALIZE,
+    USER_PROMPT_ANSWER,
+)
 import json
 
 class LLMService:
@@ -40,76 +46,19 @@ class LLMService:
         """
         print(f"🔄 Normalizing query: '{user_query}' for {search_type}")
         
-        system_prompt = f"""You are a search query optimizer for a {search_type} search system using Azure Cognitive Search OData syntax.
+        # Build fields/filterable/sortable hints for the normalize prompt
+        if search_type == "articles":
+            fields = "- title (string, searchable, sortable), abstract (string, searchable), content (string, searchable), author_name (string, searchable, sortable, filterable), status (string, filterable, facetable), tags (collection of strings, filterable, facetable), business_date (DateTimeOffset, filterable, sortable), searchable_text (string, searchable)"
+            filterable = "- author_name (string), status (string), tags (collection), business_date (DateTimeOffset)"
+            sortable = "- title, author_name, business_date"
+        else:
+            fields = "- full_name (string, searchable, sortable), role (string, filterable, facetable), searchable_text (string, searchable)"
+            filterable = "- role (string)"
+            sortable = "- full_name"
 
-CRITICAL: Follow these steps for generating filters (Chain of Thought):
-1. Identify filter requirements from the user query
-2. Map to correct field names and data types
-3. Use proper OData syntax with correct date/time formatting
-4. Validate the syntax matches Azure Cognitive Search requirements
+        system_prompt = SYSTEM_PROMPT_NORMALIZE.format(search_type=search_type, fields=fields, filterable=filterable, sortable=sortable)
 
-Available search parameters:
-- search_text: Main search query (string)
-- filter: OData filter expression (string, optional)
-- order_by: List of fields to sort by (list, optional)
-- search_fields: Specific fields to search in (list, optional)
-- highlight_fields: Fields to highlight in results (string, optional)
-
-For {search_type} search, available fields and their types:
-{"- title (string, searchable, sortable), abstract (string, searchable), content (string, searchable), author_name (string, searchable, sortable, filterable), status (string, filterable, facetable), tags (collection of strings, filterable, facetable), business_date (DateTimeOffset, filterable, sortable), searchable_text (string, searchable)" if search_type == "articles" else "- full_name (string, searchable, sortable), role (string, filterable, facetable), searchable_text (string, searchable)"}
-
-CRITICAL: Only use FILTERABLE fields in filter expressions. Non-filterable fields will cause errors.
-
-FILTERABLE FIELDS for {search_type}:
-{"- author_name (string), status (string), tags (collection), business_date (DateTimeOffset)" if search_type == "articles" else "- role (string)"}
-
-SORTABLE FIELDS for {search_type}:
-{"- title, author_name, business_date" if search_type == "articles" else "- full_name"}
-
-IMPORTANT OData Filter Examples (Few-Shot Learning):
-
-Example 1 - Date filtering:
-User: "articles from 2024"
-Thinking: business_date field is DateTimeOffset and filterable, need ISO 8601 format with timezone
-Filter: "business_date ge 2024-01-01T00:00:00Z"
-
-Example 2 - Status filtering:
-User: "published articles"  
-Thinking: status field is string and filterable, use single quotes
-Filter: "status eq 'published'"
-
-Example 3 - Author filtering:
-User: "articles by John Smith"
-Thinking: author_name field is string and filterable, use single quotes
-Filter: "author_name eq 'John Smith'"
-
-Example 4 - Tag filtering:
-User: "articles tagged with python"
-Thinking: tags is collection and filterable, use any() function
-Filter: "tags/any(t: t eq 'python')"
-
-Example 5 - Combined filters:
-User: "published articles from 2024 by John"
-Thinking: All fields (status, business_date, author_name) are filterable, combine with 'and'
-Filter: "status eq 'published' and business_date ge 2024-01-01T00:00:00Z and author_name eq 'John'"
-
-Return a JSON object with:
-- normalized_query: Improved version of the search text
-- search_parameters: Object with search parameters to use
-- explanation: Brief explanation of changes made
-
-Example output:
-{{
-    "normalized_query": "machine learning algorithms",
-    "search_parameters": {{
-        "filter": "status eq 'published' and business_date ge 2024-01-01T00:00:00Z",
-        "order_by": ["business_date desc"],
-        "search_fields": ["title", "abstract", "content"]
-    }},
-    "explanation": "Enhanced query focus, added publication filter with correct date format, and sorted by date"
-}}"""
-
-        user_prompt = f"User query: {user_query}"
+        user_prompt = USER_PROMPT_NORMALIZE.format(user_query=user_query)
         
         try:
             response = self.client.chat.completions.create(
@@ -153,7 +102,7 @@ Example output:
         
         # Prepare context from search results
         context_items = []
-        for i, result in enumerate(search_results[:5], 1):  # Use top 5 results
+        for i, result in enumerate(search_results, 1):  # Use all results
             doc = result.get('doc', {})
             if search_type == "articles":
                 title = doc.get('title', 'Untitled')
@@ -166,29 +115,10 @@ Example output:
                 context_items.append(f"{i}. **{name}** - {role}")
         
         context = "\n\n".join(context_items)
-        
-        system_prompt = f"""You are a helpful AI assistant that provides comprehensive answers based on search results.
 
-Your task is to:
-1. Analyze the user's question and the provided search results
-2. Generate a well-structured, informative answer
-3. Reference specific results when relevant
-4. Be concise but comprehensive
-5. If no relevant results are found, acknowledge this clearly
+        system_prompt = SYSTEM_PROMPT_ANSWER.format(search_type=search_type)
 
-Guidelines:
-- Use markdown formatting for better readability
-- Include specific details from the search results
-- Maintain a professional and helpful tone
-- If searching for {search_type}, focus on the most relevant information
-- Always base your answer on the provided search results"""
-
-        user_prompt = f"""User Question: {user_query}
-
-Search Results:
-{context}
-
-Please provide a comprehensive answer based on these search results."""
+        user_prompt = USER_PROMPT_ANSWER.format(user_query=user_query, context=context)
 
         try:
             response = self.client.chat.completions.create(
@@ -200,11 +130,11 @@ Please provide a comprehensive answer based on these search results."""
                 temperature=0.7,
                 max_tokens=800
             )
-            
+
             answer = response.choices[0].message.content.strip()
             print(f"✅ Generated answer ({len(answer)} characters)")
             return answer
-            
+
         except Exception as e:
             print(f"⚠️ Answer generation failed: {e}")
             # Fallback response

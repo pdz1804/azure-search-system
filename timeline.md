@@ -10,11 +10,22 @@ Next steps:
 
 ---
 
-# 16/08/2025 
+# 16/08/2025
 
-Next steps: 
+Next steps:
 
 - Integrate with the real backend
 - Test if the indexers works correctly when there exists documents that are added / deleted / modified
 - Preparing for the Frontend devs
 - Asks NDK for suggestions and comments
+
+Note:
+
+- Although currently for searching we still implement the semantic + bm25 + dense + business score BUT for the free tier the semantic is not being used yet.
+- Semantic is different from dense
+
+  - Semantic ≠ Vector in Azure AI Search:
+  - **Semantic search** = Azure **semantic ranker** that re-ranks text results, returning `@search.rerankerScore`. You don’t store vectors for this.
+  - **Vector search** = KNN over your **embedding field** (HNSW), returning a similarity `@search.score` for the vector query.
+
+---
