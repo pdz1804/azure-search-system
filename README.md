@@ -37,10 +37,10 @@ This project wires your existing **Cosmos DB (blogs)** into **Azure AI Search** 
 
 Semantic ≠ Vector in Azure AI Search:
 
-- **Semantic search** = Azure **semantic ranker** that re-ranks text results, returning `@search.rerankerScore`. You don’t store vectors for this.
+- **Semantic search** = Azure **semantic ranker** that re-ranks text results (for example those retrieved by BM25), returning `@search.rerankerScore`. You don’t store vectors for this.
 - **Vector search** = KNN over your **embedding field** (HNSW), returning a similarity `@search.score` for the vector query.
 
-But because when using the free tier version on Azure, so we cannot use the semantic search (note that semantic search ): 
+But because when using the free tier version on Azure, so we cannot use the semantic search: 
 
 - **Articles**: `final = 0.3 * BM25 + 0.6 * vector + 0.1 * business`
 - **Authors** (default): `final = 0.6 * vector + 0.4 * BM25` 
