@@ -33,12 +33,17 @@ FastAPI + CLI
 This project wires your existing **Cosmos DB (blogs)** into **Azure AI Search** and exposes a **FastAPI** layer that performs **hybrid search** over articles and authors with an **explicit, weighted score fusion**:
 
 - **Articles**: `final = 0.5 * semantic + 0.3 * BM25 + 0.1 * vector + 0.1 * business`
-- **Authors** (default): `final = 0.6 * semantic + 0.4 * BM25` (configurable)
+- **Authors** (default): `final = 0.6 * semantic + 0.4 * BM25` 
 
 Semantic ≠ Vector in Azure AI Search:
 
 - **Semantic search** = Azure **semantic ranker** that re-ranks text results, returning `@search.rerankerScore`. You don’t store vectors for this.
 - **Vector search** = KNN over your **embedding field** (HNSW), returning a similarity `@search.score` for the vector query.
+
+But because when using the free tier version on Azure: 
+
+- **Articles**: `final = 0.3 * BM25 + 0.6 * vector + 0.1 * business`
+- **Authors** (default): `final = 0.6 * vector + 0.4 * BM25` 
 
 ---
 
