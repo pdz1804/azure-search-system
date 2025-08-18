@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+motor
+pydantic
+passlib[bcrypt]
+python-dotenv
+python-multipart
+requests
+pillow
+pandas
+azure-cosmos
+aiohttp
+azure-storage-blob
+redis[hiredis]
+
+
