@@ -11,7 +11,7 @@ from backend.utils import get_current_user, require_owner_or_role, require_role
 from backend.services.article_service import (
     create_article, delete_article, get_article_by_id, increment_article_views, 
     list_articles, search_response, update_article, 
-    get_articles_by_author, get_popular_articles, get_recent_articles
+    get_articles_by_author, get_popular_articles
 )
 
 
@@ -66,11 +66,21 @@ async def create(
 async def list_all(page: int = 1, page_size: int = 20):
     return await list_articles(page=page, page_size=page_size)
 
+@articles.get("/popular")
+async def home_popular_articles(page: int = 1, page_size: int = 10):
+    try:
+        return await get_popular_articles(page, page_size)
+    except Exception as e:
+        print(f"Error fetching popular articles: {e}")
+        return []
+
+
 @articles.get("/{article_id}")
 async def get_one(article_id: str):
     art = await get_article_by_id(article_id)
     if not art:
         raise HTTPException(status_code=404, detail="Article not found")
+    await increment_article_views(article_id)
     return art
 
 @articles.put("/{article_id}")
@@ -152,17 +162,10 @@ async def remove(article_id: str, current_user: dict = Depends(get_current_user)
 #     else:
 #         raise HTTPException(status_code=400, detail="Unable to dislike article")
 
+
 @articles.get("/author/{author_id}")
 async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20):
     return await get_articles_by_author(author_id, page, page_size)
-
-@articles.get("/popular")
-async def home_popular_articles(page: int = 1, page_size: int = 10):
-    return await get_popular_articles(page, page_size)
-
-@articles.get("/recent")
-async def home_recent_articles(page: int = 1, page_size: int = 10):
-    return await get_recent_articles(page, page_size)
 
 @articles.get("/search/search_response")
 async def search_article_response(data: ResponseFromAI):

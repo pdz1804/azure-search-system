@@ -50,7 +50,7 @@ async def list_articles(page: int = 1, page_size: int = 20) -> Dict:
     total_pages = math.ceil(total_items / page_size) if total_items > 0 else 1
 
     skip = (page - 1) * page_size
-    data_query = f"SELECT * FROM c OFFSET {skip} LIMIT {page_size}"
+    data_query = f"SELECT * FROM c ORDER BY c.created_at DESC OFFSET {skip} LIMIT {page_size}"
 
     results = []
     async for doc in articles.query_items(

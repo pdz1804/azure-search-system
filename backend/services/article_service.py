@@ -41,7 +41,6 @@ async def get_article_by_id(article_id: str) -> Optional[dict]:
         return cached_article
     
     article = await article_repo.get_article_by_id(article_id)
-    await increment_article_views(article_id)  
     if article:
         await set_cache(cache_key, article, CACHE_TTL["detail"])
     
@@ -157,19 +156,42 @@ async def get_popular_articles(page: int = 1, page_size: int = 10) -> List[dict]
     if cached_articles:
         return cached_articles
     
-    articles = await article_repo.list_articles(page, page_size * 2)  # Get more articles to filter
-    
-    # Calculate popularity score with time decay
-    if articles:
+    try:
+        # Get articles from repository
+        articles_data = await article_repo.list_articles(page=1, page_size=page_size * 3)  # Get more for sorting
+        
+        # Handle different return formats from repository
+        if isinstance(articles_data, dict):
+            articles = articles_data.get("items", [])
+        elif isinstance(articles_data, list):
+            articles = articles_data
+        else:
+            return []
+        
+        if not articles:
+            return []
+        
+        print(f"📄 Found {len(articles)} articles for popularity calculation")
+        
+        # Calculate popularity score with time decay
         now = datetime.utcnow()
         
         for article in articles:
+            # Ensure article has required fields
+            article.setdefault("likes", 0)
+            article.setdefault("views", 0)
+            
             # Get article creation date
             created_at = article.get("created_at")
             if isinstance(created_at, str):
                 try:
-                    created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                except:
+                    # Handle different datetime formats
+                    if created_at.endswith('Z'):
+                        created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    else:
+                        created_date = datetime.fromisoformat(created_at)
+                except Exception as e:
+                    print(f"⚠️ Error parsing date {created_at}: {e}")
                     created_date = now  # Fallback to now if parsing fails
             else:
                 created_date = now
@@ -182,41 +204,35 @@ async def get_popular_articles(page: int = 1, page_size: int = 10) -> List[dict]
             time_factor = max(0.1, 0.95 ** days_old)
             
             # Base popularity score
-            likes = article.get("likes", 0)
-            views = article.get("views", 0)
+            likes = int(article.get("likes", 0))
+            views = int(article.get("views", 0))
             base_score = likes * 3 + views  # Likes worth 3x views
             
             # Apply time decay
-            article["popularity_score"] = base_score * time_factor
+            popularity_score = base_score * time_factor
+            article["popularity_score"] = popularity_score
+            
         
         # Sort by popularity score (with time decay)
         articles.sort(key=lambda x: x.get("popularity_score", 0), reverse=True)
         
-        # Take only requested page_size
-        articles = articles[:page_size]
+        # Apply pagination
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        result = articles[start_idx:end_idx]
         
         # Remove popularity_score from final result (internal use only)
-        for article in articles:
+        for article in result:
             article.pop("popularity_score", None)
         
         # Cache the result
-        await set_cache(cache_key, articles, CACHE_TTL["popular"])
-    
-    return articles
-
-async def get_recent_articles(page: int = 1, page_size: int = 10) -> List[dict]:
-    cache_key = generate_cache_key(CACHE_KEYS["articles_recent"], page=page, page_size=page_size)
-    
-    cached_articles = await get_cache(cache_key)
-    if cached_articles:
-        return cached_articles
-    
-    articles = await article_repo.list_articles(page, page_size)
-    
-    if articles:
-        await set_cache(cache_key, articles, CACHE_TTL["recent"])
-    
-    return articles
+        await set_cache(cache_key, result, CACHE_TTL["popular"])
+        
+        return result
+        
+    except Exception as e:
+        print(f"❌ Error in get_popular_articles: {e}")
+        return []
 
 async def search_response(data: ResponseFromAI) -> List[dict]:
     return await article_repo.search_response(data)
