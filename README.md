@@ -104,13 +104,6 @@ cp .env.example .env
 # edit .env with your keys and choices (see below)
 ```
 
-**requirements.txt** includes:
-
-- `azure-search-documents`, `azure-cosmos` (Azure SDKs)
-- `fastapi`, `uvicorn` (API)
-- `openai` (OpenAI embeddings, optional)
-- `sentence-transformers`, `torch`, `numpy` (HF embeddings, optional)
-
 ---
 
 ## 4) CLI Commands
@@ -131,6 +124,8 @@ python main.py create-indexes --no-reset
 ```
 
 ### Manual Data Ingestion
+
+**Note**: For now we create indexers for updating data to indexes so we do not need this anymore.
 
 ```bash
 # Ingest data from Cosmos DB to search indexes
@@ -211,7 +206,7 @@ EMBEDDING_PROVIDER=openai
 OPENAI_API_KEY=<key>
 OPENAI_BASE_URL=                  # optional (Azure OpenAI)
 OPENAI_API_VERSION=2024-06-01
-EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_MODEL=text-embedding-ada-002
 # Hugging Face (SentenceTransformers)
 HF_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
 
@@ -237,12 +232,6 @@ FRESHNESS_WINDOW_DAYS=365
 # Toggle embedding compute/store during ingestion
 ENABLE_EMBEDDINGS=true
 ```
-
-**Embedding provider choice**:
-
-- `EMBEDDING_PROVIDER=openai` → use OpenAI (`EMBEDDING_MODEL` defaults to `text-embedding-3-small`, dim=1536).
-- `EMBEDDING_PROVIDER=hf` → use Hugging Face (`HF_MODEL_NAME` defaults to `all-MiniLM-L6-v2`, dim=384).
-- You can force a specific dimension via `EMBEDDING_DIM` if needed.
 
 ---
 
