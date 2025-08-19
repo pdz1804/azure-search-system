@@ -17,10 +17,9 @@ from typing import Dict, Any, Optional, List
 from openai import AzureOpenAI
 from ai_search.config.settings import SETTINGS
 from ai_search.config.prompts import (
-    SYSTEM_PROMPT_NORMALIZE,
-    SYSTEM_PROMPT_ANSWER,
-    USER_PROMPT_NORMALIZE,
-    USER_PROMPT_ANSWER,
+    SYSTEM_PROMPT_ANSWER, USER_PROMPT_ANSWER,
+    SYSTEM_PROMPT_PLANNING_ADVANCED, USER_PROMPT_PLANNING_ADVANCED,
+    SYSTEM_PROMPT_PLANNING_SIMPLE, USER_PROMPT_PLANNING_SIMPLE
 )
 import json
 
@@ -37,57 +36,91 @@ class LLMService:
         )
         print("✅ LLM Service initialized successfully")
     
-    def normalize_query(self, user_query: str, search_type: str = "articles") -> Dict[str, Any]:
+    
+    def plan_query(self, user_query: str, mode: str = "simple") -> Dict[str, Any]:
         """
-        Normalize and enhance user query for better search results.
+        Comprehensive query planning that combines normalization and classification.
+        
+        This function replaces the separate normalize_query functionality by providing:
+        1. Query meaningfulness assessment
+        2. Search type classification (articles vs authors)
+        3. Query normalization and enhancement
+        4. Search parameter generation (advanced mode only)
         
         Args:
-            user_query: Raw user query
-            search_type: Type of search ("articles" or "authors")
+            user_query: Raw user query string
+            mode: "simple" for basic classification, "advanced" for full search parameters
             
         Returns:
-            Dict containing normalized query and search parameters
+            Dict containing:
+            - normalized_query: Enhanced search text
+            - search_type: "articles", "authors", or "unmeaningful"
+            - search_parameters: Dict with search parameters (advanced mode) or empty dict (simple mode)
+            - isMeaningful: Boolean indicating if query has search intent
         """
-        print(f"🔄 Normalizing query: '{user_query}' for {search_type}")
-        
-        # Build fields/filterable/sortable hints for the normalize prompt
-        if search_type == "articles":
-            fields = "- title (string, searchable, sortable), abstract (string, searchable), content (string, searchable), author_name (string, searchable, sortable, filterable), status (string, filterable, facetable), tags (collection of strings, filterable, facetable), business_date (DateTimeOffset, filterable, sortable), searchable_text (string, searchable)"
-            filterable = "- author_name (string), status (string), tags (collection), business_date (DateTimeOffset)"
-            sortable = "- title, author_name, business_date"
-        else:
-            fields = "- full_name (string, searchable, sortable), role (string, filterable, facetable), searchable_text (string, searchable)"
-            filterable = "- role (string)"
-            sortable = "- full_name"
-
-        system_prompt = SYSTEM_PROMPT_NORMALIZE.format(search_type=search_type, fields=fields, filterable=filterable, sortable=sortable)
-
-        user_prompt = USER_PROMPT_NORMALIZE.format(user_query=user_query)
+        print(f"🎯 Planning query: '{user_query}'")
         
         try:
-            response = self.client.chat.completions.create(
-                model=SETTINGS.azure_openai_deployment,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.3,
-                max_tokens=500
-            )
+            if mode == "advanced":
+                response = self.client.chat.completions.create(
+                    model=SETTINGS.azure_openai_deployment,
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT_PLANNING_ADVANCED},
+                        {"role": "user", "content": USER_PROMPT_PLANNING_ADVANCED.format(user_query=user_query)}
+                    ],
+                    temperature=0.1,
+                    max_tokens=800
+                )
+            else:
+                response = self.client.chat.completions.create(
+                    model=SETTINGS.azure_openai_deployment,
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT_PLANNING_SIMPLE},
+                        {"role": "user", "content": USER_PROMPT_PLANNING_SIMPLE.format(user_query=user_query)}
+                    ],
+                    temperature=0.1,
+                    max_tokens=800
+                )
             
-            result_text = response.choices[0].message.content.strip()
-            result = json.loads(result_text)
+            response_text = response.choices[0].message.content.strip()
+            print(f"🤖 LLM planning response: {response_text}")
             
-            print(f"✅ Query normalized: '{result['normalized_query']}'")
-            return result
-            
+            # Parse JSON response
+            try:
+                result = json.loads(response_text)
+                
+                # Ensure required fields exist with defaults
+                if "isMeaningful" not in result:
+                    result["isMeaningful"] = True
+                if "search_parameters" not in result:
+                    result["search_parameters"] = {}
+                if "search_type" not in result:
+                    result["search_type"] = "articles"  # Default to articles
+                    
+                print(f"✅ Query planned: type='{result.get('search_type')}', meaningful={result.get('isMeaningful')}")
+                
+                return result
+                
+            except json.JSONDecodeError as e:
+                print(f"❌ Failed to parse LLM planning response: {e}")
+                # Fallback response
+                return {
+                    "normalized_query": user_query,
+                    "search_type": "articles",
+                    "search_parameters": {},
+                    "isMeaningful": True
+                }
+                
         except Exception as e:
-            print(f"⚠️ Query normalization failed: {e}")
-            # Fallback to original query
+            print(f"❌ Query planning failed: {e}")
+            # Fallback response
             return {
                 "normalized_query": user_query,
+                "search_type": "articles", 
                 "search_parameters": {},
-                "explanation": "Using original query due to normalization error"
+                "isMeaningful": True,
+                "explanation": f"LLM call failed: {str(e)}",
+                "confidence": 0.5
             }
     
     def generate_answer(self, user_query: str, search_results: List[Dict[str, Any]], search_type: str = "articles") -> str:
