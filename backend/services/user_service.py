@@ -4,8 +4,12 @@ from fastapi import HTTPException
 from typing import Any, Dict, Dict, Optional
 from backend.model.dto.user_dto import user_dto
 from backend.repositories import article_repo, user_repo
+from backend.services import article_service
 from backend.utils import get_current_user, hash_password, verify_password
 
+async def list_users() -> list:
+    users = await user_repo.get_list_user()
+    return users
 
 async def login(email: str, password: str) -> Optional[dict]:
     user = await user_repo.get_by_email(email)
@@ -42,20 +46,24 @@ async def check_follow_status(follower_id: str, followee_id: str) -> bool:
     return await user_repo.check_follow_status(follower_id, followee_id)
 
 async def like_article(user_id: str, article_id: str):
-    await user_repo.like_article(user_id, article_id)
-    await article_repo.increment_article_likes(article_id)
+    is_liked = await user_repo.like_article(user_id, article_id)
+    if is_liked:
+        await article_repo.increment_article_likes(article_id)
 
 async def unlike_article(user_id: str, article_id: str):
-    await user_repo.unlike_article(user_id, article_id)
-    await article_repo.decrement_article_likes(article_id)
+    is_unliked = await user_repo.unlike_article(user_id, article_id)
+    if is_unliked:
+        await article_repo.decrement_article_likes(article_id)
 
 async def dislike_article(user_id: str, article_id: str):
-    await user_repo.dislike_article(user_id, article_id)
-    await article_repo.increment_article_dislikes(article_id)
+    is_disliked = await user_repo.dislike_article(user_id, article_id)
+    if is_disliked:
+        await article_service.increment_article_dislikes(article_id)
 
 async def undislike_article(user_id: str, article_id: str):
-    await user_repo.undislike_article(user_id, article_id)
-    await article_repo.decrement_article_dislikes(article_id)
+    is_disliked = await user_repo.undislike_article(user_id, article_id)
+    if is_disliked:
+        await article_service.decrement_article_dislikes(article_id)
 
 async def bookmark_article(user_id: str, article_id: str):
     await user_repo.bookmark_article(user_id, article_id)

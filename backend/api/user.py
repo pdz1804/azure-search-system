@@ -14,7 +14,7 @@ async def get_user_by_id(id: str):
 @users.post("/{user_id}/follow")
 async def follow_user(user_id: str, current_user: dict = Depends(get_current_user)):
     """Follow a user"""
-    if str(current_user["_id"]) == user_id:
+    if current_user["id"] == user_id:
         raise HTTPException(status_code=400, detail="Cannot follow yourself")
     
     result = await user_service.follow_user(current_user["id"], user_id)
@@ -26,7 +26,7 @@ async def follow_user(user_id: str, current_user: dict = Depends(get_current_use
 @users.delete("/{user_id}/follow")
 async def unfollow_user(user_id: str, current_user: dict = Depends(get_current_user)):
     """Unfollow a user"""
-    result = await user_service.unfollow_user(str(current_user["_id"]), user_id)
+    result = await user_service.unfollow_user(current_user["id"], user_id)
     if result:
         return {"detail": "User unfollowed successfully"}
     else:

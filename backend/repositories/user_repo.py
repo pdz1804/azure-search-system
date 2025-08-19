@@ -4,6 +4,18 @@ from backend.database.cosmos import get_users_container
 async def get_users():
     return await get_users_container()
 
+async def get_list_user():
+    users = await get_users()
+    query = "SELECT * FROM c"
+    parameters = []
+    results = []
+    async for item in users.query_items(
+        query=query,
+        parameters=parameters
+    ):
+        results.append(item)
+    return results
+
 async def get_by_email(email: str) -> Optional[dict]:
     users = await get_users()
     query = "SELECT * FROM c WHERE c.email = @email"
@@ -76,14 +88,15 @@ async def unfollow_user(follower_id: str, followee_id: str) -> bool:
         follower["following"] = [f for f in follower.get("following", []) if f != followee_id]
         await users.upsert_item(body=follower)
 
-        followee = get_user_by_id(followee_id)
+        followee = await get_user_by_id(followee_id)
         if not followee:
             return False
         followee["followers"] = [f for f in followee.get("followers", []) if f != follower_id]
         await users.upsert_item(body=followee)
 
         return True
-    except Exception:
+    except Exception as e:
+        print(f"Error unfollowing user: {e}")
         return False
 
 
@@ -129,7 +142,7 @@ async def dislike_article(user_id: str, article_id: str) -> bool:
         disliked = set(user.get("disliked_articles", []))
         disliked.add(article_id)
         user["disliked_articles"] = list(disliked)
-        users.upsert_item(body=user)
+        await users.upsert_item(body=user)
         return True
     except Exception:
         return False

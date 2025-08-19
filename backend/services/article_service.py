@@ -20,7 +20,7 @@ async def create_article(doc: dict) -> dict:
     doc["updated_at"] = now
     doc["id"] = uuid.uuid4().hex  
     doc.setdefault("likes", 0)
-    doc.setdefault("dislike", 0)
+    doc.setdefault("dislikes", 0)
     doc.setdefault("views", 0)
 
     inserted_id = await article_repo.insert_article(doc)
@@ -87,6 +87,26 @@ async def increment_article_views(article_id: str):
     cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
     await delete_cache_pattern(cache_key)
 
+async def increment_article_dislikes(article_id: str):
+    await article_repo.increment_article_dislikes(article_id)
+    cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
+    await delete_cache_pattern(cache_key)
+
+async def increment_article_likes(article_id: str):
+    await article_repo.increment_article_likes(article_id)
+    cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
+    await delete_cache_pattern(cache_key)
+
+async def decrement_article_likes(article_id: str):
+    await article_repo.decrement_article_likes(article_id)
+    cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
+    await delete_cache_pattern(cache_key)
+
+async def decrement_article_dislikes(article_id: str):
+    await article_repo.decrement_article_dislikes(article_id)
+    cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
+    await delete_cache_pattern(cache_key)
+
 # async def like_article(article_id: str, user_id: str) -> bool:
 #     """Like an article. Returns True if successful, False if already liked."""
 #     try:
@@ -144,7 +164,6 @@ async def get_articles_by_author(author_id: str, page: int = 1, page_size: int =
     articles = await article_repo.get_article_by_author(author_id, page, page_size)
     
     if articles:
-        # Cache the result
         await set_cache(cache_key, articles, CACHE_TTL["user_articles"])
     
     return articles
