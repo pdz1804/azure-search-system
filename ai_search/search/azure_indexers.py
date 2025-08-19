@@ -22,6 +22,8 @@ from azure.search.documents.indexes.models import (
     SearchIndexerSkillset,
     WebApiSkill,
     InputFieldMappingEntry,
+    SearchIndexerCache,
+    # SoftDeleteColumnDeletionDetectionPolicy,  # Removed: Hard delete only - documents removed from Cosmos DB are automatically removed from index
 )
 
 # Try to import AzureOpenAIEmbeddingSkill - fallback to WebApiSkill if not available
@@ -54,7 +56,16 @@ class AzureIndexerManager:
             AzureKeyCredential(SETTINGS.search_key)
         )
     
-    def create_cosmos_data_source(self, name: str, container_name: str, query: Optional[str] = None) -> SearchIndexerDataSourceConnection:
+    def create_cosmos_data_source(
+        self, 
+        name: str, 
+        container_name: str, 
+        query: Optional[str] = None
+        # Removed soft delete parameters - using hard delete only
+        # enable_soft_delete: bool = False,  
+        # soft_delete_column: str = "isDeleted",
+        # soft_delete_marker: str = "true"
+    ) -> SearchIndexerDataSourceConnection:
         """
         Create a Cosmos DB data source for Azure AI Search indexer.
         
@@ -64,7 +75,7 @@ class AzureIndexerManager:
             query: Optional SQL query to filter documents
             
         Returns:
-            Created data source connection
+            Created data source connection using hard delete only - documents removed from Cosmos DB are automatically removed from index
         """
         # Construct Cosmos DB connection string
         cosmos_connection_string = (
@@ -79,23 +90,31 @@ class AzureIndexerManager:
             query=query
         )
         
-        # Create data source
+        # Hard delete only - no deletion detection policy needed
+        # Documents removed from Cosmos DB will be automatically removed from the search index
+        
+        # Create data source with hard delete support
         data_source = SearchIndexerDataSourceConnection(
             name=name,
             type="cosmosdb",
             connection_string=cosmos_connection_string,
             container=container,
-            description=f"Cosmos DB data source for {container_name} container"
+            data_deletion_detection_policy=None,  # Hard delete: None policy means documents deleted from Cosmos DB are removed from index
+            description=f"Cosmos DB data source for {container_name} container with hard delete support"
         )
         
         return data_source
     
-    def create_articles_indexer(self) -> SearchIndexer:
+    def create_articles_indexer(self, enable_cache: bool = False, storage_connection_string: Optional[str] = None) -> SearchIndexer:
         """
-        Create an indexer for articles with field mappings and automatic scheduling.
+        Create an indexer for articles with field mappings, automatic scheduling, and optional caching.
         
+        Args:
+            enable_cache: Enable incremental enrichment caching
+            storage_connection_string: Azure Storage connection string for cache
+            
         Returns:
-            Configured articles indexer
+            Configured articles indexer with optional caching
         """
         # Field mappings from Cosmos DB to search index
         field_mappings = [
@@ -134,15 +153,24 @@ class AzureIndexerManager:
         
         # Indexing parameters for high-water mark change detection
         # Note: No configuration needed for Cosmos DB (dataToExtract/parsingMode not supported)
+        # Reduced batch size to avoid Azure OpenAI rate limiting
         parameters = IndexingParameters(
-            batch_size=100,
+            batch_size=50,  # Reduced from 100 to avoid rate limits
             max_failed_items=10,
-            max_failed_items_per_batch=5
+            max_failed_items_per_batch=3  # Reduced to fail faster
             # No configuration parameter for Cosmos DB - parsing configs not supported
         )
         
         # Schedule for automatic runs (every 5 minutes)
         schedule = IndexingSchedule(interval="PT5M")  # ISO 8601 duration format
+        
+        # Configure cache if enabled and embeddings are active
+        cache = None
+        if enable_cache and SETTINGS.enable_embeddings and storage_connection_string:
+            cache = SearchIndexerCache(
+                storage_connection_string=storage_connection_string,
+                enable_reprocessing=True
+            )
         
         # Create indexer with skillset if embeddings enabled
         if SETTINGS.enable_embeddings:
@@ -155,7 +183,8 @@ class AzureIndexerManager:
                 output_field_mappings=output_field_mappings,
                 parameters=parameters,
                 schedule=schedule,
-                description="Automatic indexer for articles from Cosmos DB"
+                cache=cache,
+                description="Automatic indexer for articles from Cosmos DB with deletion tracking"
             )
         else:
             indexer = SearchIndexer(
@@ -165,17 +194,22 @@ class AzureIndexerManager:
                 field_mappings=field_mappings,
                 parameters=parameters,
                 schedule=schedule,
-                description="Automatic indexer for articles from Cosmos DB"
+                cache=cache,
+                description="Automatic indexer for articles from Cosmos DB with deletion tracking"
             )
         
         return indexer
     
-    def create_authors_indexer(self) -> SearchIndexer:
+    def create_authors_indexer(self, enable_cache: bool = False, storage_connection_string: Optional[str] = None) -> SearchIndexer:
         """
-        Create an indexer for authors with field mappings and automatic scheduling.
+        Create an indexer for authors with field mappings, automatic scheduling, and optional caching.
         
+        Args:
+            enable_cache: Enable incremental enrichment caching
+            storage_connection_string: Azure Storage connection string for cache
+            
         Returns:
-            Configured authors indexer
+            Configured authors indexer with optional caching
         """
         # Field mappings from Cosmos DB to search index
         field_mappings = [
@@ -198,15 +232,24 @@ class AzureIndexerManager:
         
         # Indexing parameters
         # Note: No configuration needed for Cosmos DB (dataToExtract/parsingMode not supported)
+        # Reduced batch size to avoid Azure OpenAI rate limiting
         parameters = IndexingParameters(
-            batch_size=100,
+            batch_size=50,  # Reduced from 100 to avoid rate limits
             max_failed_items=10,
-            max_failed_items_per_batch=5
+            max_failed_items_per_batch=3  # Reduced to fail faster
             # No configuration parameter for Cosmos DB - parsing configs not supported
         )
         
         # Schedule for automatic runs (every 5 minutes)
         schedule = IndexingSchedule(interval="PT5M")
+        
+        # Configure cache if enabled and embeddings are active
+        cache = None
+        if enable_cache and SETTINGS.enable_embeddings and storage_connection_string:
+            cache = SearchIndexerCache(
+                storage_connection_string=storage_connection_string,
+                enable_reprocessing=True
+            )
         
         # Create indexer with skillset if embeddings enabled
         if SETTINGS.enable_embeddings:
@@ -219,7 +262,8 @@ class AzureIndexerManager:
                 output_field_mappings=output_field_mappings,
                 parameters=parameters,
                 schedule=schedule,
-                description="Automatic indexer for authors from Cosmos DB"
+                cache=cache,
+                description="Automatic indexer for authors from Cosmos DB with deletion tracking"
             )
         else:
             indexer = SearchIndexer(
@@ -229,7 +273,8 @@ class AzureIndexerManager:
                 field_mappings=field_mappings,
                 parameters=parameters,
                 schedule=schedule,
-                description="Automatic indexer for authors from Cosmos DB"
+                cache=cache,
+                description="Automatic indexer for authors from Cosmos DB with deletion tracking"
             )
         
         return indexer
@@ -358,14 +403,28 @@ class AzureIndexerManager:
         
         return skillset
     
-    def setup_indexers(self, reset: bool = False, verbose: bool = False) -> None:
+    def setup_indexers(
+        self, 
+        reset: bool = False, 
+        verbose: bool = False,
+        enable_cache: Optional[bool] = None,
+        storage_connection_string: Optional[str] = None
+    ) -> None:
         """
         Set up all indexers, data sources, and skillsets for automatic sync.
         
         Args:
             reset: Whether to delete existing resources before creating new ones
             verbose: Enable verbose logging
+            enable_cache: Enable incremental enrichment caching
+            storage_connection_string: Azure Storage connection string for cache
         """
+        # Use settings from config if not provided
+        if enable_cache is None:
+            enable_cache = SETTINGS.enable_indexer_cache
+        if storage_connection_string is None:
+            storage_connection_string = SETTINGS.azure_storage_connection_string
+            
         if verbose:
             print("🔧 Setting up Azure AI Search indexers for automatic Cosmos DB sync...")
         
@@ -378,6 +437,11 @@ class AzureIndexerManager:
             if verbose:
                 print("📊 Creating/updating Cosmos DB data sources...")
             
+            # Now handles:
+            # - added docs (via _ts high water mark)
+            # - updated docs (via _ts high water mark) 
+            # - deleted docs (hard delete - documents removed from Cosmos DB will be automatically removed from index)
+            # Note: Using hard delete only for simplicity and reliability
             articles_ds = self.create_cosmos_data_source(
                 "articles-datasource", 
                 SETTINGS.cosmos_articles,
@@ -417,8 +481,8 @@ class AzureIndexerManager:
             if verbose:
                 print("⚙️ Creating/updating indexers...")
             
-            articles_indexer = self.create_articles_indexer()
-            authors_indexer = self.create_authors_indexer()
+            articles_indexer = self.create_articles_indexer(enable_cache, storage_connection_string)
+            authors_indexer = self.create_authors_indexer(enable_cache, storage_connection_string)
             
             self._create_or_update_indexer(articles_indexer, verbose)
             self._create_or_update_indexer(authors_indexer, verbose)
@@ -700,18 +764,149 @@ class AzureIndexerManager:
                         print(f"   Errors: {lr['errors']}")
         
         return statuses
+    
+    def get_indexer_cache_status(self, indexer_name: str) -> Dict[str, Any]:
+        """
+        Get the cache status and information for an indexer.
+        
+        Args:
+            indexer_name: Name of the indexer
+            
+        Returns:
+            Cache status information including storage details
+        """
+        try:
+            indexer = self.client.get_indexer(indexer_name)
+            
+            cache_info = {
+                "indexer_name": indexer_name,
+                "cache_enabled": indexer.cache is not None,
+                "cache_details": None
+            }
+            
+            if indexer.cache:
+                cache_info["cache_details"] = {
+                    "storage_connection_configured": bool(indexer.cache.storage_connection_string),
+                    "enable_reprocessing": getattr(indexer.cache, 'enable_reprocessing', None),
+                    "cache_type": type(indexer.cache).__name__
+                }
+                
+                # Try to extract storage account info (without exposing secrets)
+                if indexer.cache.storage_connection_string:
+                    conn_str = indexer.cache.storage_connection_string
+                    if "AccountName=" in conn_str:
+                        account_start = conn_str.find("AccountName=") + len("AccountName=")
+                        account_end = conn_str.find(";", account_start)
+                        if account_end > account_start:
+                            account_name = conn_str[account_start:account_end]
+                            cache_info["cache_details"]["storage_account"] = account_name
+                            cache_info["cache_details"]["expected_container_prefix"] = f"ms-az-search-indexercache-"
+            
+            return cache_info
+            
+        except Exception as e:
+            return {
+                "indexer_name": indexer_name,
+                "error": str(e),
+                "cache_enabled": False
+            }
+    
+    def list_cache_status(self, verbose: bool = False) -> List[Dict[str, Any]]:
+        """
+        List cache status for all indexers.
+        
+        Args:
+            verbose: Enable verbose output
+            
+        Returns:
+            List of cache status information for all indexers
+        """
+        indexers = ["articles-indexer", "authors-indexer"]
+        cache_statuses = []
+        
+        for indexer_name in indexers:
+            cache_status = self.get_indexer_cache_status(indexer_name)
+            cache_statuses.append(cache_status)
+            
+            if verbose:
+                print(f"\n🗂️ Cache Status for {indexer_name}:")
+                print(f"   Enabled: {cache_status.get('cache_enabled', False)}")
+                
+                if cache_status.get('cache_details'):
+                    details = cache_status['cache_details']
+                    print(f"   Storage Configured: {details.get('storage_connection_configured', False)}")
+                    print(f"   Reprocessing Enabled: {details.get('enable_reprocessing', 'N/A')}")
+                    
+                    if details.get('storage_account'):
+                        print(f"   Storage Account: {details['storage_account']}")
+                        print(f"   Expected Container: {details['expected_container_prefix']}*")
+                        print(f"   💡 Check Azure Storage for containers starting with: {details['expected_container_prefix']}")
+                        print(f"   🌐 Portal Link: https://portal.azure.com/#@/resource/subscriptions/YOUR_SUBSCRIPTION/resourceGroups/YOUR_RG/providers/Microsoft.Storage/storageAccounts/{details['storage_account']}/containersList")
+                
+                if cache_status.get('error'):
+                    print(f"   ❌ Error: {cache_status['error']}")
+        
+        return cache_statuses
+    
+    # def check_cosmos_soft_delete_setup(self, verbose: bool = False) -> Dict[str, Any]:
+    #     """
+    #     DEPRECATED: Check if Cosmos DB containers have the required soft delete field setup.
+    #     
+    #     This function is no longer used as we've switched to hard delete only.
+    #     Documents are permanently deleted from both Cosmos DB and the search index.
+    #     
+    #     Args:
+    #         verbose: Enable verbose output
+    #         
+    #     Returns:
+    #         Status of soft delete setup requirements
+    #     """
+    #     setup_status = {
+    #         "deprecated": True,
+    #         "message": "Soft delete functionality has been removed. Using hard delete only.",
+    #         "recommendations": [
+    #             "�️ Documents are permanently deleted from both Cosmos DB and search index",
+    #             "⚡ No need for 'isDeleted' fields in your documents",
+    #             "� Simply delete documents from Cosmos DB - they will be automatically removed from search index"
+    #         ]
+    #     }
+    #     
+    #     if verbose:
+    #         print("\n🔍 Deletion Method: Hard Delete Only")
+    #         print("\n📋 Current Behavior:")
+    #         for rec in setup_status["recommendations"]:
+    #             print(f"   {rec}")
+    #         
+    #         print("\n⚠️ Important Notes:")
+    #         print("   • Documents deleted from Cosmos DB are automatically removed from search index")
+    #         print("   • No soft delete fields (isDeleted) are needed")
+    #         print("   • This provides simpler and more reliable deletion behavior")
+    #     
+    #     return setup_status
 
 
-def setup_azure_indexers(reset: bool = False, verbose: bool = False) -> None:
+def setup_azure_indexers(
+    reset: bool = False, 
+    verbose: bool = False, 
+    enable_cache: Optional[bool] = None,
+    storage_connection_string: Optional[str] = None
+) -> None:
     """
     Main function to set up Azure AI Search indexers for automatic Cosmos DB sync.
     
     Args:
         reset: Whether to reset existing indexers
         verbose: Enable verbose logging
+        enable_cache: Enable incremental enrichment caching (uses SETTINGS if None)
+        storage_connection_string: Azure Storage connection string for cache (uses SETTINGS if None)
     """
+    # Use settings from config if not provided
+    if enable_cache is None:
+        enable_cache = SETTINGS.enable_indexer_cache
+    if storage_connection_string is None:
+        storage_connection_string = SETTINGS.azure_storage_connection_string
     manager = AzureIndexerManager()
-    manager.setup_indexers(reset=reset, verbose=verbose)
+    manager.setup_indexers(reset=reset, verbose=verbose, enable_cache=enable_cache, storage_connection_string=storage_connection_string)
 
 
 def check_indexer_status(verbose: bool = False) -> List[Dict[str, Any]]:
@@ -726,3 +921,107 @@ def check_indexer_status(verbose: bool = False) -> List[Dict[str, Any]]:
     """
     manager = AzureIndexerManager()
     return manager.list_indexer_status(verbose=verbose)
+
+
+def check_cache_status(verbose: bool = False) -> List[Dict[str, Any]]:
+    """
+    Check the cache status of all indexers.
+    
+    Args:
+        verbose: Enable verbose output
+        
+    Returns:
+        List of cache status information
+    """
+    manager = AzureIndexerManager()
+    return manager.list_cache_status(verbose=verbose)
+
+
+def view_cache_containers(storage_account_name: str, verbose: bool = False) -> None:
+    """
+    Show how to view cache containers in Azure Storage.
+    
+    Args:
+        storage_account_name: Name of the Azure Storage account
+        verbose: Enable verbose output
+    """
+    info = get_cache_containers_info(storage_account_name)
+    
+    print(f"\n🗂️ Cache Containers for Storage Account: {storage_account_name}")
+    print("=" * 60)
+    
+    print(f"\n📋 Container Details:")
+    print(f"   Prefix: {info['container_prefix']}")
+    print(f"   Description: {info['description']}")
+    
+    print(f"\n🌐 View in Azure Portal:")
+    print(f"   1. Go to: https://portal.azure.com")
+    print(f"   2. Navigate to Storage Accounts → {storage_account_name}")
+    print(f"   3. Click on 'Containers' in the left menu")
+    print(f"   4. Look for containers starting with: {info['container_prefix']}")
+    
+    print(f"\n💻 View via Azure CLI:")
+    print(f"   {info['azure_cli_command']}")
+    
+    if verbose:
+        print(f"\n💡 Important Notes:")
+        for note in info['notes']:
+            print(f"   • {note}")
+    
+    print(f"\n⚡ Quick Commands:")
+    print(f"   # List all containers")
+    print(f"   az storage container list --account-name {storage_account_name}")
+    print(f"   ")
+    print(f"   # List only cache containers")
+    print(f"   az storage container list --account-name {storage_account_name} --query \"[?starts_with(name, 'ms-az-search-indexercache-')]\"")
+
+
+# def check_soft_delete_setup(verbose: bool = False) -> Dict[str, Any]:
+#     """
+#     DEPRECATED: Check the soft delete setup requirements for Cosmos DB.
+#     
+#     This function is no longer used as we've switched to hard delete only.
+#     Documents are permanently deleted from both Cosmos DB and the search index.
+#     
+#     Args:
+#         verbose: Enable verbose output
+#         
+#     Returns:
+#         Deprecation notice and current deletion behavior
+#     """
+#     return {
+#         "deprecated": True,
+#         "message": "Soft delete functionality has been removed. Using hard delete only.",
+#         "current_behavior": "Documents deleted from Cosmos DB are automatically removed from search index",
+#         "recommendations": [
+#             "🗑️ Simply delete documents from Cosmos DB - they will be automatically removed from search index",
+#             "⚡ No need for 'isDeleted' fields in your documents",
+#             "📝 This provides simpler and more reliable deletion behavior"
+#         ]
+#     }
+
+
+def get_cache_containers_info(storage_account_name: str) -> Dict[str, Any]:
+    """
+    Get information about cache containers in Azure Storage.
+    
+    Args:
+        storage_account_name: Name of the Azure Storage account
+        
+    Returns:
+        Information about cache containers and how to access them
+    """
+    return {
+        "storage_account": storage_account_name,
+        "container_prefix": "ms-az-search-indexercache-",
+        "portal_url": f"https://portal.azure.com/#view/Microsoft_Azure_Storage/ContainerMenuBlade/~/overview/storageAccountId/%2Fsubscriptions%2FYOUR_SUBSCRIPTION%2FresourceGroups%2FYOUR_RG%2Fproviders%2FMicrosoft.Storage%2FstorageAccounts%2F{storage_account_name}",
+        "azure_cli_command": f"az storage container list --account-name {storage_account_name} --query \"[?starts_with(name, 'ms-az-search-indexercache-')]\"",
+        "description": "Cache containers are automatically created by Azure Search when indexers with caching run for the first time",
+        "notes": [
+            "Containers are created automatically when indexer runs with cache enabled",
+            "Each indexer gets its own unique cache container",
+            "Container names include random alphanumeric strings for uniqueness",
+            "Cache content is managed internally by Azure Search - don't modify manually",
+            "You can view containers in Azure Portal or via Azure CLI"
+        ]
+    }

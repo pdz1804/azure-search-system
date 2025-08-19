@@ -95,6 +95,7 @@ def handle_health(args: Any) -> None:
     This comprehensive health check verifies:
     - Search indexes existence and accessibility
     - Indexers status and functionality
+    - Cache configuration and status
     - Search service connectivity and capabilities
     
     Args:
@@ -106,6 +107,7 @@ def handle_health(args: Any) -> None:
     health_status = {
         'indexes': {'status': 'unknown', 'details': []},
         'indexers': {'status': 'unknown', 'details': []},
+        'cache': {'status': 'unknown', 'details': []},
         'search_service': {'status': 'unknown', 'details': []},
         'overall': 'unknown'
     }
@@ -115,6 +117,9 @@ def handle_health(args: Any) -> None:
     
     # Check indexers
     health_status = _check_indexers_health(health_status, verbose)
+    
+    # Check cache status
+    health_status = _check_cache_health(health_status, verbose)
     
     # Check search service connectivity
     health_status = _check_search_service_health(health_status, verbose)
@@ -255,6 +260,77 @@ def _check_indexers_health(health_status: dict, verbose: bool) -> dict:
     return health_status
 
 
+def _check_cache_health(health_status: dict, verbose: bool) -> dict:
+    """
+    Check the health of indexer cache configuration.
+    
+    Args:
+        health_status: Current health status dictionary
+        verbose: Whether to enable verbose output
+        
+    Returns:
+        Updated health status dictionary
+    """
+    try:
+        print("\n🗂️ Checking cache configuration...")
+        from search.azure_indexers import check_cache_status
+        from config.settings import SETTINGS
+        
+        cache_statuses = check_cache_status(verbose=False)
+        cache_enabled_count = 0
+        cache_configured_count = 0
+        total_indexers = len(cache_statuses)
+        
+        for cache_status in cache_statuses:
+            indexer_name = cache_status.get('indexer_name', 'unknown')
+            
+            if cache_status.get('cache_enabled', False):
+                cache_enabled_count += 1
+                
+                if cache_status.get('cache_details', {}).get('storage_connection_configured', False):
+                    cache_configured_count += 1
+                    health_status['cache']['details'].append(f"✅ {indexer_name}: cache enabled and configured")
+                else:
+                    health_status['cache']['details'].append(f"⚠️ {indexer_name}: cache enabled but storage not configured")
+            else:
+                health_status['cache']['details'].append(f"ℹ️ {indexer_name}: cache disabled")
+        
+        # Add configuration status
+        if SETTINGS.enable_indexer_cache:
+            if SETTINGS.azure_storage_connection_string:
+                health_status['cache']['details'].append(f"✅ Global cache setting: enabled with storage configured")
+            else:
+                health_status['cache']['details'].append(f"⚠️ Global cache setting: enabled but no storage connection string")
+        else:
+            health_status['cache']['details'].append(f"ℹ️ Global cache setting: disabled")
+        
+        # Determine cache health status
+        if SETTINGS.enable_indexer_cache:
+            if cache_configured_count == total_indexers and SETTINGS.azure_storage_connection_string:
+                health_status['cache']['status'] = 'healthy'
+                print(f"   ✅ Cache fully configured for all {total_indexers} indexers")
+            elif cache_enabled_count > 0:
+                health_status['cache']['status'] = 'partial'
+                print(f"   ⚠️ Cache partially configured: {cache_configured_count}/{total_indexers} indexers")
+            else:
+                health_status['cache']['status'] = 'unhealthy'
+                print(f"   ❌ Cache enabled in settings but not working on indexers")
+        else:
+            health_status['cache']['status'] = 'disabled'
+            print(f"   ℹ️ Cache disabled in configuration")
+        
+        if verbose:
+            for detail in health_status['cache']['details']:
+                print(f"     {detail}")
+        
+    except Exception as e:
+        health_status['cache']['status'] = 'error'
+        health_status['cache']['details'] = [f"❌ Error checking cache: {e}"]
+        print(f"   ❌ Error checking cache: {e}")
+    
+    return health_status
+
+
 def _check_search_service_health(health_status: dict, verbose: bool) -> dict:
     """
     Check the health of search service connectivity.
@@ -301,11 +377,19 @@ def _determine_overall_health(health_status: dict) -> None:
     Args:
         health_status: Health status dictionary to update
     """
-    component_statuses = [
+    # Core components (cache is optional)
+    core_statuses = [
         health_status['indexes']['status'], 
         health_status['indexers']['status'], 
         health_status['search_service']['status']
     ]
+    
+    # Include cache status if it's not disabled
+    cache_status = health_status['cache']['status']
+    if cache_status not in ['disabled']:
+        component_statuses = core_statuses + [cache_status]
+    else:
+        component_statuses = core_statuses
     
     if all(status == 'healthy' for status in component_statuses):
         health_status['overall'] = 'healthy'
@@ -328,8 +412,13 @@ def _print_health_summary(health_status: dict) -> None:
     print("\n📋 Health Check Summary:")
     print(f"   Indexes: {health_status['indexes']['status'].upper()}")
     print(f"   Indexers: {health_status['indexers']['status'].upper()}")
+    print(f"   Cache: {health_status['cache']['status'].upper()}")
     print(f"   Search Service: {health_status['search_service']['status'].upper()}")
     print(f"   Overall: {health_status['overall'].upper()}")
+    
+    # Add cache explanation if disabled
+    if health_status['cache']['status'] == 'disabled':
+        print(f"   💡 Cache is disabled - enable with ENABLE_INDEXER_CACHE=true in .env")
 
 
 def get_command_handlers() -> dict:

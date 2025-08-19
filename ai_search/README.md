@@ -101,7 +101,8 @@ ai-search-cloud/
 ```bash
 pip install -r requirements.txt
 cp .env.example .env
-# edit .env with your keys and choices (see below)
+# Edit .env with your Azure credentials and storage settings
+# Required: Azure Search, Cosmos DB, and Storage for caching
 ```
 
 ---
@@ -110,7 +111,21 @@ cp .env.example .env
 
 The `main.py` file provides a command-line interface with several subcommands:
 
-### Create Search Indexes
+### 🚀 Complete Setup (Recommended)
+
+```bash
+# 1. Create search indexes first
+python main.py create-indexes --verbose
+
+# 2. Set up automatic indexers with deletion tracking and caching
+python main.py setup-indexers --verbose
+
+# 3. Check everything is working
+python main.py check-indexers --verbose
+python main.py health --verbose
+```
+
+### 🏗️ Create Search Indexes
 
 ```bash
 # Create indexes with default settings (reset existing indexes)
@@ -123,38 +138,47 @@ python main.py create-indexes --verbose
 python main.py create-indexes --no-reset
 ```
 
-### Manual Data Ingestion
+### ⚙️ Azure-Native Indexers (Automatic Sync)
 
-**Note**: For now we create indexers for updating data to indexes so we do not need this anymore.
-
-```bash
-# Ingest data from Cosmos DB to search indexes
-python main.py ingest
-
-# Ingest with verbose output and custom batch size
-python main.py ingest --verbose --batch-size 50
-```
-
-### Azure-Native Indexers (Automatic Sync)
+**Features**: Automatic Cosmos DB sync, deletion tracking, incremental caching
 
 ```bash
-# Set up Azure indexers for automatic Cosmos DB synchronization
-python main.py setup-indexers
-
-# Set up indexers with reset (delete existing first)
-python main.py setup-indexers --reset
-
-# Set up indexers with verbose output
+# Set up indexers with deletion tracking and caching (uses .env settings)
 python main.py setup-indexers --verbose
 
-# Check status of all indexers
-python main.py check-indexers
+# Reset and recreate all indexers
+python main.py setup-indexers --reset --verbose
 
-# Check indexer status with detailed information
+# Check indexer status and performance
 python main.py check-indexers --verbose
 ```
 
-### Start API Server
+### 📊 Monitoring & Health Checks
+
+```bash
+# Comprehensive system health check
+python main.py health --verbose
+
+# Check indexer status only
+python main.py check-indexers --verbose
+
+# Check cache status (if enabled)
+python -c "from search.azure_indexers import check_cache_status; check_cache_status(verbose=True)"
+
+# Note: Soft delete functionality has been removed - using hard delete only
+# Documents deleted from Cosmos DB are automatically removed from search index
+```
+
+### 📥 Manual Data Ingestion (Legacy)
+
+**Note**: Indexers handle automatic sync, so manual ingestion is rarely needed.
+
+```bash
+# Manual one-time data ingestion from Cosmos DB
+python main.py ingest --verbose --batch-size 50
+```
+
+### 🌐 Start API Server
 
 ```bash
 # Start server with default settings (127.0.0.1:8000)
@@ -170,7 +194,7 @@ python main.py serve --reload
 python main.py serve --workers 4
 ```
 
-### Get Help
+### ❓ Get Help
 
 ```bash
 # Show all available commands
@@ -189,24 +213,37 @@ python main.py serve --help
 ## 5) Configuration (.env)
 
 ```ini
-# Azure AI Search
+# Azure AI Search (REQUIRED)
 AZURE_SEARCH_ENDPOINT=https://<your-search>.search.windows.net
 AZURE_SEARCH_KEY=<admin-key>
 
-# Cosmos DB
+# Cosmos DB (REQUIRED)
 COSMOS_ENDPOINT=https://<your-cosmos>.documents.azure.com:443/
 COSMOS_KEY=<cosmos-key>
 COSMOS_DB=blogs
 COSMOS_ARTICLES=articles
 COSMOS_USERS=users
 
-# Embeddings backend: "openai" or "hf"
+# Azure Storage for Indexer Caching (RECOMMENDED)
+AZURE_STORAGE_ACCOUNT=cacheindex
+AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=cacheindex;AccountKey=<your-key>;EndpointSuffix=core.windows.net
+ENABLE_INDEXER_CACHE=true
+
+# Embeddings Configuration
 EMBEDDING_PROVIDER=openai
-# OpenAI
+ENABLE_EMBEDDINGS=true
+
+# OpenAI/Azure OpenAI
 OPENAI_API_KEY=<key>
 OPENAI_BASE_URL=                  # optional (Azure OpenAI)
 OPENAI_API_VERSION=2024-06-01
 EMBEDDING_MODEL=text-embedding-ada-002
+
+# Azure OpenAI for Indexer Skills
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_KEY=<azure-openai-key>
+AZURE_OPENAI_DEPLOYMENT=text-embedding-ada-002
+AZURE_OPENAI_MODELNAME=text-embedding-ada-002
 # Hugging Face (SentenceTransformers)
 HF_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
 
