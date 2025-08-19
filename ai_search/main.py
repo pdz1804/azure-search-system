@@ -95,7 +95,7 @@ def search_articles(
             "articles": articles,
             "pagination": result["pagination"],
             "normalized_query": result["normalized_query"],
-            "final_answer": result["final_answer"]
+            "search_type": result.get("search_type", "articles")
         }
         
         print(f"✅ Articles search completed: {len(articles)} results")
@@ -142,13 +142,87 @@ def search_authors(
             "results": authors,
             "pagination": result["pagination"],
             "normalized_query": result["normalized_query"],
-            "final_answer": result["final_answer"]
+            "search_type": result.get("search_type", "authors")
         }
         
         print(f"✅ Authors search completed: {len(authors)} results")
         return response
     except Exception as e:
         print(f"❌ Authors search failed: {e}")
+        raise
+
+@app.get("/search")
+def search_general(
+    q: str = Query(..., min_length=1, description="Search query text"), 
+    k: int = Query(10, ge=1, le=100, description="Number of results to return"),
+    page_index: Optional[int] = Query(None, ge=0, description="Page index (0-based)"),
+    page_size: Optional[int] = Query(None, ge=1, le=100, description="Number of results per page")
+):
+    """General search endpoint with intelligent query classification and routing.
+    
+    Uses LLM-powered planning to:
+    1. Determine if query is meaningful
+    2. Classify query type (articles vs authors)
+    3. Route to appropriate search function
+    4. Return unified response format
+    
+    Supports pagination with page_index and page_size parameters.
+    """
+    print(f"🔍 General search: query='{q}', k={k}, page_index={page_index}, page_size={page_size}")
+    try:
+        # Get search results from service layer using general search
+        result = get_search_service().search(q, k, page_index, page_size)
+        
+        # Transform results based on search type
+        search_type = result.get("search_type", "articles")
+        
+        if search_type == "authors":
+            # Transform results to AuthorHit format
+            items = [
+                AuthorHit(
+                    id=doc["id"],
+                    full_name=doc.get("full_name"),
+                    score_final=result_item["_final"],
+                    scores={
+                        "semantic": result_item.get("_semantic", 0.0), 
+                        "bm25": result_item.get("_bm25", 0.0), 
+                        "vector": result_item.get("_vector", 0.0),
+                        "business": result_item.get("_business", 0.0)
+                    }
+                ) for result_item in result["results"]
+                if (doc := result_item.get("doc", {}))
+            ]
+        else:
+            # Transform results to ArticleHit format (default)
+            items = [
+                ArticleHit(
+                    id=doc["id"],
+                    title=doc.get("title"),
+                    abstract=doc.get("abstract"),
+                    author_name=doc.get("author_name"),
+                    score_final=result_item["_final"],
+                    scores={
+                        "semantic": result_item.get("_semantic", 0.0), 
+                        "bm25": result_item.get("_bm25", 0.0), 
+                        "vector": result_item.get("_vector", 0.0), 
+                        "business": result_item.get("_business", 0.0)
+                    },
+                    highlights=doc.get("@search.highlights")
+                ) for result_item in result["results"] 
+                if (doc := result_item.get("doc", {}))
+            ]
+        
+        response = {
+            "results": items,
+            "pagination": result["pagination"],
+            "normalized_query": result["normalized_query"],
+            "search_type": search_type
+        }
+        
+        print(f"✅ General search completed: {len(items)} results, type: {search_type}")
+        return response
+    except Exception as e:
+        print(f"❌ General search failed: {e}")
         raise
 
 

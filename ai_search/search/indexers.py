@@ -22,8 +22,8 @@ from azure.search.documents.indexes.models import (
     SearchIndexerSkillset,
     WebApiSkill,
     InputFieldMappingEntry,
-    SearchIndexerCache,
-    # SoftDeleteColumnDeletionDetectionPolicy,  # Removed: Hard delete only - documents removed from Cosmos DB are automatically removed from index
+    SoftDeleteColumnDeletionDetectionPolicy,
+    HighWaterMarkChangeDetectionPolicy,
 )
 
 # Try to import AzureOpenAIEmbeddingSkill - fallback to WebApiSkill if not available
@@ -60,22 +60,24 @@ class AzureIndexerManager:
         self, 
         name: str, 
         container_name: str, 
-        query: Optional[str] = None
-        # Removed soft delete parameters - using hard delete only
-        # enable_soft_delete: bool = False,  
-        # soft_delete_column: str = "isDeleted",
-        # soft_delete_marker: str = "true"
+        query: Optional[str] = None,
+        enable_soft_delete: bool = True,  # Re-enabled for proper deletion tracking
+        soft_delete_column: str = "is_active",
+        soft_delete_marker: str = "false"
     ) -> SearchIndexerDataSourceConnection:
         """
-        Create a Cosmos DB data source for Azure AI Search indexer.
+        Create a Cosmos DB data source for Azure AI Search indexer with proper deletion tracking.
         
         Args:
             name: Name of the data source
             container_name: Cosmos DB container name
             query: Optional SQL query to filter documents
+            enable_soft_delete: Enable soft delete detection policy (enabled by default)
+            soft_delete_column: Column name that indicates deletion status
+            soft_delete_marker: Value that marks a document as deleted
             
         Returns:
-            Created data source connection using hard delete only - documents removed from Cosmos DB are automatically removed from index
+            Created data source connection with both change detection and deletion detection policies
         """
         # Construct Cosmos DB connection string
         cosmos_connection_string = (
@@ -90,31 +92,38 @@ class AzureIndexerManager:
             query=query
         )
         
-        # Hard delete only - no deletion detection policy needed
-        # Documents removed from Cosmos DB will be automatically removed from the search index
+        # Configure change detection policy for incremental indexing using _ts timestamp
+        change_detection_policy = HighWaterMarkChangeDetectionPolicy(
+            high_water_mark_column_name="_ts"
+        )
         
-        # Create data source with hard delete support
+        # Configure deletion detection policy if enabled
+        deletion_policy = None
+        if enable_soft_delete:
+            deletion_policy = SoftDeleteColumnDeletionDetectionPolicy(
+                soft_delete_column_name=soft_delete_column,
+                soft_delete_marker_value=soft_delete_marker
+            )
+        
+        # Create data source with both change detection and deletion detection policies
         data_source = SearchIndexerDataSourceConnection(
             name=name,
             type="cosmosdb",
             connection_string=cosmos_connection_string,
             container=container,
-            data_deletion_detection_policy=None,  # Hard delete: None policy means documents deleted from Cosmos DB are removed from index
-            description=f"Cosmos DB data source for {container_name} container with hard delete support"
+            data_change_detection_policy=change_detection_policy,
+            data_deletion_detection_policy=deletion_policy,
+            description=f"Cosmos DB data source for {container_name} container with change and deletion tracking"
         )
         
         return data_source
     
-    def create_articles_indexer(self, enable_cache: bool = False, storage_connection_string: Optional[str] = None) -> SearchIndexer:
+    def create_articles_indexer(self) -> SearchIndexer:
         """
-        Create an indexer for articles with field mappings, automatic scheduling, and optional caching.
+        Create an indexer for articles with field mappings and automatic scheduling.
         
-        Args:
-            enable_cache: Enable incremental enrichment caching
-            storage_connection_string: Azure Storage connection string for cache
-            
         Returns:
-            Configured articles indexer with optional caching
+            Configured articles indexer
         """
         # Field mappings from Cosmos DB to search index
         field_mappings = [
@@ -164,14 +173,6 @@ class AzureIndexerManager:
         # Schedule for automatic runs (every 5 minutes)
         schedule = IndexingSchedule(interval="PT5M")  # ISO 8601 duration format
         
-        # Configure cache if enabled and embeddings are active
-        cache = None
-        if enable_cache and SETTINGS.enable_embeddings and storage_connection_string:
-            cache = SearchIndexerCache(
-                storage_connection_string=storage_connection_string,
-                enable_reprocessing=True
-            )
-        
         # Create indexer with skillset if embeddings enabled
         if SETTINGS.enable_embeddings:
             indexer = SearchIndexer(
@@ -183,7 +184,6 @@ class AzureIndexerManager:
                 output_field_mappings=output_field_mappings,
                 parameters=parameters,
                 schedule=schedule,
-                cache=cache,
                 description="Automatic indexer for articles from Cosmos DB with deletion tracking"
             )
         else:
@@ -194,22 +194,17 @@ class AzureIndexerManager:
                 field_mappings=field_mappings,
                 parameters=parameters,
                 schedule=schedule,
-                cache=cache,
                 description="Automatic indexer for articles from Cosmos DB with deletion tracking"
             )
         
         return indexer
     
-    def create_authors_indexer(self, enable_cache: bool = False, storage_connection_string: Optional[str] = None) -> SearchIndexer:
+    def create_authors_indexer(self) -> SearchIndexer:
         """
-        Create an indexer for authors with field mappings, automatic scheduling, and optional caching.
+        Create an indexer for authors with field mappings and automatic scheduling.
         
-        Args:
-            enable_cache: Enable incremental enrichment caching
-            storage_connection_string: Azure Storage connection string for cache
-            
         Returns:
-            Configured authors indexer with optional caching
+            Configured authors indexer
         """
         # Field mappings from Cosmos DB to search index
         field_mappings = [
@@ -243,26 +238,17 @@ class AzureIndexerManager:
         # Schedule for automatic runs (every 5 minutes)
         schedule = IndexingSchedule(interval="PT5M")
         
-        # Configure cache if enabled and embeddings are active
-        cache = None
-        if enable_cache and SETTINGS.enable_embeddings and storage_connection_string:
-            cache = SearchIndexerCache(
-                storage_connection_string=storage_connection_string,
-                enable_reprocessing=True
-            )
-        
         # Create indexer with skillset if embeddings enabled
         if SETTINGS.enable_embeddings:
             indexer = SearchIndexer(
                 name="authors-indexer",
                 data_source_name="authors-datasource",
                 target_index_name="authors-index",
-                skillset_name="authors-skillset",
+                # skillset_name="authors-skillset",
                 field_mappings=field_mappings,
                 output_field_mappings=output_field_mappings,
                 parameters=parameters,
                 schedule=schedule,
-                cache=cache,
                 description="Automatic indexer for authors from Cosmos DB with deletion tracking"
             )
         else:
@@ -273,7 +259,6 @@ class AzureIndexerManager:
                 field_mappings=field_mappings,
                 parameters=parameters,
                 schedule=schedule,
-                cache=cache,
                 description="Automatic indexer for authors from Cosmos DB with deletion tracking"
             )
         
@@ -327,10 +312,11 @@ class AzureIndexerManager:
                         OutputFieldMappingEntry(name="embedding", target_name="content_vector")
                     ],
                     http_headers={
-                        "Authorization": f"Bearer {SETTINGS.azure_openai_key}" if SETTINGS.azure_openai_key else None
+                        "api-key": SETTINGS.azure_openai_key if SETTINGS.azure_openai_key else None
                     }
                 )
                 skills.append(embedding_skill)
+        
         # For now, use simple skillset without index projections
         # Index projections require specific index schema with parent_id field
         skillset = SearchIndexerSkillset(
@@ -389,7 +375,7 @@ class AzureIndexerManager:
                         OutputFieldMappingEntry(name="embedding", target_name="name_vector")
                     ],
                     http_headers={
-                        "Authorization": f"Bearer {SETTINGS.azure_openai_key}" if SETTINGS.azure_openai_key else None
+                        "api-key": SETTINGS.azure_openai_key if SETTINGS.azure_openai_key else None
                     }
                 )
                 skills.append(embedding_skill)
@@ -406,9 +392,7 @@ class AzureIndexerManager:
     def setup_indexers(
         self, 
         reset: bool = False, 
-        verbose: bool = False,
-        enable_cache: Optional[bool] = None,
-        storage_connection_string: Optional[str] = None
+        verbose: bool = False
     ) -> None:
         """
         Set up all indexers, data sources, and skillsets for automatic sync.
@@ -416,14 +400,7 @@ class AzureIndexerManager:
         Args:
             reset: Whether to delete existing resources before creating new ones
             verbose: Enable verbose logging
-            enable_cache: Enable incremental enrichment caching
-            storage_connection_string: Azure Storage connection string for cache
         """
-        # Use settings from config if not provided
-        if enable_cache is None:
-            enable_cache = SETTINGS.enable_indexer_cache
-        if storage_connection_string is None:
-            storage_connection_string = SETTINGS.azure_storage_connection_string
             
         if verbose:
             print("🔧 Setting up Azure AI Search indexers for automatic Cosmos DB sync...")
@@ -438,20 +415,27 @@ class AzureIndexerManager:
                 print("📊 Creating/updating Cosmos DB data sources...")
             
             # Now handles:
-            # - added docs (via _ts high water mark)
-            # - updated docs (via _ts high water mark) 
-            # - deleted docs (hard delete - documents removed from Cosmos DB will be automatically removed from index)
-            # Note: Using hard delete only for simplicity and reliability
+            # - added docs (via _ts high water mark change detection)
+            # - updated docs (via _ts high water mark change detection) 
+            # - deleted docs (via is_active soft delete detection policy)
+            # Note: Soft delete re-enabled as per Microsoft documentation - this is the only supported way
+            # Filter out records with empty content to avoid skillset warnings
             articles_ds = self.create_cosmos_data_source(
                 "articles-datasource", 
                 SETTINGS.cosmos_articles,
-                "SELECT * FROM c WHERE c._ts >= @HighWaterMark ORDER BY c._ts"
+                "SELECT * FROM c WHERE c._ts >= @HighWaterMark ORDER BY c._ts",
+                enable_soft_delete=True,
+                soft_delete_column="is_active",
+                soft_delete_marker="false"
             )
             
             authors_ds = self.create_cosmos_data_source(
                 "authors-datasource", 
                 SETTINGS.cosmos_users,
-                "SELECT * FROM c WHERE c._ts >= @HighWaterMark ORDER BY c._ts"
+                "SELECT * FROM c WHERE c._ts >= @HighWaterMark ORDER BY c._ts",
+                enable_soft_delete=True,
+                soft_delete_column="is_active", 
+                soft_delete_marker="false"
             )
             
             self._create_or_update_data_source(articles_ds, verbose)
@@ -466,10 +450,10 @@ class AzureIndexerManager:
                     print("🧠 Creating/updating skillsets for content processing...")
                 
                 articles_skillset = self.create_articles_skillset()
-                authors_skillset = self.create_authors_skillset()
+                # authors_skillset = self.create_authors_skillset()
                 
                 self._create_or_update_skillset(articles_skillset, verbose)
-                self._create_or_update_skillset(authors_skillset, verbose)
+                # self._create_or_update_skillset(authors_skillset, verbose)
                 
                 if verbose:
                     print("✅ Skillsets configured successfully")
@@ -481,8 +465,8 @@ class AzureIndexerManager:
             if verbose:
                 print("⚙️ Creating/updating indexers...")
             
-            articles_indexer = self.create_articles_indexer(enable_cache, storage_connection_string)
-            authors_indexer = self.create_authors_indexer(enable_cache, storage_connection_string)
+            articles_indexer = self.create_articles_indexer()
+            authors_indexer = self.create_authors_indexer()
             
             self._create_or_update_indexer(articles_indexer, verbose)
             self._create_or_update_indexer(authors_indexer, verbose)
@@ -851,48 +835,10 @@ class AzureIndexerManager:
         
         return cache_statuses
     
-    # def check_cosmos_soft_delete_setup(self, verbose: bool = False) -> Dict[str, Any]:
-    #     """
-    #     DEPRECATED: Check if Cosmos DB containers have the required soft delete field setup.
-    #     
-    #     This function is no longer used as we've switched to hard delete only.
-    #     Documents are permanently deleted from both Cosmos DB and the search index.
-    #     
-    #     Args:
-    #         verbose: Enable verbose output
-    #         
-    #     Returns:
-    #         Status of soft delete setup requirements
-    #     """
-    #     setup_status = {
-    #         "deprecated": True,
-    #         "message": "Soft delete functionality has been removed. Using hard delete only.",
-    #         "recommendations": [
-    #             "�️ Documents are permanently deleted from both Cosmos DB and search index",
-    #             "⚡ No need for 'isDeleted' fields in your documents",
-    #             "� Simply delete documents from Cosmos DB - they will be automatically removed from search index"
-    #         ]
-    #     }
-    #     
-    #     if verbose:
-    #         print("\n🔍 Deletion Method: Hard Delete Only")
-    #         print("\n📋 Current Behavior:")
-    #         for rec in setup_status["recommendations"]:
-    #             print(f"   {rec}")
-    #         
-    #         print("\n⚠️ Important Notes:")
-    #         print("   • Documents deleted from Cosmos DB are automatically removed from search index")
-    #         print("   • No soft delete fields (isDeleted) are needed")
-    #         print("   • This provides simpler and more reliable deletion behavior")
-    #     
-    #     return setup_status
-
 
 def setup_azure_indexers(
     reset: bool = False, 
-    verbose: bool = False, 
-    enable_cache: Optional[bool] = None,
-    storage_connection_string: Optional[str] = None
+    verbose: bool = False
 ) -> None:
     """
     Main function to set up Azure AI Search indexers for automatic Cosmos DB sync.
@@ -900,16 +846,9 @@ def setup_azure_indexers(
     Args:
         reset: Whether to reset existing indexers
         verbose: Enable verbose logging
-        enable_cache: Enable incremental enrichment caching (uses SETTINGS if None)
-        storage_connection_string: Azure Storage connection string for cache (uses SETTINGS if None)
     """
-    # Use settings from config if not provided
-    if enable_cache is None:
-        enable_cache = SETTINGS.enable_indexer_cache
-    if storage_connection_string is None:
-        storage_connection_string = SETTINGS.azure_storage_connection_string
     manager = AzureIndexerManager()
-    manager.setup_indexers(reset=reset, verbose=verbose, enable_cache=enable_cache, storage_connection_string=storage_connection_string)
+    manager.setup_indexers(reset=reset, verbose=verbose)
 
 
 def check_indexer_status(verbose: bool = False) -> List[Dict[str, Any]]:
@@ -977,31 +916,6 @@ def view_cache_containers(storage_account_name: str, verbose: bool = False) -> N
     print(f"   ")
     print(f"   # List only cache containers")
     print(f"   az storage container list --account-name {storage_account_name} --query \"[?starts_with(name, 'ms-az-search-indexercache-')]\"")
-
-
-# def check_soft_delete_setup(verbose: bool = False) -> Dict[str, Any]:
-#     """
-#     DEPRECATED: Check the soft delete setup requirements for Cosmos DB.
-#     
-#     This function is no longer used as we've switched to hard delete only.
-#     Documents are permanently deleted from both Cosmos DB and the search index.
-#     
-#     Args:
-#         verbose: Enable verbose output
-#         
-#     Returns:
-#         Deprecation notice and current deletion behavior
-#     """
-#     return {
-#         "deprecated": True,
-#         "message": "Soft delete functionality has been removed. Using hard delete only.",
-#         "current_behavior": "Documents deleted from Cosmos DB are automatically removed from search index",
-#         "recommendations": [
-#             "🗑️ Simply delete documents from Cosmos DB - they will be automatically removed from search index",
-#             "⚡ No need for 'isDeleted' fields in your documents",
-#             "📝 This provides simpler and more reliable deletion behavior"
-#         ]
-#     }
 
 
 def get_cache_containers_info(storage_account_name: str) -> Dict[str, Any]:

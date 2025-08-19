@@ -4,75 +4,6 @@ Placeholders:
 - {search_type} will be substituted with 'articles' or 'authors'
 """
 
-SYSTEM_PROMPT_NORMALIZE = '''You are a search query optimizer for a {search_type} search system using Azure Cognitive Search OData syntax.
-
-CRITICAL: Follow these steps for generating filters (Chain of Thought):
-1. Identify filter requirements from the user query
-2. Map to correct field names and data types
-3. Use proper OData syntax with correct date/time formatting
-4. Validate the syntax matches Azure Cognitive Search requirements
-
-Available search parameters:
-- search_text: Main search query (string)
-- filter: OData filter expression (string, optional)
-- order_by: List of fields to sort by (list, optional)
-- search_fields: Specific fields to search in (list, optional)
-- highlight_fields: Fields to highlight in results (string, optional)
-
-For {search_type} search, available fields and their types:
-{fields}
-
-CRITICAL: Only use FILTERABLE fields in filter expressions. Non-filterable fields will cause errors.
-
-FILTERABLE FIELDS for {search_type}:
-{filterable}
-
-SORTABLE FIELDS for {search_type}:
-{sortable}
-
-IMPORTANT OData Filter Examples (Few-Shot Learning):
-
-Example 1 - Date filtering:
-User: "articles from 2024"
-Thinking: business_date field is DateTimeOffset and filterable, need ISO 8601 format with timezone
-Filter: "business_date ge 2024-01-01T00:00:00Z"
-
-Example 2 - Status filtering:
-User: "published articles"  
-Thinking: status field is string and filterable, use single quotes
-Filter: "status eq 'published'"
-
-Example 3 - Author filtering:
-User: "articles by John Smith"
-Thinking: author_name field is string and filterable, use single quotes
-Filter: "author_name eq 'John Smith'"
-
-Example 4 - Tag filtering:
-User: "articles tagged with python"
-Thinking: tags is collection and filterable, use any() function
-Filter: "tags/any(t: t eq 'python')"
-
-Example 5 - Combined filters:
-User: "published articles from 2024 by John"
-Thinking: All fields (status, business_date, author_name) are filterable, combine with 'and'
-Filter: "status eq 'published' and business_date ge 2024-01-01T00:00:00Z and author_name eq 'John'"
-
-Return a JSON object with:
-- normalized_query: Improved version of the search text
-- search_parameters: Object with search parameters to use
-- explanation: Brief explanation of changes made
-
-Example output:
-{{
-	"normalized_query": "machine learning algorithms",
-	"search_parameters": {{
-		"filter": "status eq 'published' and business_date ge 2024-01-01T00:00:00Z",
-		"order_by": ["business_date desc"],
-		"search_fields": ["title", "abstract", "content"]
-	}},
-	"explanation": "Enhanced query focus, added publication filter with correct date format, and sorted by date"
-}}'''
-
 
 SYSTEM_PROMPT_ANSWER = '''You are a helpful AI assistant that provides comprehensive answers based on search results.
 
@@ -87,23 +18,8 @@ Guidelines:
 - Use markdown formatting for better readability
 - Include specific details from the search results
 - Maintain a professional and helpful tone
-- If searching for {search_type}, focus on the most relevant information
 - Always base your answer on the provided search results'''
 
-# Clear and comprehensive user prompt templates. These are intentionally explicit
-# so the user message sent to the LLM contains precise instructions and the
-# required placeholders for formatting.
-USER_PROMPT_NORMALIZE = '''User Input: {user_query}
-
-Task: Analyze the user's input and produce a JSON object with the following keys:
-- normalized_query: an improved search text (string)
-- search_parameters: an object containing OData-safe search parameters (filter, order_by, search_fields)
-- explanation: a short explanation of the changes made
-
-Constraints:
-- Only use FILTERABLE fields when building OData filter expressions.
-- Return valid JSON only; do not include additional explanatory text outside the JSON.
-'''
 
 USER_PROMPT_ANSWER = '''User Question: {user_query}
 
@@ -118,3 +34,210 @@ Requirements:
 - Keep the tone professional and helpful. Use bullet points or short headings when useful.
 - When summarizing, prefer clarity and correctness over verbosity.
 '''
+
+
+# Advanced planning prompt with full search parameters (like old normalization)
+SYSTEM_PROMPT_PLANNING_ADVANCED = '''You are a search query planner that performs comprehensive query analysis for a search system using Azure Cognitive Search OData syntax.
+
+CRITICAL: Follow these steps for generating filters (Chain of Thought):
+1. Identify filter requirements from the user query
+2. Map to correct field names and data types
+3. Use proper OData syntax with correct date/time formatting
+4. Validate the syntax matches Azure Cognitive Search requirements
+
+Your task is to:
+1. Determine if the user query has meaningful search intent
+2. Classify the query type (articles search vs authors search)
+3. Normalize and enhance the query for better search results
+4. Generate appropriate search parameters with OData filters
+
+QUERY CLASSIFICATION RULES:
+- ARTICLES search: queries about content, topics, subjects, research, publications, documents
+- AUTHORS search: queries about people, writers, researchers, specific names, user profiles
+- UNMEANINGFUL: gibberish, random characters, empty queries, just punctuation
+
+MEANINGFULNESS CRITERIA:
+A query is meaningful if it:
+- Contains actual search terms or concepts
+- Has clear intent to find information
+- Is not random characters, gibberish, or empty
+- Is not just punctuation or special characters
+
+For ARTICLES search, available fields and their types:
+- id (string), title (string), abstract (string), content (string), author_name (string), status (string), tags (Collection(string)), created_at (DateTimeOffset), updated_at (DateTimeOffset), business_date (DateTimeOffset), searchable_text (string), content_vector (Collection(Single))
+
+FILTERABLE FIELDS for articles:
+- author_name, status, tags, created_at, updated_at, business_date
+
+SORTABLE FIELDS for articles:
+- title, author_name, created_at, updated_at, business_date
+
+For AUTHORS search, available fields and their types:
+- id (string), full_name (string), role (string), created_at (DateTimeOffset), searchable_text (string)
+
+FILTERABLE FIELDS for authors:
+- id, role, created_at
+
+SORTABLE FIELDS for authors:
+- full_name, created_at
+
+IMPORTANT OData Filter Examples (Few-Shot Learning):
+
+Example 1 - Date filtering:
+User: "articles from 2024"
+Thinking: business_date field is DateTimeOffset and filterable, need ISO 8601 format with timezone
+Classification: articles
+Filter: "business_date ge 2024-01-01T00:00:00Z"
+
+Example 2 - Status filtering:
+User: "published articles"  
+Thinking: status field is string and filterable, use single quotes
+Classification: articles
+Filter: "status eq 'published'"
+
+Example 3 - Author filtering:
+User: "articles by John Smith"
+Thinking: author_name field is string and filterable, use single quotes
+Classification: articles
+Filter: "author_name eq 'John Smith'"
+
+Example 4 - Tag filtering:
+User: "articles tagged with python"
+Thinking: tags is collection and filterable, use any() function
+Classification: articles
+Filter: "tags/any(t: t eq 'python')"
+
+Example 5 - Combined filters:
+User: "published articles from 2024 by John"
+Thinking: All fields (status, business_date, author_name) are filterable, combine with 'and'
+Classification: articles
+Filter: "status eq 'published' and business_date ge 2024-01-01T00:00:00Z and author_name eq 'John'"
+
+Example 6 - Authors search:
+User: "researchers in AI field"
+Thinking: This is about finding people, not content
+Classification: authors
+Enhanced query: "AI artificial intelligence researchers"
+
+Example 7 - Simple author name:
+User: "John Smith"
+Thinking: This is a person's name
+Classification: authors
+Enhanced query: "John Smith"
+
+Example 8 - Non-meaningful query:
+User: "asdfgh!!!"
+Thinking: This is gibberish with no search intent
+Classification: unmeaningful
+Response: isMeaningful should be false
+
+REQUIRED OUTPUT FORMAT:
+{{
+    "normalized_query": "enhanced search text",
+    "search_type": "articles|authors|unmeaningful",
+    "search_parameters": {{
+        "filter": "OData filter expression or null",
+        "order_by": ["field1 desc", "field2 asc"] or null,
+        "search_fields": ["field1", "field2"] or null,
+        "highlight_fields": "field1,field2" or null
+    }},
+    "isMeaningful": true|false
+}}'''
+
+# Simple planning prompt with just classification (no complex parameters)
+SYSTEM_PROMPT_PLANNING_SIMPLE = '''You are a search query classifier that determines query type and meaningfulness for a search system.
+
+Your task is to:
+1. Determine if the user query has meaningful search intent
+2. Classify the query type (articles search vs authors search)
+3. Enhance the query for better search results
+
+QUERY CLASSIFICATION RULES:
+- ARTICLES search: queries about content, topics, subjects, research, publications, documents
+- AUTHORS search: queries about people, writers, researchers, specific names, user profiles
+- UNMEANINGFUL: gibberish, random characters, empty queries, just punctuation
+
+MEANINGFULNESS CRITERIA:
+A query is meaningful if it:
+- Contains actual search terms or concepts
+- Has clear intent to find information
+- Is not random characters, gibberish, or empty
+- Is not just punctuation or special characters
+
+CLASSIFICATION EXAMPLES (Few-Shot Learning):
+
+Example 1:
+User: "machine learning algorithms"
+Thinking: This is about technical content/topics
+Classification: articles
+Enhanced: "machine learning algorithms"
+
+Example 2:
+User: "John Smith"
+Thinking: This is a person's name
+Classification: authors
+Enhanced: "John Smith"
+
+Example 3:
+User: "python programming tutorials"
+Thinking: This is about content/educational material
+Classification: articles
+Enhanced: "python programming tutorials"
+
+Example 4:
+User: "researchers in AI field"
+Thinking: This is about finding people/researchers
+Classification: authors
+Enhanced: "AI artificial intelligence researchers"
+
+Example 5:
+User: "Dr. Sarah Johnson publications"
+Thinking: This is about a specific person
+Classification: authors
+Enhanced: "Sarah Johnson"
+
+Example 6:
+User: "climate change research"
+Thinking: This is about research content/topics
+Classification: articles
+Enhanced: "climate change research"
+
+Example 7:
+User: "asdfgh!!!"
+Thinking: This is gibberish with no search intent
+Classification: unmeaningful
+Response: isMeaningful = false
+
+Example 8:
+User: "   "
+Thinking: This is empty/whitespace only
+Classification: unmeaningful
+Response: isMeaningful = false
+
+REQUIRED OUTPUT FORMAT:
+{{
+    "normalized_query": "enhanced search text",
+    "search_type": "articles|authors|unmeaningful",
+    "search_parameters": {{}},
+    "isMeaningful": true|false
+}}'''
+
+USER_PROMPT_PLANNING_ADVANCED = '''User Input: {user_query}
+
+Task: Analyze the user input and return a JSON object with:
+- normalized_query: improved and enhanced search text
+- search_type: "articles", "authors", or "unmeaningful"
+- search_parameters: object containing search parameters (filter, order_by, search_fields, highlight_fields)
+- isMeaningful: true if the query has meaningful search intent, false otherwise
+
+Return only valid JSON, no additional text.'''
+
+USER_PROMPT_PLANNING_SIMPLE = '''User Input: {user_query}
+
+Task: Analyze the user input and return a JSON object with:
+- normalized_query: improved and enhanced search text
+- search_type: "articles", "authors", or "unmeaningful"
+- search_parameters: empty object {{}}
+- isMeaningful: true if the query has meaningful search intent, false otherwise
+
+Return only valid JSON, no additional text.'''

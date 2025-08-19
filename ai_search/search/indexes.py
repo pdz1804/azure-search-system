@@ -79,7 +79,7 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
     # Optimized schema based on actual data structure and search requirements
     article_fields = [
         # Primary key
-        SimpleField(name="id", type=SearchFieldDataType.String, key=True),
+        SimpleField(name="id", type=SearchFieldDataType.String, key=True, filterable=True),
         
         # Core searchable content fields
         SearchableField(name="title", type=SearchFieldDataType.String, analyzer_name="en.lucene", sortable=True),
@@ -144,7 +144,7 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
     # Optimized schema for author/user search based on actual data structure
     author_fields = [
         # Primary key
-        SimpleField(name="id", type=SearchFieldDataType.String, key=True),
+        SimpleField(name="id", type=SearchFieldDataType.String, key=True, filterable=True),
         
         # Core searchable fields
         SearchableField(name="full_name", type=SearchFieldDataType.String, analyzer_name="en.lucene", sortable=True),
@@ -156,14 +156,14 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
         # Consolidated searchable text
         SearchableField(name="searchable_text", type=SearchFieldDataType.String, analyzer_name="en.lucene"),
         
-        # Vector field for semantic search
-        SearchField(
-            name="name_vector",
-            type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
-            searchable=True,
-            vector_search_dimensions=dim,
-            vector_search_profile_name="vs-default",
-        ),
+        # Vector field for semantic search - COMMENTED OUT for keyword-only search
+        # SearchField(
+        #     name="name_vector",
+        #     type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
+        #     searchable=True,
+        #     vector_search_dimensions=dim,
+        #     vector_search_profile_name="vs-default",
+        # ),
     ]
 
     authors_semantic = SemanticConfiguration(

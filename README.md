@@ -33,17 +33,17 @@ FastAPI + CLI
 This project wires your existing **Cosmos DB (blogs)** into **Azure AI Search** and exposes a **FastAPI** layer that performs **hybrid search** over articles and authors with an **explicit, weighted score fusion**:
 
 - **Articles**: `final = 0.5 * semantic + 0.3 * BM25 + 0.1 * vector + 0.1 * business`
-- **Authors** (default): `final = 0.6 * semantic + 0.4 * BM25` 
+- **Authors** (default): `final = 0.6 * semantic + 0.4 * BM25`
 
 Semantic ≠ Vector in Azure AI Search:
 
 - **Semantic search** = Azure **semantic ranker** that re-ranks text results (for example those retrieved by BM25), returning `@search.rerankerScore`. You don’t store vectors for this.
 - **Vector search** = KNN over your **embedding field** (HNSW), returning a similarity `@search.score` for the vector query.
 
-But because when using the free tier version on Azure, so we cannot use the semantic search: 
+But because when using the free tier version on Azure, so we cannot use the semantic search:
 
 - **Articles**: `final = 0.3 * BM25 + 0.6 * vector + 0.1 * business`
-- **Authors** (default): `final = 0.6 * vector + 0.4 * BM25` 
+- **Authors** (default): `final = BM25`
 
 ---
 
@@ -165,8 +165,8 @@ python main.py check-indexers --verbose
 # Check cache status (if enabled)
 python -c "from search.azure_indexers import check_cache_status; check_cache_status(verbose=True)"
 
-# Note: Soft delete functionality has been removed - using hard delete only
-# Documents deleted from Cosmos DB are automatically removed from search index
+# Check soft delete setup guidance
+python -c "from search.azure_indexers import check_soft_delete_setup; check_soft_delete_setup(verbose=True)"
 ```
 
 ### 📥 Manual Data Ingestion (Legacy)
@@ -277,6 +277,7 @@ ENABLE_EMBEDDINGS=true
 ### Articles Index (`articles-index`)
 
 **Core Fields:**
+
 - `id` (String, key): Primary identifier
 - `title` (Searchable String): Article title with `en.lucene` analyzer
 - `abstract` (Searchable String): Article summary
@@ -286,11 +287,13 @@ ENABLE_EMBEDDINGS=true
 - `content_vector` (Vector): Embedding for semantic similarity
 
 **Metadata Fields:**
+
 - `status` (String): Publication status (filterable, facetable)
 - `tags` (Collection[String]): Article tags (filterable, facetable)
 - `created_at`, `updated_at`, `business_date` (DateTimeOffset): Temporal fields
 
 **Search Configurations:**
+
 - **Semantic**: `articles-semantic` (title=title, content=abstract+content, keywords=tags)
 - **Vector**: HNSW algorithm with cosine similarity
 - **Scoring Profile**: Freshness boost based on `business_date`
@@ -298,16 +301,19 @@ ENABLE_EMBEDDINGS=true
 ### Authors Index (`authors-index`)
 
 **Core Fields:**
+
 - `id` (String, key): Primary identifier
 - `full_name` (Searchable String): Author's full name
 - `searchable_text` (Searchable String): Consolidated searchable text
 - `name_vector` (Vector): Name embedding for semantic similarity
 
 **Metadata Fields:**
+
 - `role` (String): User role (filterable, facetable)
 - `created_at` (DateTimeOffset): Account creation date
 
 **Search Configurations:**
+
 - **Semantic**: `authors-semantic` (title=full_name, content=searchable_text)
 - **Vector**: HNSW algorithm with cosine similarity
 
@@ -326,6 +332,7 @@ python -c "from search.ingestion import ingest; ingest()"
 ```
 
 **Process:**
+
 1. Read items from Cosmos DB containers (`articles` and `users`)
 2. For each article: build `searchable_text`, compute `business_date`, generate embeddings
 3. For each user: create `searchable_text` from `full_name`, generate name embeddings
@@ -342,6 +349,7 @@ python main.py check-indexers --verbose
 ```
 
 **Features:**
+
 - **High-water mark change detection** using Cosmos DB `_ts` field
 - **Automatic scheduling** (runs every 5 minutes)
 - **Skillsets** for computed fields (searchable_text, business_date, embeddings)
@@ -369,12 +377,14 @@ GET /search/articles?q={query}&k={limit}&page_index={index}&page_size={size}
 ```
 
 **Parameters:**
+
 - `q` (required): Search query text
 - `k` (optional, default=10): Number of results to return
 - `page_index` (optional): Zero-based page index for pagination
 - `page_size` (optional): Number of results per page
 
 **Response Format:**
+
 ```json
 {
   "articles": [
@@ -417,6 +427,7 @@ GET /search/authors?q={query}&k={limit}&page_index={index}&page_size={size}
 **Parameters:** Same as article search
 
 **Response Format:**
+
 ```json
 {
   "authors": [

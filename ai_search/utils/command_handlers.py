@@ -55,7 +55,7 @@ def handle_setup_indexers(args: Any) -> None:
         args: Parsed command line arguments containing reset and verbose flags
     """
     print("⚙️ Setting up Azure AI Search indexers...")
-    from ai_search.search.azure_indexers import setup_azure_indexers
+    from ai_search.search.indexers import setup_azure_indexers
     
     reset = getattr(args, 'reset', False)
     verbose = getattr(args, 'verbose', False)
@@ -72,7 +72,7 @@ def handle_check_indexers(args: Any) -> None:
         args: Parsed command line arguments containing verbose flag
     """
     print("📊 Checking Azure AI Search indexers status...")
-    from ai_search.search.azure_indexers import check_indexer_status
+    from ai_search.search.indexers import check_indexer_status
     
     verbose = getattr(args, 'verbose', False)
     statuses = check_indexer_status(verbose=verbose)
@@ -224,7 +224,7 @@ def _check_indexers_health(health_status: dict, verbose: bool) -> dict:
     """
     try:
         print("\n⚙️ Checking indexers...")
-        from ai_search.search.azure_indexers import check_indexer_status
+        from ai_search.search.indexers import check_indexer_status
         
         indexer_statuses = check_indexer_status(verbose=False)
         healthy_indexers = 0
@@ -273,7 +273,7 @@ def _check_cache_health(health_status: dict, verbose: bool) -> dict:
     """
     try:
         print("\n🗂️ Checking cache configuration...")
-        from ai_search.search.azure_indexers import check_cache_status
+        from ai_search.search.indexers import check_cache_status
         from ai_search.config.settings import SETTINGS
         
         cache_statuses = check_cache_status(verbose=False)
@@ -294,30 +294,6 @@ def _check_cache_health(health_status: dict, verbose: bool) -> dict:
                     health_status['cache']['details'].append(f"⚠️ {indexer_name}: cache enabled but storage not configured")
             else:
                 health_status['cache']['details'].append(f"ℹ️ {indexer_name}: cache disabled")
-        
-        # Add configuration status
-        if SETTINGS.enable_indexer_cache:
-            if SETTINGS.azure_storage_connection_string:
-                health_status['cache']['details'].append(f"✅ Global cache setting: enabled with storage configured")
-            else:
-                health_status['cache']['details'].append(f"⚠️ Global cache setting: enabled but no storage connection string")
-        else:
-            health_status['cache']['details'].append(f"ℹ️ Global cache setting: disabled")
-        
-        # Determine cache health status
-        if SETTINGS.enable_indexer_cache:
-            if cache_configured_count == total_indexers and SETTINGS.azure_storage_connection_string:
-                health_status['cache']['status'] = 'healthy'
-                print(f"   ✅ Cache fully configured for all {total_indexers} indexers")
-            elif cache_enabled_count > 0:
-                health_status['cache']['status'] = 'partial'
-                print(f"   ⚠️ Cache partially configured: {cache_configured_count}/{total_indexers} indexers")
-            else:
-                health_status['cache']['status'] = 'unhealthy'
-                print(f"   ❌ Cache enabled in settings but not working on indexers")
-        else:
-            health_status['cache']['status'] = 'disabled'
-            print(f"   ℹ️ Cache disabled in configuration")
         
         if verbose:
             for detail in health_status['cache']['details']:
