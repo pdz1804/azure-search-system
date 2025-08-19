@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-dotenv
+azure-search-documents>=11.6.0b9
+azure-cosmos
+openai
+sentence-transformers
+torch
+numpy
