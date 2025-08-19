@@ -171,3 +171,9 @@ async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20)
 async def search_article_response(data: ResponseFromAI):
     return await search_response(data)
 
+@articles.get("/search/{keyword}")
+async def search_articles(keyword: str, page: int = 1, page_size: int = 20):
+    return "search"
+
+
+
