@@ -37,7 +37,7 @@ except ImportError:
 from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError, HttpResponseError
 
-from config.settings import SETTINGS
+from ai_search.config.settings import SETTINGS
 
 
 class AzureIndexerManager:
@@ -799,8 +799,11 @@ class AzureIndexerManager:
                         account_end = conn_str.find(";", account_start)
                         if account_end > account_start:
                             account_name = conn_str[account_start:account_end]
-                            cache_info["cache_details"]["storage_account"] = account_name
-                            cache_info["cache_details"]["expected_container_prefix"] = f"ms-az-search-indexercache-"
+                            # Rebuild cache_details dict to add extra keys (since it may be immutable)
+                            cache_details = dict(cache_info["cache_details"])
+                            cache_details["storage_account"] = account_name
+                            cache_details["expected_container_prefix"] = f"ms-az-search-indexercache-"
+                            cache_info["cache_details"] = cache_details
             
             return cache_info
             

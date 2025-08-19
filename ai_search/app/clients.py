@@ -5,7 +5,7 @@ Provides consistent client creation pattern for different index types.
 
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
-from config.settings import SETTINGS
+from ai_search.config.settings import SETTINGS
 
 def articles_client() -> SearchClient:
     """

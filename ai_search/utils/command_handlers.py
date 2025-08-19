@@ -20,7 +20,7 @@ def handle_create_indexes(args: Any) -> None:
         args: Parsed command line arguments containing reset and verbose flags
     """
     print("🏗️  Creating Azure AI Search indexes...")
-    from search.indexes import create_indexes
+    from ai_search.search.indexes import create_indexes
     
     reset = getattr(args, 'reset', True)
     verbose = getattr(args, 'verbose', False)
@@ -38,7 +38,7 @@ def handle_ingest(args: Any) -> None:
         args: Parsed command line arguments containing batch_size and verbose flags
     """
     print("📥 Starting data ingestion...")
-    from search.ingestion import ingest
+    from ai_search.search.ingestion import ingest
     
     batch_size = getattr(args, 'batch_size', 100)
     verbose = getattr(args, 'verbose', False)
@@ -55,7 +55,7 @@ def handle_setup_indexers(args: Any) -> None:
         args: Parsed command line arguments containing reset and verbose flags
     """
     print("⚙️ Setting up Azure AI Search indexers...")
-    from search.azure_indexers import setup_azure_indexers
+    from ai_search.search.azure_indexers import setup_azure_indexers
     
     reset = getattr(args, 'reset', False)
     verbose = getattr(args, 'verbose', False)
@@ -72,7 +72,7 @@ def handle_check_indexers(args: Any) -> None:
         args: Parsed command line arguments containing verbose flag
     """
     print("📊 Checking Azure AI Search indexers status...")
-    from search.azure_indexers import check_indexer_status
+    from ai_search.search.azure_indexers import check_indexer_status
     
     verbose = getattr(args, 'verbose', False)
     statuses = check_indexer_status(verbose=verbose)
@@ -177,7 +177,7 @@ def _check_indexes_health(health_status: dict, verbose: bool) -> dict:
         print("\n🔍 Checking search indexes...")
         from azure.search.documents.indexes import SearchIndexClient
         from azure.core.credentials import AzureKeyCredential
-        from config.settings import SETTINGS
+        from ai_search.config.settings import SETTINGS
         
         index_client = SearchIndexClient(SETTINGS.search_endpoint, AzureKeyCredential(SETTINGS.search_key))
         
@@ -224,7 +224,7 @@ def _check_indexers_health(health_status: dict, verbose: bool) -> dict:
     """
     try:
         print("\n⚙️ Checking indexers...")
-        from search.azure_indexers import check_indexer_status
+        from ai_search.search.azure_indexers import check_indexer_status
         
         indexer_statuses = check_indexer_status(verbose=False)
         healthy_indexers = 0
@@ -273,8 +273,8 @@ def _check_cache_health(health_status: dict, verbose: bool) -> dict:
     """
     try:
         print("\n🗂️ Checking cache configuration...")
-        from search.azure_indexers import check_cache_status
-        from config.settings import SETTINGS
+        from ai_search.search.azure_indexers import check_cache_status
+        from ai_search.config.settings import SETTINGS
         
         cache_statuses = check_cache_status(verbose=False)
         cache_enabled_count = 0
@@ -345,7 +345,7 @@ def _check_search_service_health(health_status: dict, verbose: bool) -> dict:
     try:
         print("\n🔍 Checking search service connectivity...")
         # Import here to avoid circular imports and lazy loading
-        from main import get_search_service
+        from ai_search.main import get_search_service
         
         search_svc = get_search_service()
         

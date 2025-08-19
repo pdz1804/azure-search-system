@@ -2,10 +2,9 @@ import os
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File
 from typing import Optional
-
-from numpy import imag
+from ai_search.app.clients import articles_client, authors_client
+from ai_search.app.services.search_service import SearchService
 from backend.services.azure_blob_service import upload_image
-from backend.model.request.response_ai import ResponseFromAI
 from backend.enum.roles import Role
 from backend.utils import get_current_user, require_owner_or_role, require_role
 from backend.services.article_service import (
@@ -20,6 +19,19 @@ BASE_URL = os.getenv("BASE_URL")
 
 articles = APIRouter(prefix="/api/articles", tags=["articles"])
 
+_search_service = None
+def get_search_service() -> SearchService:
+    """Get or create the search service instance (lazy initialization)."""
+    global _search_service
+    if _search_service is None:
+        print("📋 Setting up search service...")
+        try:
+            _search_service = SearchService(articles_client(), authors_client())
+            print("✅ Search service initialized successfully")
+        except Exception as e:
+            print(f"❌ Failed to initialize search service: {e}")
+            raise
+    return _search_service
 
 @articles.post("/")
 async def create(
@@ -167,13 +179,12 @@ async def remove(article_id: str, current_user: dict = Depends(get_current_user)
 async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20):
     return await get_articles_by_author(author_id, page, page_size)
 
-@articles.get("/search/search_response")
-async def search_article_response(data: ResponseFromAI):
-    return await search_response(data)
+# @articles.get("/search/search_response")
+# async def search_article_response(data: ResponseFromAI):
+#     return await search_response(data)
 
 @articles.get("/search/{keyword}")
-async def search_articles(keyword: str, page: int = 1, page_size: int = 20):
-    return "search"
-
-
-
+async def search_articles(keyword: str,k: int = 10 , page: int = 1, page_size: int = 20):
+    response = get_search_service().search_articles(keyword, k, page, page_size)
+    result = await search_response(response)
+    return result

@@ -16,10 +16,19 @@ async def insert_article(doc: dict):
     return doc["id"]
 
 
+
 async def get_article_by_id(article_id: str) -> Optional[dict]:
     articles = await get_articles()
+    
+    query = "SELECT * FROM c WHERE c.id = @id AND c.is_active = true"
+    parameters = [{"name": "@id", "value": article_id}]
+    
     try:
-        return await articles.read_item(item=article_id, partition_key=article_id)
+        results = [doc async for doc in articles.query_items(
+            query=query,
+            parameters=parameters
+        )]
+        return results[0] if results else None
     except Exception:
         return None
 
@@ -37,12 +46,14 @@ async def update_article(article_id: str, update_doc: dict) -> dict:
 
 async def delete_article(article_id: str):
     articles = await get_articles()
-    await articles.delete_item(item=article_id, partition_key=article_id)
+    doc = await articles.read_item(item=article_id, partition_key=article_id)
+    doc["is_active"] = False
+    await articles.replace_item(item=article_id, body=doc)
 
 
 async def list_articles(page: int = 1, page_size: int = 20) -> Dict:
     articles = await get_articles()
-    count_query = "SELECT VALUE COUNT(1) FROM c"
+    count_query = "SELECT VALUE COUNT(1) FROM c  WHERE c.is_active = true"
     count_result = [item async for item in articles.query_items(
         query=count_query
     )]
@@ -50,7 +61,7 @@ async def list_articles(page: int = 1, page_size: int = 20) -> Dict:
     total_pages = math.ceil(total_items / page_size) if total_items > 0 else 1
 
     skip = (page - 1) * page_size
-    data_query = f"SELECT * FROM c ORDER BY c.created_at DESC OFFSET {skip} LIMIT {page_size}"
+    data_query = f"SELECT * FROM c  WHERE c.is_active = true ORDER BY c.created_at DESC OFFSET {skip} LIMIT {page_size}"
 
     results = []
     async for doc in articles.query_items(
@@ -174,14 +185,20 @@ async def get_article_by_author(author_id: str, page: int = 1, page_size: int = 
     }
 
 
-async def search_response(data: response_ai) -> List[dict]:
-    articles = await get_articles()
+async def get_articles_by_ids(article_ids: List[str]):
+    articles_repo = await get_articles()  
 
-    query = "SELECT * FROM c WHERE CONTAINS(c.title, @searchTerm) OR CONTAINS(c.content, @searchTerm)"
-    parameters = [{"name": "@searchTerm", "value": data.searchTerm}]
+    if not article_ids:
+        return []
+
+    # Tạo parameters cho IN query
+    ids_placeholders = ", ".join([f"@id{i}" for i in range(len(article_ids))])
+    parameters = [{"name": f"@id{i}", "value": id_} for i, id_ in enumerate(article_ids)]
+
+    query = f"SELECT * FROM c WHERE c.id IN ({ids_placeholders}) AND c.is_active = true"
 
     results = []
-    async for doc in articles.query_items(query=query, parameters=parameters):
+    async for doc in articles_repo.query_items(query=query, parameters=parameters):
         results.append(doc)
 
     return results

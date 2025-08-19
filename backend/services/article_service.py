@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 from uuid import uuid4
 import uuid
 from backend.model.request.response_ai import ResponseFromAI
@@ -18,7 +18,8 @@ async def create_article(doc: dict) -> dict:
     now = datetime.utcnow().isoformat()
     doc["created_at"] = now
     doc["updated_at"] = now
-    doc["id"] = uuid.uuid4().hex  
+    doc["id"] = uuid.uuid4().hex
+    doc["is_active"] = True
     doc.setdefault("likes", 0)
     doc.setdefault("dislikes", 0)
     doc.setdefault("views", 0)
@@ -253,5 +254,6 @@ async def get_popular_articles(page: int = 1, page_size: int = 10) -> List[dict]
         print(f"❌ Error in get_popular_articles: {e}")
         return []
 
-async def search_response(data: ResponseFromAI) -> List[dict]:
-    return await article_repo.search_response(data)
+async def search_response(data: Dict) -> List[dict]:
+    article_ids = [article["id"] for article in data.get("results", [])]
+    return await article_repo.get_articles_by_ids(article_ids)

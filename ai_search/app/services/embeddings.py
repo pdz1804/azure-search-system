@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import List, Optional
 import os
 
-from config.settings import SETTINGS
+from ai_search.config.settings import SETTINGS
 
 # Conditional imports (lazy) to avoid heavy startup if not needed
 _openai = None

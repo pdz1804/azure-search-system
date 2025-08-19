@@ -23,10 +23,10 @@ from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizedQuery
 from azure.core.exceptions import HttpResponseError
 
-from config.settings import SETTINGS
-from .scoring import business_freshness, fuse_articles, fuse_authors
-from app.services.embeddings import encode
-from .llm_service import LLMService
+from ai_search.config.settings import SETTINGS
+from ai_search.app.services.scoring import business_freshness, fuse_articles, fuse_authors
+from ai_search.app.services.embeddings import encode 
+from ai_search.app.services.llm_service import LLMService
 
 class SearchService:
     def __init__(self, articles_sc: SearchClient, authors_sc: SearchClient):

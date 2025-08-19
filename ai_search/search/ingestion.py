@@ -8,9 +8,9 @@ from azure.cosmos import CosmosClient
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 
-from config.settings import SETTINGS
-from app.services.embeddings import encode
-from utils.timeparse import parse_sql_datetime
+from ai_search.config.settings import SETTINGS
+from ai_search.app.services.embeddings import encode
+from ai_search.utils.timeparse import parse_sql_datetime
 
 def _article_to_doc(a: Dict[str, Any]) -> Dict[str, Any]:
     """Transform a Cosmos DB article document to optimized Azure AI Search format."""

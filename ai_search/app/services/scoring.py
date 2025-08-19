@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Tuple
 from datetime import datetime, timezone
 import math
 
-from config.settings import SETTINGS
+from ai_search.config.settings import SETTINGS
 
 def _minmax(vs: List[float]) -> Tuple[float, float]:
     """Get min and max values from a list, handling edge cases."""

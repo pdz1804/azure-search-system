@@ -9,10 +9,14 @@ The service uses Azure OpenAI to intelligently process user queries and generate
 comprehensive answers based on retrieved search results.
 """
 
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+
 from typing import Dict, Any, Optional, List
 from openai import AzureOpenAI
-from config.settings import SETTINGS
-from config.prompts import (
+from ai_search.config.settings import SETTINGS
+from ai_search.config.prompts import (
     SYSTEM_PROMPT_NORMALIZE,
     SYSTEM_PROMPT_ANSWER,
     USER_PROMPT_NORMALIZE,

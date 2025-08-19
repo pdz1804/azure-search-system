@@ -14,8 +14,8 @@ from azure.search.documents.indexes.models import (
 )
 import traceback
 from azure.core.exceptions import HttpResponseError
-from config.settings import SETTINGS
-from app.services.embeddings import resolve_embedding_dim
+from ai_search.config.settings import SETTINGS
+from ai_search.app.services.embeddings import resolve_embedding_dim
 
 def _vector_search() -> VectorSearch:
     # Use the 'algorithms' kwarg (the SDK ignores 'algorithm_configurations') so the config is included
