@@ -3,9 +3,6 @@ from dotenv import load_dotenv
 from azure.cosmos import PartitionKey
 from azure.cosmos.aio import CosmosClient
 
-
-
-
 load_dotenv()
 
 ENDPOINT = os.getenv("ENDPOINT")
