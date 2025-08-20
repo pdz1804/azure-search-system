@@ -169,8 +169,12 @@ def _fuse_scores(rows: List[Dict[str, Any]], entity_type: str = "generic",
             else:
                 nbm = _norm(r.get("_bm25", 0.0), bm_rng)
 
-            nsem = _norm(r.get("_semantic", 0.0), sem_rng)
-            nvec = _norm(r.get("_vector", 0.0), vec_rng)
+            # nsem = _norm(r.get("_semantic", 0.0), sem_rng)
+            # nvec = _norm(r.get("_vector", 0.0), vec_rng)
+            
+            nsem = r.get("_semantic", 0.0)
+            nvec = r.get("_vector", 0.0)
+            
             b = r.get("_business", 0.0)
 
             r["_final"] = (

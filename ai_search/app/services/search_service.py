@@ -20,6 +20,8 @@ The service handles pagination, error recovery, and score fusion with configurab
 
 import json
 import asyncio
+import unicodedata
+import re
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Any, List, Optional, Tuple
 from difflib import SequenceMatcher
@@ -52,6 +54,59 @@ class SearchService:
             print("⚠️ Semantic search is not available")
         
         print("✅ SearchService initialized successfully")
+    
+    def _apply_score_threshold(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Apply score threshold filtering to search results.
+        
+        Args:
+            results: List of search results with _final scores
+            
+        Returns:
+            Filtered list of results above the score threshold
+        """
+        if not SETTINGS.enable_score_filtering:
+            return results
+        
+        if SETTINGS.score_threshold <= 0.0:
+            return results
+        
+        original_count = len(results)
+        filtered_results = [r for r in results if r.get("_final", 0.0) >= SETTINGS.score_threshold]
+        filtered_count = len(filtered_results)
+        
+        if filtered_count < original_count:
+            print(f"🎯 Score threshold filtering: {original_count} → {filtered_count} results (threshold: {SETTINGS.score_threshold})")
+        
+        return filtered_results
+    
+    def _normalize_text(self, text: str) -> str:
+        """
+        Normalize text for better fuzzy matching by removing diacritics and standardizing.
+        
+        Args:
+            text: Input text to normalize
+            
+        Returns:
+            Normalized text without diacritics, lowercase, and cleaned
+        """
+        if not text:
+            return ""
+        
+        # Convert to lowercase
+        text = text.lower()
+        
+        # Remove diacritics (accents) using Unicode normalization
+        # NFD = Canonical Decomposition, separates base characters from combining marks
+        normalized = unicodedata.normalize('NFD', text)
+        # Remove combining characters (diacritics)
+        without_accents = ''.join(c for c in normalized if unicodedata.category(c) != 'Mn')
+        
+        # Clean up extra whitespace and special characters
+        cleaned = re.sub(r'[^\w\s]', ' ', without_accents)
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        
+        return cleaned
     
     def search(self, query: str, k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None) -> Dict[str, Any]:
         """
@@ -317,6 +372,9 @@ class SearchService:
             # Fuse results
             print("⚖️ Fusing author scores...")
             all_fused_results = fuse_authors(rows)
+            
+            # Apply score threshold filtering
+            all_fused_results = self._apply_score_threshold(all_fused_results)
             total_results = len(all_fused_results)
             
             # Apply pagination if requested
@@ -549,6 +607,9 @@ class SearchService:
             print("⚖️ Fusing article scores...")
             all_fused_results = fuse_articles(list(id_to_row.values()))
             
+            # Apply score threshold filtering
+            all_fused_results = self._apply_score_threshold(all_fused_results)
+            
             # Step 2: Generate final answer using LLM
             # final_answer = self.llm_service.generate_answer(query, all_fused_results, "articles")
             
@@ -620,7 +681,7 @@ class SearchService:
     
     def _fuzzy_match_authors(self, query: str, all_authors: List[Dict[str, Any]], k: int) -> List[Tuple[Dict[str, Any], float]]:
         """
-        Perform fuzzy matching against all author names.
+        Perform robust fuzzy matching against all author names with Unicode and diacritic support.
         
         Args:
             query: Search query
@@ -634,30 +695,90 @@ class SearchService:
             return []
         
         matches = []
-        query_lower = query.lower().strip()
+        
+        # Normalize query for better matching
+        query_normalized = self._normalize_text(query)
+        query_words = query_normalized.split()
         
         for author in all_authors:
-            full_name = author.get("full_name", "").lower()
+            full_name = author.get("full_name", "")
+            if not full_name:
+                continue
+                
+            # Normalize author name
+            name_normalized = self._normalize_text(full_name)
+            name_words = name_normalized.split()
             
-            # Calculate similarity scores for different fields
-            name_similarity = SequenceMatcher(None, query_lower, full_name).ratio()
+            # Strategy 1: Exact normalized match (highest score)
+            exact_match_score = 0.0
+            if query_normalized == name_normalized:
+                exact_match_score = 1.0
             
-            # Check for partial matches (substring matching)
-            partial_name_match = 0.0
+            # Strategy 2: Full string similarity using SequenceMatcher
+            full_similarity = SequenceMatcher(None, query_normalized, name_normalized).ratio()
             
-            if query_lower in full_name:
-                partial_name_match = 0.8  # High score for substring match
-            elif any(word in full_name for word in query_lower.split()):
-                partial_name_match = 0.6  # Medium score for word match
-             
-            # Combine scores with weights favoring name matches
+            # Strategy 3: Word-based matching
+            word_match_score = 0.0
+            if query_words and name_words:
+                matched_words = 0
+                total_query_words = len(query_words)
+                
+                for query_word in query_words:
+                    # Check for exact word matches
+                    if query_word in name_words:
+                        matched_words += 1
+                    else:
+                        # Check for partial word matches
+                        for name_word in name_words:
+                            if len(query_word) >= 3 and query_word in name_word:
+                                matched_words += 0.7  # Partial credit
+                                break
+                            elif len(name_word) >= 3 and name_word in query_word:
+                                matched_words += 0.7  # Partial credit
+                                break
+                            else:
+                                # Use sequence matcher for individual words
+                                word_sim = SequenceMatcher(None, query_word, name_word).ratio()
+                                if word_sim >= 0.8:  # High similarity threshold
+                                    matched_words += word_sim
+                                    break
+                
+                word_match_score = matched_words / total_query_words if total_query_words > 0 else 0.0
+            
+            # Strategy 4: Substring matching (for partial names)
+            substring_score = 0.0
+            if query_normalized in name_normalized:
+                substring_score = 0.9 * (len(query_normalized) / len(name_normalized))
+            elif name_normalized in query_normalized:
+                substring_score = 0.8 * (len(name_normalized) / len(query_normalized))
+            
+            # Strategy 5: Initials matching (for abbreviated searches)
+            initials_score = 0.0
+            if len(query_words) <= 3 and len(name_words) >= len(query_words):
+                initials_match = True
+                for i, query_word in enumerate(query_words):
+                    if i < len(name_words):
+                        if not name_words[i].startswith(query_word[0]):
+                            initials_match = False
+                            break
+                if initials_match:
+                    initials_score = 0.7
+            
+            # Combine all strategies with weights
             final_score = max(
-                name_similarity * 1.0,           # Full name similarity
-                partial_name_match               # Partial name matches
+                exact_match_score * 1.0,          # Perfect match
+                full_similarity * 0.9,            # Overall similarity
+                word_match_score * 0.95,          # Word-based matching
+                substring_score * 0.85,           # Substring matching
+                initials_score * 0.7              # Initials matching
             )
             
-            # Only include matches above a threshold
-            if final_score > 0.1:
+            # Apply bonus for shorter names (more precise matches)
+            if final_score > 0.5 and len(name_normalized) <= len(query_normalized) + 5:
+                final_score = min(1.0, final_score * 1.1)
+            
+            # Only include matches above a meaningful threshold
+            if final_score > 0.2:
                 matches.append((author, final_score))
         
         # Sort by score descending and return top k

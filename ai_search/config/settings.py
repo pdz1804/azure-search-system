@@ -84,6 +84,10 @@ class Settings:
     freshness_halflife_days: float = float(os.environ.get("FRESHNESS_HALFLIFE_DAYS", 250))  # Decay rate for content
     freshness_window_days: int = int(os.environ.get("FRESHNESS_WINDOW_DAYS", 365))  # Max time window for scoring
 
+    # Score threshold filtering
+    score_threshold: float = float(os.environ.get("SCORE_THRESHOLD", 0.0))  # Minimum score for results
+    enable_score_filtering: bool = _get_bool("ENABLE_SCORE_FILTERING", True)  # Enable/disable score threshold filtering
+
     # Cache functionality removed for simplicity
 
 SETTINGS = Settings()
@@ -96,5 +100,6 @@ print(f"   🧮 Embeddings: {SETTINGS.embedding_provider} ({SETTINGS.embedding_m
 print(f"   📊 Article weights: sem={SETTINGS.w_semantic}, bm25={SETTINGS.w_bm25}, vec={SETTINGS.w_vector}, biz={SETTINGS.w_business}")
 print(f"   👤 Author weights: sem={SETTINGS.aw_semantic}, bm25={SETTINGS.aw_bm25}, vec={SETTINGS.aw_vector}, biz={SETTINGS.aw_business}")
 print(f"   📅 Freshness: half-life={SETTINGS.freshness_halflife_days} days, window={SETTINGS.freshness_window_days} days")
+print(f"   🎯 Score filtering: threshold={SETTINGS.score_threshold}, enabled={SETTINGS.enable_score_filtering}")
 print(f"   🗂️ Cache: disabled for simplicity")
 
