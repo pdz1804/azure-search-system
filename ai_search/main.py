@@ -28,11 +28,11 @@ import uvicorn
 from fastapi import FastAPI, Query
 from typing import List, Optional
 
-from app.models import ArticleHit, AuthorHit
-from app.clients import articles_client, authors_client
-from app.services.search_service import SearchService
-from utils.cli import parse_args
-from utils.command_handlers import get_command_handlers
+from ai_search.app.models import ArticleHit, AuthorHit
+from ai_search.app.clients import articles_client, authors_client
+from ai_search.app.services.search_service import SearchService
+from ai_search.utils.cli import parse_args
+from ai_search.utils.command_handlers import get_command_handlers
 
 print("🚀 Initializing Blog Search API...")
 
