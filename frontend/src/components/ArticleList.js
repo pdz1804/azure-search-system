@@ -67,15 +67,23 @@ const ArticleList = ({
         response = await articleApi.getArticles(params);
       }
       
-      setArticles(response.items || response.data || []);
-      setPagination(prev => ({
-        ...prev,
-        current: response.page || response.currentPage || page,
-        total: response.total || response.totalItems || 0
-      }));
+      // Handle API response structure
+      if (response.success) {
+        const data = response.data;
+        setArticles(data.items || data.data || data || []);
+        setPagination(prev => ({
+          ...prev,
+          current: data.page || data.currentPage || page,
+          total: data.total || data.totalItems || data.total_items || 0
+        }));
+      } else {
+        message.error(response.error || 'Không thể tải danh sách bài viết');
+        setArticles([]);
+      }
     } catch (error) {
       message.error('Không thể tải danh sách bài viết');
       console.error('Error fetching articles:', error);
+      setArticles([]);
     } finally {
       setLoading(false);
     }

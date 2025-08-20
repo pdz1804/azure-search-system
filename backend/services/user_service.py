@@ -111,7 +111,7 @@ async def delete_reaction( article_id: str) -> bool:
 
 def map_to_user_dto(user: dict) -> user_dto:
     return user_dto(
-        id=str(user["_id"]),
+        id=user["id"],
         full_name=user.get("full_name"),
         email=user.get("email"),
         role=user.get("role"),

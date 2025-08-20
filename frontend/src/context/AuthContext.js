@@ -35,36 +35,37 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await authApi.login(email, password);
-      const { access_token, user_id, role } = response;
+      console.log('Login API Response:', response);
+      
+      if (!response.success) {
+        return { 
+          success: false, 
+          error: response.error || 'Đăng nhập thất bại' 
+        };
+      }
+      
+      const { access_token, user_id, role, user: userData } = response.data;
       
       // Create user object from response
-      const userData = {
+      const userInfo = userData || {
         id: user_id,
         role: role,
-        email: email, // We know the email from login form
-        full_name: `User ${user_id.slice(0, 8)}` // Temporary name, will be updated when fetching user details
+        email: email,
+        full_name: `User ${user_id.slice(0, 8)}`
       };
       
       setToken(access_token);
-      setUser(userData);
+      setUser(userInfo);
       
       localStorage.setItem('access_token', access_token);
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      // Fetch full user details after login
-      try {
-        const fullUserData = await authApi.getMe();
-        setUser(fullUserData);
-        localStorage.setItem('user', JSON.stringify(fullUserData));
-      } catch (error) {
-        console.warn('Could not fetch user details:', error);
-      }
+      localStorage.setItem('user', JSON.stringify(userInfo));
       
       return { success: true };
     } catch (error) {
+      console.error('Login error:', error);
       return { 
         success: false, 
-        error: error.response?.data?.detail || 'Đăng nhập thất bại' 
+        error: error.message || 'Đăng nhập thất bại' 
       };
     }
   };
@@ -72,10 +73,19 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await authApi.register(userData);
-      const { access_token, user_id, role } = response;
+      console.log('Register API Response:', response);
+      
+      if (!response.success) {
+        return { 
+          success: false, 
+          error: response.error || 'Đăng ký thất bại' 
+        };
+      }
+      
+      const { access_token, user_id, role, user: userInfo } = response.data;
       
       // Create user object from response  
-      const newUserData = {
+      const newUserData = userInfo || {
         id: user_id,
         role: role,
         email: userData.email,
@@ -90,9 +100,10 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true };
     } catch (error) {
+      console.error('Register error:', error);
       return { 
         success: false, 
-        error: error.response?.data?.detail || 'Đăng ký thất bại' 
+        error: error.message || 'Đăng ký thất bại' 
       };
     }
   };

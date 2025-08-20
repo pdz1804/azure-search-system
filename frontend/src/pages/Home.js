@@ -28,7 +28,7 @@ const Home = () => {
                   type="primary" 
                   size="large" 
                   icon={<EditOutlined />}
-                  onClick={() => navigate('/articles/new')}
+                  onClick={() => navigate('/write')}
                 >
                   Viết bài mới
                 </Button>

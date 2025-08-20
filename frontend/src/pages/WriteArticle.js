@@ -26,13 +26,15 @@ const { Title } = Typography;
 const WriteArticle = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const isEditMode = !!id;
+
+  console.log('WriteArticle component loaded - user:', user, 'isAuthenticated:', isAuthenticated(), 'editMode:', isEditMode);
 
   useEffect(() => {
     if (!isAuthenticated()) {

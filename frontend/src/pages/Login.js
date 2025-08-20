@@ -17,14 +17,19 @@ const Login = () => {
   const handleSubmit = async (values) => {
     setLoading(true);
     try {
+      console.log('Attempting login with:', values.email);
       const result = await login(values.email, values.password);
+      console.log('Login result:', result);
+      
       if (result.success) {
         message.success('Đăng nhập thành công!');
         navigate(from, { replace: true });
       } else {
+        console.error('Login failed:', result.error);
         message.error(result.error);
       }
     } catch (error) {
+      console.error('Login exception:', error);
       message.error('Đăng nhập thất bại');
     } finally {
       setLoading(false);

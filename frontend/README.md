@@ -1,89 +1,117 @@
 # Article Management System - Frontend
 
-Frontend React.js cho hệ thống quản lý bài viết.
+Modern ReactJS frontend application for article management system.
 
-## Tính năng
+## 🚀 Quick Start
 
-- 🔐 Xác thực người dùng (đăng nhập/đăng ký)
-- 📝 Tạo, chỉnh sửa, xóa bài viết
-- 🔍 Tìm kiếm bài viết và người dùng
-- 👤 Quản lý hồ sơ cá nhân
-- ❤️ Thích và theo dõi
-- 💬 Bình luận bài viết
-- 📱 Responsive design
-- 🌐 Hỗ trợ tiếng Việt
+### Prerequisites
+- Node.js (version 16 or higher)
+- npm or yarn
 
-## Công nghệ sử dụng
+### Installation
 
-- **React** 18.2.0 - Framework frontend
-- **React Router** 6.8.0 - Điều hướng
-- **Ant Design** 5.1.0 - UI Component Library
-- **Axios** 1.3.0 - HTTP Client
-- **React Quill** 2.0.0 - Rich Text Editor
+1. **Clone and navigate to frontend directory:**
+   ```bash
+   cd frontend
+   ```
 
-## Cài đặt
+2. **Install all dependencies:**
+   ```bash
+   npm install
+   ```
 
-1. Cài đặt dependencies:
-```bash
-npm install
-```
+3. **Start development server:**
+   ```bash
+   npm start
+   ```
 
-2. Tạo file `.env` và cấu hình:
-```env
-REACT_APP_API_URL=http://localhost:8000
-```
+4. **Open your browser:**
+   Navigate to `http://localhost:3000`
 
-3. Chạy ứng dụng:
-```bash
-npm start
-```
+## 📦 Dependencies
 
-Ứng dụng sẽ chạy tại http://localhost:3000
+### Main Dependencies
+- **React 18** - Core React library
+- **React Router DOM** - Navigation and routing
+- **Axios** - HTTP client for API calls
+- **Framer Motion** - Animation library
+- **React Hot Toast** - Toast notifications
+- **React Hook Form** - Form handling
+- **Date-fns** - Date utilities
+- **Heroicons** - Beautiful icons
+- **Tailwind CSS** - Utility-first CSS framework
+- **React Lazy Load Image** - Image lazy loading
+- **React Share** - Social sharing components
 
-## Cấu trúc thư mục
+### UI/UX Libraries
+- **Ant Design** - UI component library (legacy support)
+- **React Query** - Server state management
+- **React Markdown** - Markdown rendering
+- **React Syntax Highlighter** - Code highlighting
+
+### Utilities
+- **Lodash** - Utility functions
+- **clsx** - Conditional CSS classes
+- **use-debounce** - Debouncing hooks
+
+## 🛠️ Available Scripts
+
+- `npm start` - Start development server
+- `npm run build` - Build for production
+- `npm test` - Run tests
+- `npm run analyze` - Analyze bundle size
+
+## 🏗️ Project Structure
 
 ```
 src/
-├── api/                 # API configuration và services
-│   ├── config.js       # Axios configuration
-│   ├── authApi.js      # Authentication API
-│   ├── articleApi.js   # Article API
-│   └── userApi.js      # User API
-├── components/         # Reusable components
-│   ├── Header.js       # Navigation header
-│   ├── ArticleCard.js  # Article card component
-│   ├── ArticleList.js  # Article list component
-│   ├── ArticleForm.js  # Article form component
-│   └── ProtectedRoute.js # Route protection
-├── context/           # React Context
-│   └── AuthContext.js # Authentication context
-├── pages/             # Page components
-│   ├── Home.js        # Trang chủ
-│   ├── Login.js       # Đăng nhập
-│   ├── Register.js    # Đăng ký
-│   ├── ArticleDetail.js # Chi tiết bài viết
-│   ├── Profile.js     # Hồ sơ người dùng
-│   ├── Search.js      # Tìm kiếm
-│   ├── WriteArticle.js # Viết bài
-│   └── NotFound.js    # 404 page
-├── utils/             # Utility functions
-│   └── helpers.js     # Helper functions
-├── App.js             # Main App component
-├── index.js           # Entry point
-└── index.css          # Global styles
+├── components/          # Reusable UI components
+│   ├── ArticleCard.js   # Article display component
+│   ├── Header.js        # Navigation header
+│   ├── Footer.js        # Page footer
+│   ├── LoadingSpinner.js # Loading states
+│   └── ...
+├── context/             # React contexts
+│   └── AuthContext.js   # Authentication context
+├── api/                 # API service layer
+│   ├── config.js        # Axios configuration
+│   ├── authApi.js       # Authentication APIs
+│   └── userApi.js       # User-related APIs
+├── icons/               # Custom icon components
+├── utils/               # Utility functions
+└── pages/               # Page components
 ```
 
-## Scripts
+## 🎨 Styling
 
-- `npm start` - Chạy development server
-- `npm run build` - Build production
-- `npm test` - Chạy tests
-- `npm run eject` - Eject từ Create React App
+This project uses **Tailwind CSS** for styling with custom configurations:
 
-## Environment Variables
+- Custom color palette
+- Animation utilities
+- Responsive design utilities
+- Typography scale
+- Component variants
+
+## 🚀 Features
+
+- **Modern UI/UX** - Clean, responsive design
+- **Authentication** - Complete auth flow
+- **Role-based Access** - USER/WRITER/ADMIN roles
+- **Article Management** - CRUD operations
+- **Social Features** - Likes, shares, bookmarks
+- **Real-time Notifications** - Toast and bell notifications
+- **Search & Filtering** - Advanced search capabilities
+- **Responsive Design** - Mobile-first approach
+- **Performance Optimized** - Lazy loading, code splitting
+
+## 🔧 Configuration
+
+### Environment Variables
+Create a `.env` file in the frontend directory:
 
 ```env
-REACT_APP_API_URL=http://localhost:8000  # Backend API URL
+REACT_APP_API_BASE_URL=http://localhost:8000
+REACT_APP_UPLOAD_URL=http://localhost:8000/uploads
 ```
 
 ## API Integration
