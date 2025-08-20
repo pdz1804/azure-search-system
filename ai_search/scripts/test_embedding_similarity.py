@@ -81,14 +81,14 @@ def test_sentence_pairs():
     test_cases = [
         {
             "name": "Case 1: Semantically Similar Terms",
-            "sentence1": "AI",
-            "sentence2": "artificial intelligence",
+            "sentence1": "Chuong Dep Zai",
+            "sentence2": "Multimodal Language Models (VLMs) integrate text, images, and other data types to improve comprehension and generation tasks. By leveraging diverse modalities, they enable richer interactions and insights",
             "expected": "High similarity (synonymous terms)"
         },
         {
             "name": "Case 2: Related but Different Concepts", 
-            "sentence1": "AI",
-            "sentence2": "some long sentences describe a problem related to deep learning, transformers",
+            "sentence1": "Phu the hippo",
+            "sentence2": "Multimodal Language Models (VLMs) integrate text, images, and other data types to improve comprehension and generation tasks. By leveraging diverse modalities, they enable richer interactions and insights",
             "expected": "Medium similarity (related domain)"
         }
     ]

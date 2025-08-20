@@ -12,5 +12,6 @@ azure-cosmos
 aiohttp
 azure-storage-blob
 redis[hiredis]
-
+python-jose
+pydantic[email]
 
