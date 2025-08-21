@@ -125,17 +125,16 @@ async def get_user_followers(user_id: str) -> list:
         raise HTTPException(status_code=404, detail="User not found")
     return user.get("followers", [])
 
-async def delete_reaction( article_id: str) -> bool:
-    users = await user_repo.get_users()
+async def delete_reaction(article_id: str) -> bool:
+    users = await user_repo.get_list_user()
     for user in users:
-        for r in user.get("liked_articles", []):
-            if r.get("article_id") == article_id:
-                await unlike_article(user.get("id"), article_id)
-                break
-        for r in user.get("disliked_articles", []):
-            if r.get("article_id") == article_id:
-                await undislike_article(user.get("id"), article_id)
-                break
+        user_id = user.get("id")
+        if article_id in user.get("liked_articles", []):
+            await unlike_article(user_id, article_id)
+        if article_id in user.get("disliked_articles", []):
+            await undislike_article(user_id, article_id)
+
+    return True
     
 async def search_response_users(data: Dict) -> List[dict]:
     users_ids = [user["id"] for user in data.get("results", [])]
