@@ -170,6 +170,8 @@ class BackendSearchService:
         
         # Step 3: Route to appropriate search function based on classification
         search_type = plan.get("search_type", "articles")
+
+        print(f"🔍 Search type: {search_type}")
         
         if search_type == "authors":
             print(f"📋 Routing to authors search")
