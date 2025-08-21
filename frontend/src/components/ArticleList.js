@@ -70,7 +70,9 @@ const ArticleList = ({
   const fetchArticles = async (page = 1, search = '') => {
     if (externalArticles) return; // Don't fetch if articles are provided externally
     
-    const cacheKey = `${getCacheKey()}_${page}`;
+    const cacheKey = (loadAll && !(search || searchQuery))
+      ? `${getCacheKey()}_ALL`
+      : `${getCacheKey()}_${page}`;
     
     // Check if there's already a promise for this exact fetch
     if (globalFetchPromises.has(cacheKey)) {
@@ -152,7 +154,7 @@ const ArticleList = ({
         }
         const sortedAll = [...accumulated].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
         setArticles(sortedAll);
-        setPagination(prev => ({ ...prev, current: page, total: accumulated.length, pageSize: 12 }));
+        setPagination(prev => ({ ...prev, total: accumulated.length, pageSize: 12 }));
   setLastFetchKey(cacheKey);
   globalFetchMap.delete(cacheKey);
       } else {
@@ -179,7 +181,16 @@ const ArticleList = ({
           setPagination(prev => ({
             ...prev,
             current: (data.pagination && (data.pagination.page || data.pagination.current)) || data.page || data.currentPage || page,
-            total: (search || searchQuery) ? finalItems.length : ((data.pagination && (data.pagination.total || data.pagination.total_items)) || data.total || data.totalItems || data.total_items || (Array.isArray(finalItems) ? finalItems.length : 0))
+            total: (search || searchQuery)
+              ? finalItems.length
+              : (
+                // Prefer total items; fall back to pages only if items missing
+                (data.pagination && (data.pagination.total_items || data.pagination.totalItems))
+                || data.total_items || data.totalItems
+                || (data.pagination && data.pagination.total) // may be total pages
+                || data.total
+                || (Array.isArray(finalItems) ? finalItems.length : 0)
+              )
           }));
           setLastFetchKey(cacheKey);
           globalFetchMap.delete(cacheKey);
