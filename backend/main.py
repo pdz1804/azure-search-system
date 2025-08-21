@@ -18,6 +18,7 @@ from backend.database.cosmos import close_cosmos, connect_cosmos
 from backend.config.redis_config import get_redis, close_redis
 from backend.api.article import articles
 from backend.api.file import files
+from backend.api.cache import cache
 from backend.authentication.routes import auth
 from backend.api.user import users
 from backend.api.search import search
@@ -53,6 +54,7 @@ app.include_router(auth)
 app.include_router(files)
 app.include_router(users)
 app.include_router(search)
+app.include_router(cache)
 
 if __name__ == "__main__":
     import uvicorn

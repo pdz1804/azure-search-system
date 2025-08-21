@@ -105,13 +105,15 @@ async def check_article_status(user_id: str, article_id: str) -> Dict[str, Any]:
     user = await user_repo.get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
+    # Build a unified response expected by frontend: { reaction_type: 'like'|'dislike'|'none', is_bookmarked: bool }
+    reaction_type = 'none'
     if article_id in user.get("liked_articles", []):
-        return {"type": "like"}
+        reaction_type = 'like'
     elif article_id in user.get("disliked_articles", []):
-        return {"type": "dislike"}
-    else:
-        return {"type": "none"}
+        reaction_type = 'dislike'
+
+    is_bookmarked = article_id in user.get('bookmarked_articles', [])
+    return {"reaction_type": reaction_type, "is_bookmarked": is_bookmarked}
 
 async def get_user_bookmarks(user_id: str) -> list:
     user = await user_repo.get_user_by_id(user_id)
@@ -133,6 +135,14 @@ async def delete_reaction(article_id: str) -> bool:
             await unlike_article(user_id, article_id)
         if article_id in user.get("disliked_articles", []):
             await undislike_article(user_id, article_id)
+
+        # also remove from bookmarks to avoid stale references
+        if article_id in user.get('bookmarked_articles', []):
+            try:
+                await unbookmark_article(user_id, article_id)
+            except Exception:
+                # continue cleanup even if one fails
+                pass
 
     return True
     

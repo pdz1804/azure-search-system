@@ -4,9 +4,12 @@ import { UploadOutlined, SaveOutlined } from '@ant-design/icons';
 import ReactQuill from 'react-quill';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import 'react-quill/dist/quill.snow.css';
 import { articleApi } from '../api/articleApi';
 import { useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
+import { apiClientFormData, createFormData } from '../api/config';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -48,11 +51,78 @@ const ArticleForm = () => {
   const handleSubmit = async (values) => {
     setLoading(true);
     try {
+      let processedContent = content;
+
+      // If content contains base64 images (data:image/...), upload them and replace with blob URLs
+      const uploadBase64 = async (text) => {
+        const regex = /<img[^>]+src=["'](data:image\/[a-zA-Z0-9+\-\.]+;base64,[^"']+)["'][^>]*>/g;
+        let match;
+        let newText = text;
+        const uploads = [];
+        while ((match = regex.exec(text)) !== null) {
+          const dataUrl = match[1];
+          if (!dataUrl) continue;
+          uploads.push(dataUrl);
+        }
+
+        for (const dataUrl of uploads) {
+          try {
+            // Convert dataURL to Blob
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+            const file = new File([blob], 'upload.png', { type: blob.type });
+
+            const fd = new FormData();
+            fd.append('file', file);
+
+            // Use shared axios instance so auth headers and baseURL are applied.
+            const uploadResp = await apiClientFormData.post('/files/', fd);
+            const url = uploadResp.data?.url || uploadResp.data?.data?.url;
+            if (url) {
+              newText = newText.split(dataUrl).join(url);
+            }
+          } catch (e) {
+            console.error('Failed to upload inline image', e);
+          }
+        }
+
+        return newText;
+      };
+
+      processedContent = await uploadBase64(content);
+
+      // pick cover image: prefer Form value (AntD Upload) then imageFile state
+      let coverFile = imageFile;
+      if (values && values.image && Array.isArray(values.image) && values.image.length > 0) {
+        const item = values.image[0];
+        coverFile = item && item.originFileObj ? item.originFileObj : item;
+      }
+
       const articleData = {
         ...values,
-        content,
-        image: imageFile
+        content: processedContent,
+        image: coverFile
       };
+
+      // DEBUG: log imageFile and FormData structure before sending
+      try {
+        // eslint-disable-next-line no-console
+        console.log('[DEBUG] Submitting article; imageFile:', imageFile);
+        const debugForm = createFormData(articleData);
+        for (const pair of debugForm.entries()) {
+          const val = pair[1];
+          if (val && typeof val === 'object' && (val.name || val.size)) {
+            // eslint-disable-next-line no-console
+            console.log('[DEBUG] form field:', pair[0], { name: val.name, size: val.size, type: val.type });
+          } else {
+            // eslint-disable-next-line no-console
+            console.log('[DEBUG] form field:', pair[0], val);
+          }
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('[DEBUG] Failed to inspect FormData before submit', e);
+      }
 
       if (isEdit) {
         await articleApi.updateArticle(id, articleData);
@@ -99,6 +169,14 @@ const ArticleForm = () => {
       showRemoveIcon: true,
       showDownloadIcon: false,
     },
+  };
+
+  // Normalize Upload event to value for Form
+  const normFile = (e) => {
+    if (Array.isArray(e)) {
+      return e;
+    }
+    return e && e.fileList ? e.fileList : e;
   };
 
   const modules = {
@@ -171,7 +249,7 @@ const ArticleForm = () => {
               </Form.Item>
               <Card size="small" title="Preview" style={{ marginBottom: 24 }}>
                 <div className="prose max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{content || ''}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{content || ''}</ReactMarkdown>
                 </div>
               </Card>
             </>
@@ -211,7 +289,10 @@ const ArticleForm = () => {
           </Form.Item>
 
           <Form.Item
+            name="image"
             label="Cover Image"
+            valuePropName="fileList"
+            getValueFromEvent={normFile}
           >
             <Upload {...uploadProps}>
               <Button icon={<UploadOutlined />}>Choose Image</Button>
