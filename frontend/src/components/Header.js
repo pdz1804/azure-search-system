@@ -159,9 +159,17 @@ const Header = () => {
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
                   className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-all duration-200"
                 >
-                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
-                    {user?.full_name?.[0] || user?.email?.[0] || 'U'}
-                  </div>
+                  {user?.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt={user?.full_name || 'User avatar'}
+                      className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                      {user?.full_name?.[0] || user?.email?.[0] || 'U'}
+                    </div>
+                  )}
                   <span className="hidden sm:block text-sm font-medium text-gray-700">
                     {user?.full_name || user?.email || 'User'}
                   </span>

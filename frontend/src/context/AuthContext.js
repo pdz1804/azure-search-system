@@ -21,9 +21,28 @@ export const AuthProvider = ({ children }) => {
       const savedToken = localStorage.getItem('access_token');
       const savedUser = localStorage.getItem('user');
       
-      if (savedToken && savedUser) {
+      if (savedToken) {
         setToken(savedToken);
-        setUser(JSON.parse(savedUser));
+        if (savedUser) {
+          try {
+            setUser(JSON.parse(savedUser));
+          } catch {
+            // ignore JSON parse errors and refetch
+          }
+        }
+
+        // If user is still not available, fetch it from API using stored user_id
+        if (!savedUser) {
+          try {
+            const me = await authApi.getCurrentUser();
+            if (me.success && me.data) {
+              setUser(me.data);
+              localStorage.setItem('user', JSON.stringify(me.data));
+            }
+          } catch {
+            // silent
+          }
+        }
       }
       
       setLoading(false);

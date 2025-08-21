@@ -44,7 +44,7 @@ const Profile = () => {
     following: 0
   });
 
-  const isOwnProfile = id === currentUser?.id || (!id && currentUser);
+  const isOwnProfile = (!!currentUser && (!id || id === currentUser.id));
   const targetUserId = id || currentUser?.id;
 
   useEffect(() => {
@@ -59,18 +59,13 @@ const Profile = () => {
 
   const fetchUserData = async () => {
     try {
-      let userData;
-      if (isOwnProfile && !id) {
-        userData = currentUser;
+      if (!targetUserId) return;
+      const response = await userApi.getUserById(targetUserId);
+      if (response.success) {
+        setUser(response.data);
       } else {
-        const response = await userApi.getUserById(targetUserId);
-        if (response.success) {
-          userData = response.data;
-        } else {
-          throw new Error(response.error || 'Failed to fetch user');
-        }
+        throw new Error(response.error || 'Failed to fetch user');
       }
-      setUser(userData);
     } catch (error) {
       message.error('Failed to load user information');
       console.error('Error fetching user:', error);
@@ -81,9 +76,10 @@ const Profile = () => {
 
   const fetchUserStats = async () => {
     try {
+      if (!targetUserId) return;
       const articlesResponse = await articleApi.getArticlesByAuthor(targetUserId, 1, 1000);
       if (articlesResponse.success) {
-        const articles = articlesResponse.data?.items || articlesResponse.data || [];
+        const articles = (articlesResponse.data?.items) || (Array.isArray(articlesResponse.data) ? articlesResponse.data : []) || [];
         
         const totalViews = articles.reduce((sum, article) => sum + (article.views || 0), 0);
         const totalLikes = articles.reduce((sum, article) => sum + (article.likes || 0), 0);
@@ -92,8 +88,8 @@ const Profile = () => {
           totalArticles: articles.length,
           totalViews,
           totalLikes,
-          followers: user?.followers?.length || 0,
-          following: user?.following?.length || 0
+          followers: user?.num_followers || user?.followers || 0,
+          following: user?.num_following || user?.following || 0
         });
         
         console.log('User stats updated:', { totalViews, totalLikes, articleCount: articles.length });

@@ -178,32 +178,31 @@ async def get_categories():
         try:
             articles_container = await get_articles_container()
             
-            # Get unique categories and their counts
-            categories_query = """
-            SELECT 
-                c.tags,
-                COUNT(1) as count
-            FROM c 
-            WHERE c.is_active = true AND c.tags != null
-            GROUP BY c.tags
-            """
-            
+            # Cosmos DB does not support GROUP BY across partitioned arrays in the SDK easily.
+            # We'll read items and aggregate tag counts client-side. Use read_all_items
+            # to iterate across partitions without passing unsupported kwargs.
             categories_result = []
-            async for item in articles_container.query_items(query=categories_query):
-                if item.get("tags"):
-                    for tag in item["tags"]:
-                        # Find existing category or create new one
-                        existing = next((cat for cat in categories_result if cat["name"] == tag), None)
-                        if existing:
-                            existing["count"] += item["count"]
-                        else:
-                            categories_result.append({
-                                "name": tag,
-                                "count": item["count"]
-                            })
+            from collections import Counter
+            tag_counter = Counter()
+
+            # iterate over all articles and accumulate tags (filter client-side)
+            async for item in articles_container.read_all_items():
+                try:
+                    if not item or not item.get('is_active'):
+                        continue
+                    tags = item.get('tags') or []
+                    for t in tags:
+                        tag_counter[t] += 1
+                except Exception:
+                    # ignore malformed documents
+                    continue
+
+            # prepare top categories (limit to top 10)
+            for tag, count in tag_counter.most_common(10):
+                categories_result.append({"name": tag, "count": count})
             
         except Exception as db_error:
-            print(f"Cosmos DB connection failed, using sample data for categories: {db_error}")
+            print(f"Cosmos DB connection failed, using sample data in the ai_search/data/articles.json for categories: {db_error}")
             # Fallback to sample data from articles.json
             import json
             import os

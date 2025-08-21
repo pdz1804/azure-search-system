@@ -27,7 +27,14 @@ const { Title, Text } = Typography;
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState({
+    total_articles: 0,
+    published_articles: 0,
+    draft_articles: 0,
+    total_views: 0,
+    total_likes: 0,
+    avg_views: 0
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,28 +44,7 @@ const Dashboard = () => {
   const fetchStats = async () => {
     try {
       // Fetch global stats for admin or personal stats for writers
-      if (user?.role === 'admin') {
-        try {
-          const globalStats = await articleApi.getSummary();
-          setStats(globalStats);
-        } catch (error) {
-          console.error('Failed to fetch global stats:', error);
-          // Fallback to personal stats if global fails
-          const response = await articleApi.getArticlesByAuthor(user.id, 1, 1000);
-          if (response.success) {
-            const articles = response.data?.items || response.items || [];
-            const personalStats = {
-              total_articles: articles.length,
-              published_articles: articles.filter(a => a.status === 'published').length,
-              draft_articles: articles.filter(a => a.status === 'draft').length,
-              total_views: articles.reduce((sum, a) => sum + (a.views || 0), 0),
-              total_likes: articles.reduce((sum, a) => sum + (a.likes || 0), 0),
-              avg_views: articles.length > 0 ? Math.round(articles.reduce((sum, a) => sum + (a.views || 0), 0) / articles.length) : 0
-            };
-            setStats(personalStats);
-          }
-        }
-      } else if (user?.role === 'writer') {
+      if (user?.id) {
         // Fetch personal stats
         const response = await articleApi.getArticlesByAuthor(user.id, 1, 1000);
         if (response.success) {

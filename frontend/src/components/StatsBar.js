@@ -7,7 +7,7 @@ const Stat = ({ label, value }) => (
 	</div>
 );
 
-const StatsBar = ({ totals = { articles: 0, authors: 0, total_views: 0, bookmarks: 0 } }) => {
+const StatsBar = ({ totals = { articles: '500+', authors: '50+', total_views: '10000+', bookmarks: 0 } }) => {
 	return (
 		<section className="mx-auto max-w-7xl px-6">
 			<div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
