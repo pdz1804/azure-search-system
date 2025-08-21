@@ -8,7 +8,7 @@ from backend.enum.roles import Role
 from backend.utils import get_current_user, require_owner_or_role, require_role
 from backend.services.article_service import (
     create_article, delete_article, get_article_by_id, increment_article_views, 
-    list_articles, search_response, update_article, 
+    list_articles, update_article, 
     get_articles_by_author, get_popular_articles
 )
 from backend.services.search_service import search_service

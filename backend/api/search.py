@@ -5,10 +5,13 @@ This module provides AI-powered search functionality for articles and users,
 implementing the same API structure as the ai_search service.
 """
 
+from urllib import response
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
+from backend.services.article_service import  search_response_articles
 from backend.services.search_service import get_search_service
+from backend.services.user_service import search_response_users
 
 # Pydantic models matching ai_search structure
 class ArticleHit(BaseModel):
@@ -57,7 +60,7 @@ async def search_general(
             raise HTTPException(status_code=500, detail="Search failed - no results returned")
         
         print(f"Result DEBUG: {result}")
-        
+
         # Transform results based on search type
         search_type = result.get("search_type", "articles")
         
@@ -132,37 +135,37 @@ async def search_articles(
         
         if not result or not result.get("results"):
             raise HTTPException(status_code=500, detail="Search failed - no results returned")
-        
+        response= await search_response_articles(result)
         # Transform results to ArticleHit format for API response
-        articles = [
-            ArticleHit(
-                id=item["doc"]["id"],
-                title=item["doc"].get("title"),
-                abstract=item["doc"].get("abstract"),
-                author_name=item["doc"].get("author_name"),
-                score_final=item.get("_final", 1.0),
-                scores={
-                    "semantic": item.get("_semantic", 0.0), 
-                    "bm25": item.get("_bm25", 0.0), 
-                    "vector": item.get("_vector", 0.0), 
-                    "business": item.get("_business", 0.0)
-                },
-                highlights=item["doc"].get("highlights")
-            ) for item in result.get("results", [])
-        ]
+        # articles = [
+        #     ArticleHit(
+        #         id=item["doc"]["id"],
+        #         title=item["doc"].get("title"),
+        #         abstract=item["doc"].get("abstract"),
+        #         author_name=item["doc"].get("author_name"),
+        #         score_final=item.get("_final", 1.0),
+        #         scores={
+        #             "semantic": item.get("_semantic", 0.0), 
+        #             "bm25": item.get("_bm25", 0.0), 
+        #             "vector": item.get("_vector", 0.0), 
+        #             "business": item.get("_business", 0.0)
+        #         },
+        #         highlights=item["doc"].get("highlights")
+        #     ) for item in result.get("results", [])
+        # ]
         
-        response = {
-            "articles": articles,
-            "pagination": {
-                "page": page_index + 1 if page_index is not None else 1,
-                "page_size": page_size or k,
-                "total": (result.get("pagination") or {}).get("total_results", len(articles))
-            },
-            "normalized_query": result.get("normalized_query", q),
-            "search_type": result.get("search_type", "articles")
-        }
+        # response = {
+        #     "articles": articles,
+        #     "pagination": {
+        #         "page": page_index + 1 if page_index is not None else 1,
+        #         "page_size": page_size or k,
+        #         "total": (result.get("pagination") or {}).get("total_results", len(articles))
+        #     },
+        #     "normalized_query": result.get("normalized_query", q),
+        #     "search_type": result.get("search_type", "articles")
+        # }
         
-        print(f"✅ Articles search completed: {len(articles)} results")
+        # print(f"✅ Articles search completed: {len(articles)} results")
         return response
     except Exception as e:
         print(f"❌ Articles search failed: {e}")
@@ -191,34 +194,34 @@ async def search_authors(
             raise HTTPException(status_code=500, detail="Search failed - no results returned")
         
         print(f"Result DEBUG: {result}")
+        response = await search_response_users(result)
+        # # Transform results to AuthorHit format for API response
+        # authors = [
+        #     AuthorHit(
+        #         id=item["doc"]["id"],
+        #         full_name=item["doc"].get("full_name"),
+        #         score_final=item.get("_final", 1.0),
+        #         scores={
+        #             "semantic": item.get("_semantic", 0.0), 
+        #             "bm25": item.get("_bm25", 0.0), 
+        #             "vector": item.get("_vector", 0.0),
+        #             "business": item.get("_business", 0.0)
+        #         }
+        #     ) for item in result.get("results", [])
+        # ]
         
-        # Transform results to AuthorHit format for API response
-        authors = [
-            AuthorHit(
-                id=item["doc"]["id"],
-                full_name=item["doc"].get("full_name"),
-                score_final=item.get("_final", 1.0),
-                scores={
-                    "semantic": item.get("_semantic", 0.0), 
-                    "bm25": item.get("_bm25", 0.0), 
-                    "vector": item.get("_vector", 0.0),
-                    "business": item.get("_business", 0.0)
-                }
-            ) for item in result.get("results", [])
-        ]
+        # response = {
+        #     "results": authors,
+        #     "pagination": {
+        #         "page": page_index + 1 if page_index is not None else 1,
+        #         "page_size": page_size or k,
+        #         "total": (result.get("pagination") or {}).get("total_results", len(authors))
+        #     },
+        #     "normalized_query": result.get("normalized_query", q),
+        #     "search_type": result.get("search_type", "authors")
+        # }
         
-        response = {
-            "results": authors,
-            "pagination": {
-                "page": page_index + 1 if page_index is not None else 1,
-                "page_size": page_size or k,
-                "total": (result.get("pagination") or {}).get("total_results", len(authors))
-            },
-            "normalized_query": result.get("normalized_query", q),
-            "search_type": result.get("search_type", "authors")
-        }
-        
-        print(f"✅ Authors search completed: {len(authors)} results")
+        # print(f"✅ Authors search completed: {len(authors)} results")
         return response
     except Exception as e:
         print(f"❌ Authors search failed: {e}")

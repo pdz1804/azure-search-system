@@ -270,7 +270,7 @@ async def get_popular_articles(page: int = 1, page_size: int = 10) -> List[dict]
         print(f"❌ Error in get_popular_articles: {e}")
         return []
 
-async def search_response(data: Dict) -> List[dict]:
+async def search_response_articles(data: Dict) -> List[dict]:
     article_ids = [article["id"] for article in data.get("results", [])]
     return await article_repo.get_articles_by_ids(article_ids)
 

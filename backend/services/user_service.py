@@ -137,7 +137,7 @@ async def delete_reaction( article_id: str) -> bool:
                 await undislike_article(user.get("id"), article_id)
                 break
     
-async def search_response(data: Dict) -> List[dict]:
+async def search_response_users(data: Dict) -> List[dict]:
     users_ids = [user["id"] for user in data.get("results", [])]
     return await user_repo.get_users_by_ids(users_ids)
 
