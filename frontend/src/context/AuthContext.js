@@ -17,11 +17,13 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('access_token'));
 
   useEffect(() => {
+    let mounted = true;
+    
     const initAuth = async () => {
       const savedToken = localStorage.getItem('access_token');
       const savedUser = localStorage.getItem('user');
       
-      if (savedToken) {
+      if (savedToken && mounted) {
         setToken(savedToken);
         if (savedUser) {
           try {
@@ -32,7 +34,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         // If user is still not available, fetch it from API using stored user_id
-        if (!savedUser) {
+        if (!savedUser && mounted) {
           try {
             const me = await authApi.getCurrentUser();
             // authApi.getCurrentUser returns { success: true, data: user }
@@ -46,10 +48,16 @@ export const AuthProvider = ({ children }) => {
         }
       }
       
-      setLoading(false);
+      if (mounted) {
+        setLoading(false);
+      }
     };
 
     initAuth();
+    
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const login = async (email, password) => {

@@ -15,6 +15,7 @@ const { confirm } = Modal;
 
 // Global map to deduplicate fetches across component remounts (helps with React.StrictMode)
 const globalFetchMap = new Map();
+const globalFetchPromises = new Map();
 
 const ArticleList = ({ 
   authorId = null, 
@@ -70,6 +71,19 @@ const ArticleList = ({
     if (externalArticles) return; // Don't fetch if articles are provided externally
     
     const cacheKey = `${getCacheKey()}_${page}`;
+    
+    // Check if there's already a promise for this exact fetch
+    if (globalFetchPromises.has(cacheKey)) {
+      console.log('Reusing existing promise for', cacheKey);
+      try {
+        const result = await globalFetchPromises.get(cacheKey);
+        return result;
+      } catch (error) {
+        globalFetchPromises.delete(cacheKey);
+        throw error;
+      }
+    }
+    
     // If another instance or previous lifecycle already started this fetch, skip
     if (globalFetchMap.has(cacheKey)) {
       console.log('Global fetch already in progress for', cacheKey);
@@ -80,6 +94,19 @@ const ArticleList = ({
       return;
     }
     
+    // Create and store the promise
+    const fetchPromise = performFetch(cacheKey, page, search);
+    globalFetchPromises.set(cacheKey, fetchPromise);
+    
+    try {
+      const result = await fetchPromise;
+      return result;
+    } finally {
+      globalFetchPromises.delete(cacheKey);
+    }
+  };
+
+  const performFetch = async (cacheKey, page, search) => {
     setLoading(true);
     try {
       // Helper to normalize and sort results
@@ -100,8 +127,8 @@ const ArticleList = ({
         return { items: sorted, page: (data?.pagination && data.pagination.page) || data?.page || page };
       };
 
-  // mark in-flight globally to survive remounts
-  globalFetchMap.set(cacheKey, true);
+      // mark in-flight globally to survive remounts
+      globalFetchMap.set(cacheKey, true);
   // Load-all mode: fetch all pages up to a safe cap
       if (loadAll && !(search || searchQuery)) {
         const accumulated = [];
