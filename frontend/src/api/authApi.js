@@ -18,7 +18,9 @@ export const authApi = {
       
       // Fetch full user profile
       const userResponse = await apiClient.get(`/users/${user_id}`);
-      localStorage.setItem('user', JSON.stringify(userResponse.data?.data || userResponse.data));
+      const userObj = userResponse.data?.data || userResponse.data;
+      // persist normalized user object
+      localStorage.setItem('user', JSON.stringify(userObj));
       
       return {
         success: true,
@@ -26,7 +28,8 @@ export const authApi = {
           access_token,
           user_id,
           role,
-          user: userResponse.data
+          // return the normalized user object (not the wrapper)
+          user: userObj
         }
       };
     } catch (error) {

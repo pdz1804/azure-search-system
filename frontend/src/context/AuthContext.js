@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }) => {
         if (!savedUser) {
           try {
             const me = await authApi.getCurrentUser();
+            // authApi.getCurrentUser returns { success: true, data: user }
             if (me.success && me.data) {
               setUser(me.data);
               localStorage.setItem('user', JSON.stringify(me.data));
@@ -65,17 +66,17 @@ export const AuthProvider = ({ children }) => {
       
       const { access_token, user_id, role, user: userData } = response.data;
       
-      // Create user object from response
+      // normalize user object
       const userInfo = userData || {
         id: user_id,
         role: role,
         email: email,
-        full_name: `User ${user_id.slice(0, 8)}`
+        full_name: `User ${user_id?.slice ? user_id.slice(0, 8) : user_id}`
       };
-      
+
       setToken(access_token);
       setUser(userInfo);
-      
+
       localStorage.setItem('access_token', access_token);
       localStorage.setItem('user', JSON.stringify(userInfo));
       
