@@ -56,6 +56,8 @@ async def search_general(
         if not result or not result.get("results"):
             raise HTTPException(status_code=500, detail="Search failed - no results returned")
         
+        print(f"Result DEBUG: {result}")
+        
         # Transform results based on search type
         search_type = result.get("search_type", "articles")
         
@@ -64,7 +66,7 @@ async def search_general(
             items = [
                 AuthorHit(
                     id=item["doc"]["id"],
-                    full_name=item["doc"].get("full_name"),
+                    full_name=item["doc"].get("full_name", ""),
                     score_final=item.get("_final", 1.0),
                     scores={
                         "semantic": item.get("_semantic", 0.0), 
@@ -79,9 +81,9 @@ async def search_general(
             items = [
                 ArticleHit(
                     id=item["doc"]["id"],
-                    title=item["doc"].get("title"),
-                    abstract=item["doc"].get("abstract"),
-                    author_name=item["doc"].get("author_name"),
+                    title=item["doc"].get("title", ""),
+                    abstract=item["doc"].get("abstract", ""),
+                    author_name=item["doc"].get("author_name", ""),
                     score_final=item.get("_final", 1.0),
                     scores={
                         "semantic": item.get("_semantic", 0.0), 
@@ -98,7 +100,7 @@ async def search_general(
             "pagination": {
                 "page": page_index + 1 if page_index is not None else 1,
                 "page_size": page_size or k,
-                "total": result.get("pagination", {}).get("total_results", len(items))
+                "total": (result.get("pagination") or {}).get("total_results", len(items))
             },
             "normalized_query": result.get("normalized_query", q),
             "search_type": search_type
@@ -154,7 +156,7 @@ async def search_articles(
             "pagination": {
                 "page": page_index + 1 if page_index is not None else 1,
                 "page_size": page_size or k,
-                "total": result.get("pagination", {}).get("total_results", len(articles))
+                "total": (result.get("pagination") or {}).get("total_results", len(articles))
             },
             "normalized_query": result.get("normalized_query", q),
             "search_type": result.get("search_type", "articles")
@@ -188,6 +190,8 @@ async def search_authors(
         if not result or not result.get("results"):
             raise HTTPException(status_code=500, detail="Search failed - no results returned")
         
+        print(f"Result DEBUG: {result}")
+        
         # Transform results to AuthorHit format for API response
         authors = [
             AuthorHit(
@@ -208,7 +212,7 @@ async def search_authors(
             "pagination": {
                 "page": page_index + 1 if page_index is not None else 1,
                 "page_size": page_size or k,
-                "total": result.get("pagination", {}).get("total_results", len(authors))
+                "total": (result.get("pagination") or {}).get("total_results", len(authors))
             },
             "normalized_query": result.get("normalized_query", q),
             "search_type": result.get("search_type", "authors")
