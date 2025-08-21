@@ -96,7 +96,9 @@ async def increment_article_likes(article_id: str):
         partition_key=article_id
     )
     current_likes = article.get("likes", 0)
+    print(f"Current likes before increment: {current_likes}")
     article["likes"] = current_likes + 1
+    print(f"Likes after increment: {article['likes']}")
     await articles.upsert_item(body=article)
 
 async def increment_article_dislikes(article_id: str):
@@ -116,7 +118,9 @@ async def decrement_article_likes(article_id: str):
         partition_key=article_id
     )
     current_likes = article.get("likes", 0)
+    print(f"Current likes before decrement: {current_likes}")
     article["likes"] = current_likes - 1
+    print(f"Likes after decrement: {article['likes']}")
     await articles.upsert_item(body=article)
 
 async def decrement_article_dislikes(article_id: str):

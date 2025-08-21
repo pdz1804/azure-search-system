@@ -7,6 +7,10 @@ from backend.utils import get_current_user
 
 users = APIRouter(prefix="/api/users", tags=["users"])
 
+@users.get("/")
+async def list_users():
+    return await user_service.list_users()
+
 @users.get("/{id}")
 async def get_user_by_id(id: str):
     return await user_service.get_user_by_id(id)
