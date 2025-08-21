@@ -36,6 +36,7 @@ import {
 } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { articleApi } from '../api/articleApi';
@@ -308,7 +309,7 @@ const ArticleDetail = () => {
   const handleDelete = () => {
     confirm({
       title: 'Are you sure you want to delete this article?',
-  icon: React.createElement(ExclamationCircleOutlined),
+      icon: React.createElement(ExclamationCircleOutlined),
       content: 'This article will be permanently deleted.',
       okText: 'Delete',
       okType: 'danger',
@@ -655,6 +656,7 @@ const ArticleDetail = () => {
                 >
                   <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw]}
                     components={markdownComponents}
                   >
                     {article.content}

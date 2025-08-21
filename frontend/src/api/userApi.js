@@ -125,9 +125,10 @@ export const userApi = {
   checkArticleReactionStatus: async (articleId) => {
     try {
       const response = await apiClient.get(`/users/check_article_status/${articleId}`);
+      // backend returns { success: true, data: { reaction_type, is_bookmarked } }
       return {
         success: true,
-        data: response.data
+        data: response.data?.data || response.data
       };
     } catch (error) {
       return {

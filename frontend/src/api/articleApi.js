@@ -1,4 +1,4 @@
-import { apiClient } from './config';
+import { apiClient, apiClientFormData, createFormData } from './config';
 
 export const articleApi = {
   // Get all articles (supports both (page, limit, status) and (paramsObject))
@@ -58,7 +58,51 @@ export const articleApi = {
   // Create article
   createArticle: async (articleData) => {
     try {
-      const response = await apiClient.post('/articles', articleData);
+      // backend expects form fields (Form & UploadFile), so send multipart/form-data
+      const form = createFormData(articleData);
+      // If image exists on articleData but wasn't added by createFormData, add it explicitly
+      try {
+        let hasImage = false;
+        for (const pair of form.entries()) {
+          if (pair[0] === 'image') {
+            hasImage = true;
+            break;
+          }
+        }
+        if (!hasImage && articleData && articleData.image) {
+          const img = articleData.image;
+          // if AntD wrapper, get originFileObj
+          const fileObj = img.originFileObj ? img.originFileObj : img;
+          form.append('image', fileObj);
+          // eslint-disable-next-line no-console
+          console.log('[DEBUG] createArticle - appended image manually to FormData', { name: fileObj.name, size: fileObj.size });
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('[DEBUG] createArticle - failed to ensure image in FormData', e);
+      }
+      // DEBUG: list form entries before sending to help trace missing file
+      try {
+        // eslint-disable-next-line no-console
+        console.log('[DEBUG] createArticle - FormData entries:');
+        for (const pair of form.entries()) {
+          // pair[1] can be a File object; log minimal info
+          const val = pair[1];
+          if (val && typeof val === 'object' && (val.name || val.size)) {
+            // eslint-disable-next-line no-console
+            console.log(pair[0], { name: val.name, size: val.size, type: val.type });
+          } else {
+            // eslint-disable-next-line no-console
+            console.log(pair[0], val);
+          }
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('[DEBUG] Failed to log FormData entries', e);
+      }
+    const response = await apiClientFormData.post('/articles/', form);
+      // If backend returns wrapper { success: true, data: {...} }, return the inner data
+      if (response.data && response.data.success && response.data.data) return response.data.data;
       return response.data;
     } catch (error) {
       console.error('Create article error:', error);
@@ -69,7 +113,10 @@ export const articleApi = {
   // Update article
   updateArticle: async (id, articleData) => {
     try {
-      const response = await apiClient.put(`/articles/${id}`, articleData);
+      // send as multipart/form-data so backend Form(...) parameters are populated
+      const form = createFormData(articleData);
+      const response = await apiClientFormData.put(`/articles/${id}`, form);
+      if (response.data && response.data.success && response.data.data) return response.data.data;
       return response.data;
     } catch (error) {
       console.error('Update article error:', error);

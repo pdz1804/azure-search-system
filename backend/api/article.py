@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File, Query, Request
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 
@@ -22,6 +22,7 @@ articles = APIRouter(prefix="/api/articles", tags=["articles"])
 
 @articles.post("/")
 async def create(
+    request: Request,
     title: str = Form(...),
     abstract: str = Form(...),
     content: str = Form(...),
@@ -39,9 +40,47 @@ async def create(
         "author_name": current_user.get("full_name"),
         "abstract": abstract
     }
+    # Log incoming form keys and file presence
+    form = None
+    try:
+        form = await request.form()
+        keys = list(form.keys())
+        print(f"[DEBUG] create - form keys received: {keys}")
+        # If file-like, it's accessible in form.get('image') as UploadFile
+        if 'image' in form:
+            f = form.get('image')
+            try:
+                print(f"[DEBUG] create - form['image'] type: {type(f)}, attrs: {getattr(f, 'filename', None)}")
+            except Exception:
+                print('[DEBUG] create - unable to introspect form image field')
+    except Exception as e:
+        print(f"[DEBUG] create - failed to read request.form(): {e}")
+
     if image:
-        image_url = upload_image(image.file)
-        doc["image"] = image_url
+        try:
+            print(f"[DEBUG] Received image: filename={image.filename}, content_type={image.content_type}")
+            image_url = upload_image(image.file)
+            doc["image"] = image_url
+        except Exception as e:
+            print(f"[ERROR] Failed uploading image in create: {e}")
+    else:
+        # Try fallback: sometimes the UploadFile param isn't populated but request.form() contains the file
+        if form and 'image' in form:
+            try:
+                f = form.get('image')
+                if hasattr(f, 'filename') and getattr(f, 'filename'):
+                    print(f"[DEBUG] create - using fallback form image: filename={getattr(f, 'filename', None)}")
+                    try:
+                        image_url = upload_image(f.file)
+                        doc["image"] = image_url
+                    except Exception as e:
+                        print(f"[ERROR] Failed uploading fallback image in create: {e}")
+                else:
+                    print('[DEBUG] create - form image exists but has no filename')
+            except Exception as e:
+                print(f"[DEBUG] create - error handling fallback form image: {e}")
+        else:
+            print("[DEBUG] No image provided in create request")
     art = await create_article(doc)
     return {"success": True, "data": art}
 
@@ -391,8 +430,14 @@ async def update(
     if status is not None and status != "":
         update_data["status"] = status
     if image and image != "" :
-        image_url = upload_image(image.file)
-        update_data["image"] = image_url
+        try:
+            print(f"[DEBUG] Received image for update: filename={image.filename}, content_type={image.content_type}")
+            image_url = upload_image(image.file)
+            update_data["image"] = image_url
+        except Exception as e:
+            print(f"[ERROR] Failed uploading image in update: {e}")
+    else:
+        print("[DEBUG] No image provided in update request")
     updated = await update_article(article_id, update_data)
     if not updated:
         return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Update failed"}})

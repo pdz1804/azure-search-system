@@ -117,8 +117,19 @@ export const createFormData = (data) => {
   Object.keys(data).forEach(key => {
     const value = data[key];
     if (value !== null && value !== undefined) {
-      if (value instanceof File) {
-        formData.append(key, value);
+      // Detect File/Blob or AntD Upload objects (originFileObj)
+      const isFileLike = (val) => {
+        if (!val) return false;
+        if (val instanceof File || val instanceof Blob) return true;
+        // Ant Design Upload may provide an object with originFileObj
+        if (val && typeof val === 'object' && (val.originFileObj || (val.name && val.size))) return true;
+        return false;
+      };
+
+      if (isFileLike(value)) {
+        // support AntD Upload item objects
+        const fileObj = value.originFileObj ? value.originFileObj : value;
+        formData.append(key, fileObj);
       } else if (Array.isArray(value)) {
         formData.append(key, value.join(','));
       } else {
