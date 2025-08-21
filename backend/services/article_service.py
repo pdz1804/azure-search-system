@@ -306,3 +306,31 @@ async def get_summary() -> Dict:
             "total_likes": 0,
             "authors": 0,
         }
+
+async def get_total_articles_count():
+    """Get total count of published articles."""
+    try:
+        from backend.database.cosmos import get_articles_container
+        articles_container = await get_articles_container()
+        
+        query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published'"
+        async for count in articles_container.query_items(query=query):
+            return count
+        return 0
+    except Exception:
+        return 0
+
+async def get_total_articles_count_by_author(author_id: str):
+    """Get total count of published articles by specific author."""
+    try:
+        from backend.database.cosmos import get_articles_container
+        articles_container = await get_articles_container()
+        
+        query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published' AND c.author_id = @author_id"
+        parameters = [{"name": "@author_id", "value": author_id}]
+        
+        async for count in articles_container.query_items(query=query, parameters=parameters):
+            return count
+        return 0
+    except Exception:
+        return 0

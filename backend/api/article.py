@@ -103,6 +103,11 @@ async def list_all(
         # Get articles from service
         articles_data = await list_articles(page=current_page, page_size=current_page_size)
         
+        # Calculate total pages - get total count from database
+        from backend.services.article_service import get_total_articles_count
+        total_items = await get_total_articles_count()
+        total_pages = (total_items + current_page_size - 1) // current_page_size  # Ceiling division
+        
         # Return in expected format
         return {
             "success": True,
@@ -110,7 +115,7 @@ async def list_all(
             "pagination": {
                 "page": current_page,
                 "page_size": current_page_size,
-                "total": len(articles_data) if articles_data else 0
+                "total": total_pages  # Changed to total pages
             }
         }
     except Exception as e:
@@ -124,13 +129,18 @@ async def list_all(
 async def home_popular_articles(page: int = 1, page_size: int = 10):
     try:
         popular = await get_popular_articles(page, page_size)
+        # Calculate total pages for popular articles
+        from backend.services.article_service import get_total_articles_count
+        total_items = await get_total_articles_count()
+        total_pages = (total_items + page_size - 1) // page_size
+        
         return {
             "success": True,
             "data": popular,
             "pagination": {
                 "page": page,
                 "page_size": page_size,
-                "total": len(popular)
+                "total": total_pages  # Changed to total pages
             }
         }
     except Exception as e:
@@ -336,13 +346,30 @@ async def get_articles_by_category(
         async for doc in articles_container.query_items(query=query, parameters=parameters):
             results.append(doc)
         
+        # Calculate total pages for category
+        # First get total count for this category
+        count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published'"
+        if category_name != "all":
+            count_query += " AND ARRAY_CONTAINS(c.tags, @category)"
+        
+        count_parameters = []
+        if category_name != "all":
+            count_parameters.append({"name": "@category", "value": category_name})
+        
+        total_items = 0
+        async for count in articles_container.query_items(query=count_query, parameters=count_parameters):
+            total_items = count
+            break
+        
+        total_pages = (total_items + limit - 1) // limit
+        
         return {
             "success": True,
             "data": results,
             "pagination": {
                 "page": page,
                 "limit": limit,
-                "total": len(results)
+                "total": total_pages  # Changed to total pages
             }
         }
     except Exception as e:
@@ -456,12 +483,18 @@ async def remove(article_id: str, current_user: dict = Depends(get_current_user)
 @articles.get("/author/{author_id}")
 async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20):
     articles_list = await get_articles_by_author(author_id, page - 1, page_size)
+    
+    # Calculate total pages for this author
+    from backend.services.article_service import get_total_articles_count_by_author
+    total_items = await get_total_articles_count_by_author(author_id)
+    total_pages = (total_items + page_size - 1) // page_size
+    
     return {
         "success": True,
         "data": articles_list,
         "pagination": {
             "page": page,
             "page_size": page_size,
-            "total": len(articles_list)
+            "total": total_pages  # Changed to total pages
         }
     }

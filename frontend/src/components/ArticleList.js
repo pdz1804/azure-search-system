@@ -177,20 +177,19 @@ const ArticleList = ({
             ? [...items].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
             : items;
           setArticles(finalItems);
-          const data = response.data || response;
+          
+          // Extract pagination info - total is now total pages from backend
+          const paginationData = response.pagination || {};
+          console.log('API Pagination data:', paginationData);
+          
+          // Convert total pages to total items for Ant Design Pagination component
+          const totalPages = paginationData.total || 1;
+          const totalItems = totalPages * pagination.pageSize;
+          
           setPagination(prev => ({
             ...prev,
-            current: (data.pagination && (data.pagination.page || data.pagination.current)) || data.page || data.currentPage || page,
-            total: (search || searchQuery)
-              ? finalItems.length
-              : (
-                // Prefer total items; fall back to pages only if items missing
-                (data.pagination && (data.pagination.total_items || data.pagination.totalItems))
-                || data.total_items || data.totalItems
-                || (data.pagination && data.pagination.total) // may be total pages
-                || data.total
-                || (Array.isArray(finalItems) ? finalItems.length : 0)
-              )
+            current: paginationData.page || page,
+            total: (search || searchQuery) ? finalItems.length : totalItems
           }));
           setLastFetchKey(cacheKey);
           globalFetchMap.delete(cacheKey);
