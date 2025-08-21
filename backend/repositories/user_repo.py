@@ -200,3 +200,18 @@ async def unbookmark_article(user_id: str, article_id: str) -> bool:
         return False
 
 
+async def get_users_by_ids(user_ids: list) -> list:
+    users = await get_users()
+    if not user_ids:
+        return []
+    ids_placeholders = ", ".join([f"@id{i}" for i in range(len(user_ids))])
+    parameters = [{"name": f"@id{i}", "value": id_} for i, id_ in enumerate(user_ids)]
+
+    query = f"SELECT * FROM c WHERE c.id IN ({ids_placeholders}) AND c.is_active = true"
+
+    results = []
+    async for doc in users.query_items(query=query, parameters=parameters):
+        results.append(doc)
+
+    return results
+    

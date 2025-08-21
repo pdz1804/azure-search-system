@@ -8,7 +8,7 @@ article related counters to the article service where appropriate.
 from datetime import datetime
 import uuid
 from fastapi import HTTPException
-from typing import Any, Dict, Dict, Optional
+from typing import Any, Dict, Dict, List, Optional
 from backend.model.dto.user_dto import user_dto
 from backend.repositories import article_repo, user_repo
 from backend.services import article_service
@@ -137,7 +137,9 @@ async def delete_reaction( article_id: str) -> bool:
                 await undislike_article(user.get("id"), article_id)
                 break
     
-
+async def search_response(data: Dict) -> List[dict]:
+    users_ids = [user["id"] for user in data.get("results", [])]
+    return await user_repo.get_users_by_ids(users_ids)
 
 def map_to_user_dto(user: dict) -> user_dto:
     return user_dto(
