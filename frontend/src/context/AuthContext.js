@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
       if (!response.success) {
         return { 
           success: false, 
-          error: response.error || 'Đăng nhập thất bại' 
+          error: response.error || 'Login failed' 
         };
       }
       
@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Login error:', error);
       return { 
         success: false, 
-        error: error.message || 'Đăng nhập thất bại' 
+        error: error.message || 'Login failed' 
       };
     }
   };
@@ -78,7 +78,7 @@ export const AuthProvider = ({ children }) => {
       if (!response.success) {
         return { 
           success: false, 
-          error: response.error || 'Đăng ký thất bại' 
+          error: response.error || 'Registration failed' 
         };
       }
       
@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Register error:', error);
       return { 
         success: false, 
-        error: error.message || 'Đăng ký thất bại' 
+        error: error.message || 'Registration failed' 
       };
     }
   };

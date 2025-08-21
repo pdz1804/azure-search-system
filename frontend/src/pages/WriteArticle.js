@@ -38,7 +38,7 @@ const WriteArticle = () => {
 
   useEffect(() => {
     if (!isAuthenticated()) {
-      message.warning('Vui lòng đăng nhập để viết bài');
+      message.warning('Please login to write articles');
       navigate('/login');
       return;
     }
@@ -65,7 +65,7 @@ const WriteArticle = () => {
       const data = await articleApi.getArticle(id);
       setArticle(data);
     } catch (error) {
-      message.error('Không thể tải bài viết');
+      message.error('Cannot load article');
       navigate('/');
     } finally {
       setLoading(false);
@@ -82,13 +82,13 @@ const WriteArticle = () => {
           ...articleData,
           status: isDraft ? 'draft' : 'published'
         });
-        message.success(isDraft ? 'Đã lưu bản nháp' : 'Đã cập nhật bài viết');
+        message.success(isDraft ? 'Draft saved' : 'Article updated');
       } else {
         savedArticle = await articleApi.createArticle({
           ...articleData,
           status: isDraft ? 'draft' : 'published'
         });
-        message.success(isDraft ? 'Đã lưu bản nháp' : 'Đã tạo bài viết');
+        message.success(isDraft ? 'Draft saved' : 'Article created');
       }
 
       setHasUnsavedChanges(false);

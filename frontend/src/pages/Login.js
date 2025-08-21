@@ -22,7 +22,7 @@ const Login = () => {
       console.log('Login result:', result);
       
       if (result.success) {
-        message.success('Đăng nhập thành công!');
+        message.success('Login successful!');
         navigate(from, { replace: true });
       } else {
         console.error('Login failed:', result.error);
@@ -30,7 +30,7 @@ const Login = () => {
       }
     } catch (error) {
       console.error('Login exception:', error);
-      message.error('Đăng nhập thất bại');
+      message.error('Login failed');
     } finally {
       setLoading(false);
     }
@@ -46,8 +46,8 @@ const Login = () => {
     }}>
       <Card style={{ width: 400, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <Title level={2}>Đăng nhập</Title>
-          <Text type="secondary">Đăng nhập vào tài khoản của bạn</Text>
+          <Title level={2}>Login</Title>
+          <Text type="secondary">Sign in to your account</Text>
         </div>
 
         <Form
@@ -60,27 +60,27 @@ const Login = () => {
             name="email"
             label="Email"
             rules={[
-              { required: true, message: 'Vui lòng nhập email!' },
-              { type: 'email', message: 'Email không hợp lệ!' }
+              { required: true, message: 'Please enter your email!' },
+              { type: 'email', message: 'Invalid email format!' }
             ]}
           >
             <Input 
               prefix={<UserOutlined />} 
-              placeholder="Nhập email của bạn"
+              placeholder="Enter your email"
             />
           </Form.Item>
 
           <Form.Item
             name="password"
-            label="Mật khẩu"
+            label="Password"
             rules={[
-              { required: true, message: 'Vui lòng nhập mật khẩu!' },
-              { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự!' }
+              { required: true, message: 'Please enter your password!' },
+              { min: 6, message: 'Password must be at least 6 characters!' }
             ]}
           >
             <Input.Password 
               prefix={<LockOutlined />} 
-              placeholder="Nhập mật khẩu của bạn"
+              placeholder="Enter your password"
             />
           </Form.Item>
 
@@ -91,7 +91,7 @@ const Login = () => {
               loading={loading}
               block
             >
-              Đăng nhập
+              Login
             </Button>
           </Form.Item>
 

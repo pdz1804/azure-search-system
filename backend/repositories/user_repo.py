@@ -1,5 +1,12 @@
+"""Repository functions that read/write user documents in Cosmos DB.
+
+Encapsulates Cosmos-specific queries so services can call simple
+functions like `get_by_email`, `follow_user`, `like_article`, etc.
+"""
+
 from typing import Optional
 from backend.database.cosmos import get_users_container
+
 
 async def get_users():
     return await get_users_container()
@@ -47,7 +54,17 @@ async def get_by_full_name(full_name: str) -> Optional[dict]:
 
 async def get_user_by_id(user_id: str) -> Optional[dict]:
     users = await get_users()
-    return await users.read_item(item=user_id, partition_key=user_id)
+    query = "SELECT * FROM c WHERE c.id = @user_id"
+    parameters = [{"name": "@user_id", "value": user_id}]
+    
+    results = []
+    async for item in users.query_items(
+        query=query,
+        parameters=parameters
+    ):
+        results.append(item)
+
+    return results[0] if results else None
 
 async def insert(doc: dict):
     users = await get_users()
@@ -163,9 +180,9 @@ async def bookmark_article(user_id: str, article_id: str) -> bool:
     users = await get_users()
     try:
         user = await get_user_by_id(user_id)
-        bookmarks = set(user.get("bookmarked_articles", []))
-        bookmarks.add(article_id)
-        user["bookmarked_articles"] = list(bookmarks)
+        bookmarked = set(user.get("bookmarked_articles", []))
+        bookmarked.add(article_id)
+        user["bookmarked_articles"] = list(bookmarked)
         await users.upsert_item(body=user)
         return True
     except Exception:

@@ -1,6 +1,4 @@
-from unittest.util import _MAX_LENGTH
-from git import Optional
-from proto import Field
+from typing import Optional
 from pydantic import BaseModel, EmailStr, Field
 
 

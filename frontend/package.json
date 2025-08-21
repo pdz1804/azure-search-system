@@ -20,7 +20,7 @@
     "clsx": "^2.1.0",
     "date-fns": "^3.6.0",
     "dayjs": "^1.11.7",
-    "framer-motion": "^11.0.0",
+    "framer-motion": "^11.18.2",
     "html-react-parser": "^3.0.15",
     "lodash": "^4.17.21",
     "postcss": "^8.4.0",
@@ -54,12 +54,7 @@
     "@types/react-syntax-highlighter": "^15.5.0",
     "@types/react-virtualized": "^9.21.0",
     "react-scripts": "5.0.1",
-    "webpack-bundle-analyzer": "^4.10.0",
-    "@heroicons/react": "^2.2.0",
-    "date-fns": "^4.1.0",
-    "framer-motion": "^12.23.12",
-    "react-hot-toast": "^2.6.0",
-    "react-lazy-load-image-component": "^1.6.3"
+    "webpack-bundle-analyzer": "^4.10.0"
   },
   "browserslist": {
     "production": [
