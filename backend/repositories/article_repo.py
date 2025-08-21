@@ -1,3 +1,10 @@
+"""Repository layer for articles.
+
+This module performs direct data access against the Cosmos DB
+`articles` container. All SQL/queries and container operations live
+here so the service layer above can remain database-agnostic.
+"""
+
 from calendar import c
 import math
 import re
@@ -6,6 +13,7 @@ from backend.api import article
 from backend.database.cosmos import get_articles_container
 from backend.model.request import response_ai
 # from backend.database.mongo import get_db
+
 
 async def get_articles():
     return await get_articles_container()

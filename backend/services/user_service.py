@@ -1,3 +1,10 @@
+"""User-facing business logic.
+
+Contains user related operations such as registration, login and
+user-article reactions. It coordinates repository calls and delegates
+article related counters to the article service where appropriate.
+"""
+
 from datetime import datetime
 import uuid
 from fastapi import HTTPException
@@ -6,6 +13,7 @@ from backend.model.dto.user_dto import user_dto
 from backend.repositories import article_repo, user_repo
 from backend.services import article_service
 from backend.utils import get_current_user, hash_password, verify_password
+
 
 async def list_users() -> list:
     users = await user_repo.get_list_user()
@@ -26,7 +34,7 @@ async def create_user(doc: dict) -> dict:
 
     doc["password"] = hash_password(doc.pop("password"))
     doc["role"] = doc.get("role", "user")
-    doc["created_at"] = datetime.utcnow()
+    doc["created_at"] = datetime.utcnow().isoformat()
     doc["id"] = uuid.uuid4().hex
     user = await user_repo.insert(doc)
     return user

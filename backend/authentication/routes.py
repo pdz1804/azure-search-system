@@ -1,3 +1,10 @@
+"""Authentication routes.
+
+Handles login and registration. On successful login/register the
+endpoints return a JWT `access_token` that should be supplied as a
+Bearer token in the `Authorization` header for protected routes.
+"""
+
 import os
 from typing import Optional
 from dotenv import load_dotenv
@@ -13,19 +20,21 @@ BASE_URL = os.getenv("BASE_URL")
 auth = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-
 class TokenResponse(BaseModel):
     access_token: str
     user_id: str
     role: str
 
+
 @auth.post("/login", response_model=TokenResponse)
 async def login_user(data: LoginRequest):
-	user = await login(data.email, data.password)
-	if not user:
-		raise HTTPException(status_code=401, detail="Invalid credentials")
-	token = create_access_token({"sub": user["id"]})
-	return TokenResponse(access_token=token, user_id=user["id"], role=user.get("role", "user"))
+    # Authenticate using user_service which validates password.
+    user = await login(data.email, data.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = create_access_token({"sub": user["id"]})
+    return TokenResponse(access_token=token, user_id=user["id"], role=user.get("role", "user"))
+
 
 @auth.post("/register", response_model=TokenResponse)
 async def register(
@@ -35,6 +44,7 @@ async def register(
     role: str = Form("user"),
     avatar: Optional[UploadFile] = File(None)
 ):
+    # Collect registration fields and optionally upload avatar to blob
     user_data = {
         "full_name": full_name,
         "email": email,
@@ -43,6 +53,7 @@ async def register(
     }
 
     if avatar:
+        # upload_image returns a URL to the blob storage
         image_url = upload_image(avatar.file)
         user_data["avatar_url"] = image_url
 

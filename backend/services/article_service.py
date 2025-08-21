@@ -1,3 +1,17 @@
+"""Business logic for articles.
+
+This module implements higher-level operations used by the API
+handlers. It coordinates cache lookups, repository calls and related
+side effects (e.g. clearing cache, notifying user services). The
+expected flow for an incoming request is:
+
+- API route (backend/api/*) -> calls a function here
+- functions here call repository functions in backend/repositories/*
+- this module handles caching, pagination, scoring etc.
+
+No direct DB access happens here; use the repository layer.
+"""
+
 from datetime import datetime
 from typing import Dict, List, Optional
 from uuid import uuid4
@@ -10,11 +24,8 @@ from backend.services.cache_service import (
     CACHE_KEYS, CACHE_TTL, generate_cache_key
 )
 
-
-
-
-
 async def create_article(doc: dict) -> dict:
+    # prepare fields expected by repository/db
     now = datetime.utcnow().isoformat()
     doc["created_at"] = now
     doc["updated_at"] = now
@@ -24,10 +35,12 @@ async def create_article(doc: dict) -> dict:
     doc.setdefault("dislikes", 0)
     doc.setdefault("views", 0)
 
+    # persist via repository layer
     inserted_id = await article_repo.insert_article(doc)
     art = await article_repo.get_article_by_id(inserted_id)
     
-    # Clear home page cache when new article is created
+    # Invalidate caches that list articles so the home/recent pages
+    # reflect the newly created item.
     await delete_cache_pattern("articles:home*")
     await delete_cache_pattern("articles:recent*")
     
@@ -75,7 +88,10 @@ async def list_articles(page: int, page_size: int) -> List[dict]:
         return cached_articles
     
     print(f"💾 Cache MISS for home articles page {page}")
-    articles = await article_repo.list_articles(page, page_size)
+    result = await article_repo.list_articles(page, page_size)
+    
+    # Extract the actual articles from the repository response
+    articles = result.get("items", []) if isinstance(result, dict) else result
     
     if articles:
         # Cache the result
@@ -257,3 +273,36 @@ async def get_popular_articles(page: int = 1, page_size: int = 10) -> List[dict]
 async def search_response(data: Dict) -> List[dict]:
     article_ids = [article["id"] for article in data.get("results", [])]
     return await article_repo.get_articles_by_ids(article_ids)
+
+
+async def get_summary() -> Dict:
+    """Aggregate basic articles summary for dashboards.
+
+    Note: For simplicity we fetch up to 1000 most recent articles.
+    """
+    try:
+        data = await article_repo.list_articles(page=1, page_size=1000)
+        items = data.get("items", []) if isinstance(data, dict) else data
+        total = len(items)
+        published = len([a for a in items if a.get("status") == "published"])
+        drafts = len([a for a in items if a.get("status") == "draft"])
+        total_views = sum(int(a.get("views", 0)) for a in items)
+        total_likes = sum(int(a.get("likes", 0)) for a in items)
+        authors = len({a.get("author_id") for a in items if a.get("author_id")})
+        return {
+            "total_articles": total,
+            "published_articles": published,
+            "draft_articles": drafts,
+            "total_views": total_views,
+            "total_likes": total_likes,
+            "authors": authors,
+        }
+    except Exception:
+        return {
+            "total_articles": 0,
+            "published_articles": 0,
+            "draft_articles": 0,
+            "total_views": 0,
+            "total_likes": 0,
+            "authors": 0,
+        }

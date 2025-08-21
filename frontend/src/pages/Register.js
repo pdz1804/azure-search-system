@@ -24,13 +24,13 @@ const Register = () => {
 
       const result = await register(userData);
       if (result.success) {
-        message.success('Đăng ký thành công!');
+        message.success('Registration successful!');
         navigate('/');
       } else {
         message.error(result.error);
       }
     } catch (error) {
-      message.error('Đăng ký thất bại');
+      message.error('Registration failed');
     } finally {
       setLoading(false);
     }
@@ -61,8 +61,8 @@ const Register = () => {
     }}>
       <Card style={{ width: 450, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <Title level={2}>Đăng ký</Title>
-          <Text type="secondary">Tạo tài khoản mới</Text>
+          <Title level={2}>Register</Title>
+          <Text type="secondary">Create a new account</Text>
         </div>
 
         <Form
@@ -73,15 +73,15 @@ const Register = () => {
         >
           <Form.Item
             name="full_name"
-            label="Họ và tên"
+            label="Full Name"
             rules={[
-              { required: true, message: 'Vui lòng nhập họ và tên!' },
-              { min: 2, message: 'Họ và tên phải có ít nhất 2 ký tự!' }
+              { required: true, message: 'Please enter your full name!' },
+              { min: 2, message: 'Full name must be at least 2 characters!' }
             ]}
           >
             <Input 
               prefix={<UserOutlined />} 
-              placeholder="Nhập họ và tên của bạn"
+              placeholder="Enter your full name"
             />
           </Form.Item>
 
@@ -89,13 +89,13 @@ const Register = () => {
             name="email"
             label="Email"
             rules={[
-              { required: true, message: 'Vui lòng nhập email!' },
-              { type: 'email', message: 'Email không hợp lệ!' }
+              { required: true, message: 'Please enter your email!' },
+              { type: 'email', message: 'Invalid email format!' }
             ]}
           >
             <Input 
               prefix={<MailOutlined />} 
-              placeholder="Nhập email của bạn"
+              placeholder="Enter your email"
             />
           </Form.Item>
 

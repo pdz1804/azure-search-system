@@ -11,12 +11,21 @@ DATABASE_NAME = os.getenv("DATABASE_NAME")
 ARTICLES_CONTAINER = os.getenv("ARTICLES_CONTAINER")
 USERS_CONTAINER = os.getenv("USERS_CONTAINER")
 
+# Cosmos client and container references are kept in module-level globals
+# so they can be lazily initialized and reused across requests. These are
+# asynchronous clients from azure.cosmos.aio.
 client: CosmosClient = None
 database = None
 articles = None
 users = None
 
+
 async def connect_cosmos():
+    """Create the CosmosClient and container references.
+
+    This is called during app startup (see `backend.main`) and will
+    create the database and containers if they do not exist.
+    """
     global client, database, articles, users
 
     if client is None:
@@ -37,7 +46,13 @@ async def connect_cosmos():
 
 
 def close_cosmos():
-    """CosmosClient không có async close, chỉ cần xóa tham chiếu."""
+    """Release references to the Cosmos client and containers.
+
+    The async Cosmos client does not require an explicit close in this
+    project; clearing module-level references is sufficient for the
+    short-running dev server scenario. If using a long-lived process or
+    a different SDK version, implement proper close() calls here.
+    """
     global client, database, articles, users
     client = None
     database = None

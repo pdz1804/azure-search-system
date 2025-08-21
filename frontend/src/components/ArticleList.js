@@ -3,6 +3,7 @@ import { Row, Col, Pagination, Input, Select, Spin, Empty, message, Modal } from
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import ArticleCard from './ArticleCard';
 import { articleApi } from '../api/articleApi';
+import { userApi } from '../api/userApi';
 import { useNavigate } from 'react-router-dom';
 
 const { Search } = Input;
@@ -11,7 +12,7 @@ const { confirm } = Modal;
 
 const ArticleList = ({ 
   authorId = null, 
-  title = "Danh sách bài viết",
+  title = "Article List",
   articles: externalArticles = null,
   loading: externalLoading = false,
   showLoadMore = true,
@@ -32,10 +33,16 @@ const ArticleList = ({
     total: 0
   });
   const [searchText, setSearchText] = useState('');
+  const [lastFetchKey, setLastFetchKey] = useState('');
   const navigate = useNavigate();
 
   // Determine actual loading state
   const isLoading = externalArticles ? externalLoading : loading;
+  
+  // Create a unique key for caching
+  const getCacheKey = () => {
+    return `${authorId || 'all'}_${status}_${sortBy}_${searchText}`;
+  };
   
   // Debug log
   console.log('ArticleList Debug:', { 
@@ -43,11 +50,18 @@ const ArticleList = ({
     externalLoading, 
     loading, 
     isLoading, 
-    articlesCount: articles.length 
+    articlesCount: articles.length,
+    cacheKey: getCacheKey()
   });
 
   const fetchArticles = async (page = 1, search = '') => {
     if (externalArticles) return; // Don't fetch if articles are provided externally
+    
+    const cacheKey = getCacheKey();
+    if (lastFetchKey === cacheKey && page === 1) {
+      console.log('Skipping duplicate fetch for same cache key');
+      return;
+    }
     
     setLoading(true);
     try {
@@ -76,12 +90,13 @@ const ArticleList = ({
           current: data.page || data.currentPage || page,
           total: data.total || data.totalItems || data.total_items || 0
         }));
+        setLastFetchKey(cacheKey);
       } else {
-        message.error(response.error || 'Không thể tải danh sách bài viết');
+        message.error(response.error || 'Failed to load articles');
         setArticles([]);
       }
     } catch (error) {
-      message.error('Không thể tải danh sách bài viết');
+      message.error('Failed to load articles');
       console.error('Error fetching articles:', error);
       setArticles([]);
     } finally {
@@ -119,24 +134,24 @@ const ArticleList = ({
   };
 
   const handleEdit = (article) => {
-    navigate(`/articles/${article.id}/edit`);
+    navigate(`/write/${article.id}`);
   };
 
   const handleDelete = (article) => {
     confirm({
-      title: 'Bạn có chắc chắn muốn xóa bài viết này?',
+      title: 'Are you sure you want to delete this article?',
       icon: <ExclamationCircleOutlined />,
-      content: `Bài viết "${article.title}" sẽ bị xóa vĩnh viễn.`,
-      okText: 'Xóa',
+      content: `Article "${article.title}" will be permanently deleted.`,
+      okText: 'Delete',
       okType: 'danger',
-      cancelText: 'Hủy',
+      cancelText: 'Cancel',
       async onOk() {
         try {
           await articleApi.deleteArticle(article.id);
-          message.success('Đã xóa bài viết thành công');
+          message.success('Article deleted successfully');
           fetchArticles(pagination.current, searchText);
         } catch (error) {
-          message.error('Không thể xóa bài viết');
+          message.error('Failed to delete article');
         }
       },
     });
@@ -144,44 +159,60 @@ const ArticleList = ({
 
   const handleLike = async (articleId) => {
     try {
-      await articleApi.likeArticle(articleId);
-      message.success('Đã thích bài viết');
+      await userApi.likeArticle(articleId);
+      message.success('Article liked');
       fetchArticles(pagination.current, searchText);
     } catch (error) {
-      message.error('Không thể thích bài viết');
+      message.error('Failed to like article');
     }
   };
 
   const handleDislike = async (articleId) => {
     try {
-      await articleApi.dislikeArticle(articleId);
-      message.success('Đã không thích bài viết');
+      await userApi.dislikeArticle(articleId);
+      message.success('Article disliked');
       fetchArticles(pagination.current, searchText);
     } catch (error) {
-      message.error('Không thể đánh giá bài viết');
+      message.error('Failed to dislike article');
     }
   };
 
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h2>{title}</h2>
+        <h2 style={{ 
+          color: '#1a1a1a', 
+          fontSize: 24, 
+          fontWeight: 600,
+          marginBottom: 16
+        }}>
+          {title}
+        </h2>
         {showFilters && !authorId && (
           <Search
-            placeholder="Tìm kiếm bài viết..."
+            placeholder="Search articles..."
             allowClear
-            enterButton="Tìm kiếm"
+            enterButton="Search"
             size="large"
             onSearch={handleSearch}
-            style={{ maxWidth: 400 }}
+            style={{ 
+              maxWidth: 400,
+              borderRadius: 20
+            }}
           />
         )}
       </div>
 
       <Spin spinning={isLoading}>
         {articles.length === 0 && !isLoading ? (
-          <Empty description="Không có bài viết nào" />
-        ) : articles.length > 0 ? (
+          <Empty 
+            description="No articles found" 
+            style={{ 
+              padding: '60px 0',
+              color: '#666'
+            }}
+          />
+        ) : (
           <>
             <Row gutter={[16, 16]}>
               {articles.map(article => (
@@ -207,13 +238,13 @@ const ArticleList = ({
                   showSizeChanger={false}
                   showQuickJumper
                   showTotal={(total, range) =>
-                    `${range[0]}-${range[1]} của ${total} bài viết`
+                    `${range[0]}-${range[1]} of ${total} articles`
                   }
                 />
               </div>
             )}
           </>
-        ) : null}
+        )}
       </Spin>
     </div>
   );

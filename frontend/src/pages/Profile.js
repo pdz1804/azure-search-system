@@ -63,11 +63,17 @@ const Profile = () => {
       if (isOwnProfile && !id) {
         userData = currentUser;
       } else {
-        userData = await userApi.getUser(targetUserId);
+        const response = await userApi.getUserById(targetUserId);
+        if (response.success) {
+          userData = response.data;
+        } else {
+          throw new Error(response.error || 'Failed to fetch user');
+        }
       }
       setUser(userData);
     } catch (error) {
-      message.error('Không thể tải thông tin người dùng');
+      message.error('Failed to load user information');
+      console.error('Error fetching user:', error);
     } finally {
       setLoading(false);
     }
@@ -75,21 +81,25 @@ const Profile = () => {
 
   const fetchUserStats = async () => {
     try {
-      const articlesData = await articleApi.getArticlesByAuthor(targetUserId, 1, 1000);
-      const articles = articlesData.items || [];
-      
-      const totalViews = articles.reduce((sum, article) => sum + (article.views || 0), 0);
-      const totalLikes = articles.reduce((sum, article) => sum + (article.likes || 0), 0);
-      
-      setStats({
-        totalArticles: articles.length,
-        totalViews,
-        totalLikes,
-        followers: user?.followers?.length || 0,
-        following: user?.following?.length || 0
-      });
+      const articlesResponse = await articleApi.getArticlesByAuthor(targetUserId, 1, 1000);
+      if (articlesResponse.success) {
+        const articles = articlesResponse.data?.items || articlesResponse.data || [];
+        
+        const totalViews = articles.reduce((sum, article) => sum + (article.views || 0), 0);
+        const totalLikes = articles.reduce((sum, article) => sum + (article.likes || 0), 0);
+        
+        setStats({
+          totalArticles: articles.length,
+          totalViews,
+          totalLikes,
+          followers: user?.followers?.length || 0,
+          following: user?.following?.length || 0
+        });
+        
+        console.log('User stats updated:', { totalViews, totalLikes, articleCount: articles.length });
+      }
     } catch (error) {
-      // Silent fail
+      console.error('Error fetching user stats:', error);
     }
   };
 
@@ -104,23 +114,23 @@ const Profile = () => {
 
   const handleFollow = async () => {
     if (!isAuthenticated()) {
-      message.warning('Vui lòng đăng nhập để theo dõi');
+      message.warning('Please log in to follow');
       return;
     }
     
     try {
       if (isFollowing) {
         await userApi.unfollowUser(targetUserId);
-        message.success('Đã bỏ theo dõi');
+        message.success('Unfollowed');
         setIsFollowing(false);
       } else {
         await userApi.followUser(targetUserId);
-        message.success('Đã theo dõi');
+        message.success('Followed');
         setIsFollowing(true);
       }
       fetchUserStats();
     } catch (error) {
-      message.error('Không thể thực hiện thao tác');
+      message.error('Failed to perform action');
     }
   };
 
@@ -135,7 +145,7 @@ const Profile = () => {
   if (!user) {
     return (
       <div style={{ textAlign: 'center', padding: '50px' }}>
-        <Title level={3}>Không tìm thấy người dùng</Title>
+        <Title level={3}>User not found</Title>
       </div>
     );
   }
@@ -159,7 +169,7 @@ const Profile = () => {
                   <Text type="secondary">{user.email}</Text>
                   <br />
                   <Text type="secondary">
-                    Tham gia từ {formatDate(user.created_at)}
+                    Joined {formatDate(user.created_at)}
                   </Text>
                   
                   {!isOwnProfile && isAuthenticated() && (
@@ -169,7 +179,7 @@ const Profile = () => {
                         icon={isFollowing ? <UserDeleteOutlined /> : <UserAddOutlined />}
                         onClick={handleFollow}
                       >
-                        {isFollowing ? 'Bỏ theo dõi' : 'Theo dõi'}
+                        {isFollowing ? 'Unfollow' : 'Follow'}
                       </Button>
                     </div>
                   )}
@@ -179,9 +189,9 @@ const Profile = () => {
                       <Button
                         type="primary"
                         icon={<EditOutlined />}
-                        onClick={() => message.info('Chức năng chỉnh sửa hồ sơ sẽ được phát triển')}
+                        onClick={() => message.info('Edit profile functionality will be developed')}
                       >
-                        Chỉnh sửa hồ sơ
+                        Edit Profile
                       </Button>
                     </div>
                   )}
@@ -192,28 +202,28 @@ const Profile = () => {
                 <Row gutter={[16, 16]}>
                   <Col xs={12} sm={6}>
                     <Statistic
-                      title="Bài viết"
+                      title="Articles"
                       value={stats.totalArticles}
                       prefix={<FileTextOutlined />}
                     />
                   </Col>
                   <Col xs={12} sm={6}>
                     <Statistic
-                      title="Lượt xem"
+                      title="Views"
                       value={formatNumber(stats.totalViews)}
                       prefix={<EyeOutlined />}
                     />
                   </Col>
                   <Col xs={12} sm={6}>
                     <Statistic
-                      title="Lượt thích"
+                      title="Likes"
                       value={formatNumber(stats.totalLikes)}
                       prefix={<HeartOutlined />}
                     />
                   </Col>
                   <Col xs={12} sm={6}>
                     <Statistic
-                      title="Người theo dõi"
+                      title="Followers"
                       value={stats.followers}
                       prefix={<UserAddOutlined />}
                     />
@@ -225,7 +235,7 @@ const Profile = () => {
 
           <ArticleList 
             authorId={targetUserId}
-            title={isOwnProfile ? "Bài viết của bạn" : `Bài viết của ${user.full_name}`}
+            title={isOwnProfile ? "Your Articles" : `Articles by ${user.full_name}`}
           />
         </div>
       </Content>
