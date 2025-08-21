@@ -56,7 +56,7 @@ async def check_follow_status(follower_id: str, followee_id: str) -> bool:
 
 async def like_article(user_id: str, article_id: str):
     is_liked = await check_article_status(user_id, article_id)
-    if is_liked and is_liked.get("type") == "none":
+    if is_liked and is_liked.get("reaction_type") == "none":
         await user_repo.like_article(user_id, article_id)
         await article_repo.increment_article_likes(article_id)
         cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
@@ -67,7 +67,7 @@ async def like_article(user_id: str, article_id: str):
 
 async def unlike_article(user_id: str, article_id: str):
     is_unliked = await check_article_status(user_id, article_id)
-    if is_unliked["type"] == "like":
+    if is_unliked["reaction_type"] == "like":
         await user_repo.unlike_article(user_id, article_id)
         await article_repo.decrement_article_likes(article_id)
         cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
@@ -77,7 +77,7 @@ async def unlike_article(user_id: str, article_id: str):
 
 async def dislike_article(user_id: str, article_id: str):
     is_disliked = await check_article_status(user_id, article_id)
-    if is_disliked and is_disliked.get("type") == "none":
+    if is_disliked and is_disliked.get("reaction_type") == "none":
         await user_repo.dislike_article(user_id, article_id)
         await article_service.increment_article_dislikes(article_id)
         cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
@@ -87,7 +87,7 @@ async def dislike_article(user_id: str, article_id: str):
 
 async def undislike_article(user_id: str, article_id: str):
     is_disliked = await check_article_status(user_id, article_id)
-    if is_disliked["type"] == "dislike":
+    if is_disliked["reaction_type"] == "dislike":
         await user_repo.undislike_article(user_id, article_id)
         await article_service.decrement_article_dislikes(article_id)
         cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
