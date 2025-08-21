@@ -145,6 +145,9 @@ def map_to_user_dto(user: dict) -> user_dto:
         id=user["id"],
         full_name=user.get("full_name"),
         email=user.get("email"),
+        num_followers=len(user.get("followers", [])),
+        num_following=len(user.get("following", [])),
+        num_articles=len(user.get("articles", [])),
         role=user.get("role"),
         avatar_url=user.get("avatar_url")
-    )
+    ) 

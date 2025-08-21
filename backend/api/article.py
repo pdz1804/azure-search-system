@@ -282,7 +282,7 @@ async def get_articles_by_category(
         query = """
         SELECT * FROM c 
         WHERE c.is_active = true 
-        AND ARRAY_CONTAINS(@category, c.tags)
+        AND ARRAY_CONTAINS(c.tags, @category)
         ORDER BY c.created_at DESC
         OFFSET @skip LIMIT @limit
         """
