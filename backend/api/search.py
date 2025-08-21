@@ -7,6 +7,7 @@ implementing the same API structure as the ai_search service.
 
 from urllib import response
 from fastapi import APIRouter, Query, HTTPException
+from fastapi.responses import JSONResponse
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
 from backend.services.article_service import  search_response_articles
@@ -99,6 +100,8 @@ async def search_general(
             ]
         
         response = {
+            "success": True,
+            "data": items,
             "results": items,
             "pagination": {
                 "page": page_index + 1 if page_index is not None else 1,
@@ -113,7 +116,7 @@ async def search_general(
         return response
     except Exception as e:
         print(f"❌ General search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(status_code=500, content={"success": False, "data": {"error": str(e)}})
 
 @search.get("/articles")
 async def search_articles(
@@ -134,8 +137,8 @@ async def search_articles(
         result = search_service.search_articles(q, k, page_index, page_size)
         
         if not result or not result.get("results"):
-            raise HTTPException(status_code=500, detail="Search failed - no results returned")
-        response= await search_response_articles(result)
+            return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Search failed - no results returned"}})
+        docs = await search_response_articles(result)
         # Transform results to ArticleHit format for API response
         # articles = [
         #     ArticleHit(
@@ -166,10 +169,18 @@ async def search_articles(
         # }
         
         # print(f"✅ Articles search completed: {len(articles)} results")
-        return response
+        pagination = result.get("pagination") or {}
+        mapped_pagination = None
+        if pagination:
+            mapped_pagination = {
+                "page": (pagination.get("page_index") or 0) + 1,
+                "page_size": pagination.get("page_size"),
+                "total": pagination.get("total_results")
+            }
+        return {"success": True, "data": docs, "results": docs, "pagination": mapped_pagination}
     except Exception as e:
         print(f"❌ Articles search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(status_code=500, content={"success": False, "data": {"error": str(e)}})
 
 @search.get("/authors")
 async def search_authors(
@@ -191,10 +202,10 @@ async def search_authors(
         result = search_service.search_authors(q, k, page_index, page_size)
         
         if not result or not result.get("results"):
-            raise HTTPException(status_code=500, detail="Search failed - no results returned")
+            return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Search failed - no results returned"}})
         
         print(f"Result DEBUG: {result}")
-        response = await search_response_users(result)
+        docs = await search_response_users(result)
         # # Transform results to AuthorHit format for API response
         # authors = [
         #     AuthorHit(
@@ -222,7 +233,15 @@ async def search_authors(
         # }
         
         # print(f"✅ Authors search completed: {len(authors)} results")
-        return response
+        pagination = result.get("pagination") or {}
+        mapped_pagination = None
+        if pagination:
+            mapped_pagination = {
+                "page": (pagination.get("page_index") or 0) + 1,
+                "page_size": pagination.get("page_size"),
+                "total": pagination.get("total_results")
+            }
+        return {"success": True, "data": docs, "results": docs, "pagination": mapped_pagination}
     except Exception as e:
         print(f"❌ Authors search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(status_code=500, content={"success": False, "data": {"error": str(e)}})

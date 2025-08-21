@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File, Query
+from fastapi.responses import JSONResponse
 from typing import Optional, List
 
 from backend.services.azure_blob_service import upload_image
@@ -42,7 +43,7 @@ async def create(
         image_url = upload_image(image.file)
         doc["image"] = image_url
     art = await create_article(doc)
-    return art
+    return {"success": True, "data": art}
 
 @articles.get("/")
 async def list_all(
@@ -75,19 +76,27 @@ async def list_all(
         }
     except Exception as e:
         print(f"Error fetching articles: {e}")
-        return {
+        return JSONResponse(status_code=500, content={
             "success": False,
-            "data": [],
-            "error": str(e)
-        }
+            "data": {"error": str(e)}
+        })
 
 @articles.get("/popular")
 async def home_popular_articles(page: int = 1, page_size: int = 10):
     try:
-        return await get_popular_articles(page, page_size)
+        popular = await get_popular_articles(page, page_size)
+        return {
+            "success": True,
+            "data": popular,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total": len(popular)
+            }
+        }
     except Exception as e:
         print(f"Error fetching popular articles: {e}")
-        return []
+        return {"success": False, "data": {"error": "Failed to fetch popular articles"}}
 
 @articles.get("/stats")
 async def get_statistics():
@@ -302,8 +311,7 @@ async def get_articles_by_category(
         print(f"Error fetching articles by category: {e}")
         return {
             "success": False,
-            "data": [],
-            "error": str(e)
+            "data": {"error": str(e)}
         }
 
 # @articles.get("/search")
@@ -346,7 +354,7 @@ async def get_one(article_id: str):
     try:
         art = await get_article_by_id(article_id)
         if not art:
-            raise HTTPException(status_code=404, detail="Article not found")
+            return JSONResponse(status_code=404, content={"success": False, "data": None})
         await increment_article_views(article_id)
         return {
             "success": True,
@@ -354,7 +362,7 @@ async def get_one(article_id: str):
         }
     except Exception as e:
         print(f"Error fetching article {article_id}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch article")
+        return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Failed to fetch article"}})
 
 @articles.put("/{article_id}")
 async def update(
@@ -369,9 +377,9 @@ async def update(
 ):
     art = await get_article_by_id(article_id)
     if not art:
-        raise HTTPException(status_code=404, detail="Article not found")
+        return JSONResponse(status_code=404, content={"success": False, "data": None})
     if art.get("author_id") != current_user["id"] and current_user.get("role") not in [ Role.ADMIN]:
-        raise HTTPException(status_code=403, detail="Not allowed to update")
+        return JSONResponse(status_code=403, content={"success": False, "data": {"error": "Not allowed to update"}})
     update_data = {}
     if title is not None and title != "":
         update_data["title"] = title
@@ -388,19 +396,28 @@ async def update(
         update_data["image"] = image_url
     updated = await update_article(article_id, update_data)
     if not updated:
-        raise HTTPException(status_code=500, detail="Update failed")
-    return updated
+        return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Update failed"}})
+    return {"success": True, "data": updated}
 
 @articles.delete("/{article_id}")
 async def remove(article_id: str, current_user: dict = Depends(get_current_user)):
     art = await get_article_by_id(article_id)
     if not art:
-        raise HTTPException(status_code=404, detail="Article not found")
+        return JSONResponse(status_code=404, content={"success": False, "data": None})
     if art.get("author_id") != current_user["id"] and current_user.get("role") not in [ Role.ADMIN]:
-        raise HTTPException(status_code=403, detail="Not allowed to delete")
+        return JSONResponse(status_code=403, content={"success": False, "data": {"error": "Not allowed to delete"}})
     await delete_article(article_id)
-    return {"detail": "deleted"}
+    return {"success": True, "data": {"message": "deleted"}}
 
 @articles.get("/author/{author_id}")
 async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20):
-    return await get_articles_by_author(author_id, page - 1, page_size)
+    articles_list = await get_articles_by_author(author_id, page - 1, page_size)
+    return {
+        "success": True,
+        "data": articles_list,
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total": len(articles_list)
+        }
+    }

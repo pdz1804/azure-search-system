@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from typing import List, Optional
 
 from backend.enum.status import Status
@@ -11,69 +12,80 @@ users = APIRouter(prefix="/api/users", tags=["users"])
 
 @users.get("/")
 async def list_users():
-    return await user_service.list_users()
+    users_list = await user_service.list_users()
+    return {"success": True, "data": users_list}
 
 @users.get("/{id}")
 async def get_user_by_id(id: str):
-    return await user_service.get_user_by_id(id)
+    user = await user_service.get_user_by_id(id)
+    if not user:
+        return JSONResponse(status_code=404, content={"success": False, "data": None})
+    return {"success": True, "data": user}
 
 @users.post("/{user_id}/follow")
 async def follow_user(user_id: str, current_user: dict = Depends(get_current_user)):
     """Follow a user"""
     if current_user["id"] == user_id:
-        raise HTTPException(status_code=400, detail="Cannot follow yourself")
+        return JSONResponse(status_code=400, content={"success": False, "data": {"error": "Cannot follow yourself"}})
     
     result = await user_service.follow_user(current_user["id"], user_id)
     if result:
-        return {"detail": "User followed successfully"}
+        return {"success": True, "data": {"message": "User followed successfully"}}
     else:
-        raise HTTPException(status_code=400, detail="Unable to follow user")
+        return JSONResponse(status_code=400, content={"success": False, "data": {"error": "Unable to follow user"}})
 
 @users.delete("/{user_id}/follow")
 async def unfollow_user(user_id: str, current_user: dict = Depends(get_current_user)):
     """Unfollow a user"""
     result = await user_service.unfollow_user(current_user["id"], user_id)
     if result:
-        return {"detail": "User unfollowed successfully"}
+        return {"success": True, "data": {"message": "User unfollowed successfully"}}
     else:
-        raise HTTPException(status_code=400, detail="Unable to follow user")
+        return JSONResponse(status_code=400, content={"success": False, "data": {"error": "Unable to unfollow user"}})
 
 @users.get("/{user_id}/follow/status")
 async def check_follow_status(user_id: str, current_user: dict = Depends(get_current_user)):
     """Check if current user is following the specified user"""
     is_following = await user_service.check_follow_status(current_user["id"], user_id)
-    return {"is_following": is_following}
+    return {"success": True, "data": {"is_following": is_following}}
 
 @users.post("/reactions/{article_id}/{status}")
 async def get_article_reactions(article_id: str, status: str, current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
     match status:
         case Status.LIKE:
-            return await user_service.like_article(user_id, article_id)
+            await user_service.like_article(user_id, article_id)
+            return {"success": True, "data": {"action": "like"}}
         case Status.DISLIKE:
-            return await user_service.dislike_article(user_id, article_id)
+            await user_service.dislike_article(user_id, article_id)
+            return {"success": True, "data": {"action": "dislike"}}
         case Status.BOOKMARK:
-            return await user_service.bookmark_article(user_id, article_id)
+            await user_service.bookmark_article(user_id, article_id)
+            return {"success": True, "data": {"action": "bookmark"}}
         case _:
-            return {"error": "Invalid status"}
+            return JSONResponse(status_code=400, content={"success": False, "data": {"error": "Invalid status"}})
 
 @users.delete("/unreactions/{article_id}/{status}")
 async def unreactions(article_id: str, status: str, current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
     match status:
         case Status.LIKE:
-            return await user_service.unlike_article(user_id, article_id)
+            await user_service.unlike_article(user_id, article_id)
+            return {"success": True, "data": {"action": "unlike"}}
         case Status.DISLIKE:
-            return await user_service.undislike_article(user_id, article_id)
+            await user_service.undislike_article(user_id, article_id)
+            return {"success": True, "data": {"action": "undislike"}}
         case Status.BOOKMARK:
-            return await user_service.unbookmark_article(user_id, article_id)
+            await user_service.unbookmark_article(user_id, article_id)
+            return {"success": True, "data": {"action": "unbookmark"}}
         case _:
-            return {"error": "Invalid status"}
+            return JSONResponse(status_code=400, content={"success": False, "data": {"error": "Invalid status"}})
         
 @users.get("/check_article_status/{article_id}")
 async def check_article_status(article_id: str, current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
-    return await user_service.check_article_status(user_id, article_id)
+    status = await user_service.check_article_status(user_id, article_id)
+    return {"success": True, "data": status}
 
 @users.get("/bookmarks")
 async def get_bookmarked_articles(current_user: dict = Depends(get_current_user)):
@@ -90,7 +102,7 @@ async def get_bookmarked_articles(current_user: dict = Depends(get_current_user)
         return {"success": True, "data": articles}
     except Exception as e:
         print(f"Error fetching bookmarks: {e}")
-        return {"success": False, "error": "Failed to fetch bookmarks", "data": []}
+        return {"success": False, "data": {"error": "Failed to fetch bookmarks"}}
 
 @users.get("/")
 async def get_all_users(
@@ -106,9 +118,11 @@ async def get_all_users(
             return {
                 "success": True,
                 "data": [],
-                "total": 0,
-                "page": page,
-                "limit": limit
+                "pagination": {
+                    "page": page,
+                    "limit": limit,
+                    "total": 0
+                }
             }
         
         # Filter featured users if requested
@@ -126,18 +140,18 @@ async def get_all_users(
         return {
             "success": True,
             "data": paginated_users,
-            "total": total,
-            "page": page,
-            "limit": limit
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total
+            }
         }
     except Exception as e:
         print(f"Error fetching users: {e}")
-        return {
+        return JSONResponse(status_code=500, content={
             "success": False,
-            "data": [],
-            "total": 0,
-            "error": str(e)
-        }
+            "data": {"error": str(e)}
+        })
 
 # @users.get("/featured")
 # async def get_featured_users(limit: int = Query(10, ge=1, le=50)):
