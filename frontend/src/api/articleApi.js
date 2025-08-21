@@ -1,12 +1,29 @@
 import { apiClient } from './config';
 
 export const articleApi = {
-  // Get all articles
-  getArticles: async (page = 1, limit = 10, status = null) => {
+  // Get all articles (supports both (page, limit, status) and (paramsObject))
+  getArticles: async (...args) => {
     try {
-      const params = { page, limit };
-      if (status) params.status = status;
-      const response = await apiClient.get('/articles', { params });
+      let params;
+      if (args.length === 0) {
+        params = { page: 1, limit: 12 };
+      } else if (typeof args[0] === 'object') {
+        const p = { ...args[0] };
+        // Map to backend alias param names
+        params = {
+          'page[page]': p.page || p.current || 1,
+          'page[page_size]': p.page_size || p.limit || p.pageSize || 12,
+          'page[q]': p.q || undefined,
+          'page[status]': p.status || undefined,
+          'page[sort_by]': p.sort_by || p.sortBy || undefined,
+          limit: p.limit // backend still reads 'limit' as default size
+        };
+      } else {
+        const [page = 1, limit = 10, status = null] = args;
+        params = { 'page[page]': page, 'page[page_size]': limit, limit };
+        if (status) params.status = status;
+      }
+      const response = await apiClient.get('/articles/', { params });
       return response.data;
     } catch (error) {
       console.error('Get articles error:', error);
@@ -22,6 +39,19 @@ export const articleApi = {
     } catch (error) {
       console.error('Get article error:', error);
       return { success: false, error: 'Failed to fetch article' };
+    }
+  },
+
+  // Get articles by author
+  getArticlesByAuthor: async (authorId, page = 1, limit = 10) => {
+    try {
+      const response = await apiClient.get(`/articles/author/${authorId}`, {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get articles by author error:', error);
+      return { success: false, data: [], error: 'Failed to fetch articles by author' };
     }
   },
 
@@ -58,34 +88,21 @@ export const articleApi = {
     }
   },
 
-  // AI-powered search articles
+  // AI-powered search articles (allowed endpoint only)
   searchArticles: async (query, limit = 10, page = 1, maxResults = 50) => {
     try {
       const response = await apiClient.get('/search/articles', {
         params: {
           q: query,
           k: Math.min(limit, maxResults),
-          page_index: page - 1, // Convert to 0-based for backend
+          page_index: page - 1,
           page_size: Math.min(limit, maxResults)
         }
       });
       return response.data;
     } catch (error) {
       console.error('AI search articles error:', error);
-      // Fallback to simple search
-      try {
-        const fallbackResponse = await apiClient.get('/articles/search', {
-          params: {
-            q: query,
-            page,
-            limit: Math.min(limit, maxResults)
-          }
-        });
-        return fallbackResponse.data;
-      } catch (fallbackError) {
-        console.error('Fallback search also failed:', fallbackError);
-        return { success: false, data: [], error: 'Search failed' };
-      }
+      return { success: false, data: [], error: 'Search failed' };
     }
   },
 
@@ -116,17 +133,6 @@ export const articleApi = {
     } catch (error) {
       console.error('Get popular articles error:', error);
       return { success: false, data: [], error: 'Failed to fetch popular articles' };
-    }
-  },
-
-  // Increment view count
-  incrementViewCount: async (id) => {
-    try {
-      const response = await apiClient.post(`/articles/${id}/view`);
-      return response.data;
-    } catch (error) {
-      console.error('Increment view count error:', error);
-      return { success: false, error: 'Failed to increment view count' };
     }
   },
 

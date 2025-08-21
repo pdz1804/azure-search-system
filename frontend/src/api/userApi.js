@@ -15,17 +15,6 @@ export const userApi = {
     }
   },
 
-  // Search users (simple search)
-  searchUsers: async (params = {}) => {
-    try {
-      const response = await apiClient.get('/users/search', { params });
-      return response.data;
-    } catch (error) {
-      console.error('Search users error:', error);
-      return { success: false, data: [], error: 'Failed to search users' };
-    }
-  },
-
   // AI-powered user search
   searchUsersAI: async (params = {}) => {
     try {
@@ -40,14 +29,7 @@ export const userApi = {
       return response.data;
     } catch (error) {
       console.error('AI search users error:', error);
-      // Fallback to simple search
-      try {
-        const fallbackResponse = await apiClient.get('/users/search/simple', { params });
-        return fallbackResponse.data;
-      } catch (fallbackError) {
-        console.error('Fallback search also failed:', fallbackError);
-        return { success: false, data: [], error: 'Failed to search users' };
-      }
+      return { success: false, data: [], error: 'Failed to search users' };
     }
   },
 
@@ -67,7 +49,7 @@ export const userApi = {
       const response = await apiClient.get(`/users/${userId}`);
       return {
         success: true,
-        data: response.data
+        data: response.data?.data || response.data
       };
     } catch (error) {
       return {
@@ -203,22 +185,6 @@ export const userApi = {
     } catch (error) {
       console.error('Get all users error:', error);
       return { success: false, data: [], error: 'Failed to fetch users' };
-    }
-  },
-
-  // Get featured users
-  getFeaturedUsers: async (limit = 10) => {
-    try {
-      console.log('Calling /users/featured with limit:', limit);
-      const response = await apiClient.get('/users/featured', {
-        params: { limit }
-      });
-      console.log('Raw API response:', response);
-      console.log('Response data:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('Get featured users error:', error);
-      return { success: false, data: [], error: 'Failed to fetch featured users' };
     }
   }
 };

@@ -48,7 +48,7 @@ const MyArticles = () => {
     try {
       const response = await articleApi.getArticlesByAuthor(user.id, 1, 1000);
       if (response.success) {
-        const articles = response.data?.items || response.items || [];
+        const articles = response.data?.items || (Array.isArray(response.data) ? response.data : []) || [];
         
         const published = articles.filter(a => a.status === 'published').length;
         const drafts = articles.filter(a => a.status === 'draft').length;
@@ -149,6 +149,7 @@ const MyArticles = () => {
                     authorId={user?.id}
                     showAuthor={false}
                     onRefresh={fetchStats}
+                    loadAll
                   />
                 )
               },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Typography, Button, Space, Card, Row, Col } from 'antd';
-import { EditOutlined, FileTextOutlined, UserOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { Layout, Typography, Button, Space, Card, Row, Col, Avatar } from 'antd';
+import { EditOutlined, FileTextOutlined, UserOutlined, ArrowRightOutlined, EyeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { articleApi } from '../api/articleApi';
@@ -18,9 +18,9 @@ const Home = () => {
 	const { isAuthenticated, hasRole } = useAuth();
 	const [selectedCategory, setSelectedCategory] = useState(null);
 	const [statistics, setStatistics] = useState({
-		articles: 0,
-		authors: 0,
-		total_views: 0,
+		articles: '500+',
+		authors: '50+',
+		total_views: '10000+',
 		bookmarks: 0
 	});
 	const [categories, setCategories] = useState([]);
@@ -32,17 +32,9 @@ const Home = () => {
 			try {
 				setLoading(true);
 				
-				// Fetch statistics
-				console.log('Fetching statistics...');
-				const statsResponse = await articleApi.getStatistics();
-				console.log('Statistics response:', statsResponse);
-				if (statsResponse.success) {
-					console.log('Setting statistics:', statsResponse.data);
-					setStatistics(statsResponse.data);
-				}
+				// Use static homepage stats per requirements
 				
-				// Fetch categories and transform them for the Hero component
-				console.log('Fetching categories...');
+				// Fetch categories (no counts shown)
 				const categoriesResponse = await articleApi.getCategories();
 				console.log('Categories response:', categoriesResponse);
 				if (categoriesResponse.success) {
@@ -58,7 +50,6 @@ const Home = () => {
 						];
 						return {
 							name: cat.name,
-							count: cat.count,
 							color: colors[index % colors.length]
 						};
 					});
@@ -66,12 +57,10 @@ const Home = () => {
 					setCategories(transformedCategories);
 				}
 				
-				// Fetch featured authors
-				console.log('Fetching featured authors...');
-				const authorsResponse = await userApi.getFeaturedUsers(7);
-				console.log('Featured authors response:', authorsResponse);
+				// Load authors list using allowed endpoint
+				const authorsResponse = await userApi.getAllUsers(1, 7);
 				if (authorsResponse.success) {
-					setFeaturedAuthors(authorsResponse.data || []);
+					setFeaturedAuthors((authorsResponse.data?.items || authorsResponse.data || []).slice(0, 7));
 				}
 			} catch (error) {
 				console.error('Error fetching home data:', error);

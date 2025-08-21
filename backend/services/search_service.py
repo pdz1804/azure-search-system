@@ -66,7 +66,7 @@ class BackendSearchService:
         self.semantic_enabled = self._test_semantic_search()
         
         # Thread pool for parallel operations
-        self.executor = ThreadPoolExecutor(max_workers=4)
+        self.executor = ThreadPoolExecutor(max_workers=1)
         
         if self.semantic_enabled:
             print("✅ Semantic search is available")

@@ -45,20 +45,25 @@ async def connect_cosmos():
         print("✅ Connected to Azure Cosmos DB")
 
 
-def close_cosmos():
-    """Release references to the Cosmos client and containers.
+async def close_cosmos():
+    """Close the Cosmos async client and clear module references.
 
-    The async Cosmos client does not require an explicit close in this
-    project; clearing module-level references is sufficient for the
-    short-running dev server scenario. If using a long-lived process or
-    a different SDK version, implement proper close() calls here.
+    Properly awaiting client.close() prevents unclosed aiohttp sessions
+    and related warnings during application shutdown.
     """
     global client, database, articles, users
-    client = None
-    database = None
-    articles = None
-    users = None
-    print("🛑 Cosmos DB connection closed")
+    try:
+        if client:
+            # Azure Cosmos async client exposes an async close
+            await client.close()
+    except Exception as e:
+        print(f"Error closing Cosmos client: {e}")
+    finally:
+        client = None
+        database = None
+        articles = None
+        users = None
+        print("🛑 Cosmos DB connection closed")
 
 
 async def get_articles_container():

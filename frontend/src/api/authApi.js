@@ -18,7 +18,7 @@ export const authApi = {
       
       // Fetch full user profile
       const userResponse = await apiClient.get(`/users/${user_id}`);
-      localStorage.setItem('user', JSON.stringify(userResponse.data));
+      localStorage.setItem('user', JSON.stringify(userResponse.data?.data || userResponse.data));
       
       return {
         success: true,
@@ -66,7 +66,7 @@ export const authApi = {
       
       // Fetch full user profile
       const userResponse = await apiClient.get(`/users/${user_id}`);
-      localStorage.setItem('user', JSON.stringify(userResponse.data));
+      localStorage.setItem('user', JSON.stringify(userResponse.data?.data || userResponse.data));
       
       return {
         success: true,
@@ -104,7 +104,7 @@ export const authApi = {
       }
       
       const response = await apiClient.get(`/users/${userId}`);
-      localStorage.setItem('user', JSON.stringify(response.data));
+      localStorage.setItem('user', JSON.stringify(response.data?.data || response.data));
       
       return {
         success: true,
@@ -137,15 +137,20 @@ export const authApi = {
   // Get current user profile
   getCurrentUser: async () => {
     try {
-      const userId = localStorage.getItem('user_id');
+      // Prefer stored user_id; if missing, try to read from stored user
+      let userId = localStorage.getItem('user_id');
       if (!userId) {
-        throw new Error('No user ID found');
+        const user = localStorage.getItem('user');
+        if (user) {
+          try { userId = JSON.parse(user)?.id; } catch {}
+        }
       }
-      
+      if (!userId) throw new Error('No user ID found');
+
       const response = await apiClient.get(`/users/${userId}`);
       return {
         success: true,
-        data: response.data
+        data: response.data?.data || response.data
       };
     } catch (error) {
       return {
