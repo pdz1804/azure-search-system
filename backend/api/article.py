@@ -306,40 +306,40 @@ async def get_articles_by_category(
             "error": str(e)
         }
 
-@articles.get("/search")
-async def search_articles(
-    q: str = Query(..., min_length=1),
-    page: int = Query(1, ge=1),
-    limit: int = Query(10, ge=1, le=100)
-):
-    """AI-powered article search using the backend search service."""
-    try:
-        result = await search_service.search_articles(q, limit, page)
-        return result
-    except Exception as e:
-        print(f"Article search error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# @articles.get("/search")
+# async def search_articles(
+#     q: str = Query(..., min_length=1),
+#     page: int = Query(1, ge=1),
+#     limit: int = Query(10, ge=1, le=100)
+# ):
+#     """AI-powered article search using the backend search service."""
+#     try:
+#         result = await search_service.search_articles(q, limit, page)
+#         return result
+#     except Exception as e:
+#         print(f"Article search error: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
 
-@articles.get("/search/simple")
-async def search_articles_simple(
-    q: str = Query(..., min_length=1),
-    page: int = Query(1, ge=1),
-    limit: int = Query(10, ge=1, le=100)
-):
-    """Simple article search as fallback."""
-    try:
-        # This would be a simple database search
-        # For now, return empty results
-        return {
-            "success": True,
-            "data": [],
-            "total": 0,
-            "page": page,
-            "limit": limit,
-            "search_type": "articles_simple"
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# @articles.get("/search/simple")
+# async def search_articles_simple(
+#     q: str = Query(..., min_length=1),
+#     page: int = Query(1, ge=1),
+#     limit: int = Query(10, ge=1, le=100)
+# ):
+#     """Simple article search as fallback."""
+#     try:
+#         # This would be a simple database search
+#         # For now, return empty results
+#         return {
+#             "success": True,
+#             "data": [],
+#             "total": 0,
+#             "page": page,
+#             "limit": limit,
+#             "search_type": "articles_simple"
+#         }
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 @articles.get("/{article_id}")
 async def get_one(article_id: str):
