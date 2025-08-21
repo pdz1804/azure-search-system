@@ -29,3 +29,12 @@ Note:
   - **Vector search** = KNN over your **embedding field** (HNSW), returning a similarity `@search.score` for the vector query.
 
 ---
+
+
+21/08
+
+- kiểm tra lại chức năng search( search "phú hà mã")
+- trang profile sai number, chauw hiển thị ngày tạo account
+- trang home xóa số bài viết, lượt xemm của author
+- đã follow nhưng reload thì mất. (check status follow)
+- phân trang đang xử lí bên frontend
