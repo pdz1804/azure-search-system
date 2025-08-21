@@ -62,13 +62,19 @@ const ArticleDetail = () => {
   const [recommendedAuthors, setRecommendedAuthors] = useState([]);
 
   useEffect(() => {
-    if (id) {
+    let mounted = true;
+    
+    if (id && mounted) {
       fetchArticle();
       fetchRecommendations();
       if (isAuthenticated()) {
         loadUserReactionStatus();
       }
     }
+    
+    return () => {
+      mounted = false;
+    };
   }, [id]); // Remove user from dependency array to prevent re-fetching
 
   const fetchArticle = async () => {
