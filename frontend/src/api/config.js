@@ -1,7 +1,7 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api';
 
 // Tạo axios instance
 const apiClient = axios.create({
@@ -44,12 +44,13 @@ const addResponseInterceptor = (client) => {
       const { response } = error;
       
       if (response?.status === 401) {
+        // Do not hard-redirect from here to avoid jarring user experience during reading
+        // Remove token and let ProtectedRoute handle redirection when accessing protected pages
         localStorage.removeItem('access_token');
         localStorage.removeItem('user');
         localStorage.removeItem('user_id');
         localStorage.removeItem('role');
-        toast.error('Session expired. Please login again.');
-        window.location.href = '/login';
+        toast.error('Your session has expired. Please log in again.');
       } else if (response?.status === 403) {
         toast.error('You do not have permission to perform this action.');
       } else if (response?.status === 404) {

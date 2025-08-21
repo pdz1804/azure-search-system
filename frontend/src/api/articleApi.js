@@ -1,233 +1,182 @@
-import { apiClient, apiClientFormData, createFormData } from './config';
+import { apiClient } from './config';
 
 export const articleApi = {
-  // Get all articles with pagination
-  getArticles: async (params = {}) => {
+  // Get all articles
+  getArticles: async (page = 1, limit = 10, status = null) => {
     try {
-      // Handle both old and new parameter formats
-      if (typeof params === 'number') {
-        const page = arguments[0] || 1;
-        const pageSize = arguments[1] || 20;
-        const search = arguments[2] || '';
-        params = { page, page_size: pageSize };
-        if (search) params.q = search;
-      } else {
-        params = {
-          page: params.page || 1,
-          page_size: params.page_size || 20,
-          ...params
-        };
-      }
-      
-      // Remove undefined values
-      Object.keys(params).forEach(key => {
-        if (params[key] === undefined || params[key] === '') {
-          delete params[key];
-        }
-      });
-      
+      const params = { page, limit };
+      if (status) params.status = status;
       const response = await apiClient.get('/articles', { params });
-      return {
-        success: true,
-        data: response.data
-      };
+      return response.data;
     } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.detail || 'Failed to fetch articles'
-      };
+      console.error('Get articles error:', error);
+      return { success: false, data: [], error: 'Failed to fetch articles' };
     }
   },
 
-  // Get popular articles with time-decay algorithm
-  getPopularArticles: async (page = 1, pageSize = 10) => {
-    try {
-      const response = await apiClient.get(`/articles/popular?page=${page}&page_size=${pageSize}`);
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.detail || 'Failed to fetch popular articles'
-      };
-    }
-  },
-
-  // Get article by ID (increments view count)
-  getArticle: async (id) => {
+  // Get article by ID
+  getArticleById: async (id) => {
     try {
       const response = await apiClient.get(`/articles/${id}`);
-      return {
-        success: true,
-        data: response.data
-      };
+      return response.data;
     } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.detail || 'Article not found'
-      };
+      console.error('Get article error:', error);
+      return { success: false, error: 'Failed to fetch article' };
     }
   },
 
-  // Legacy method name for backward compatibility
-  getArticleById: async (id) => {
-    return await articleApi.getArticle(id);
-  },
-
-  // Create new article (WRITER/ADMIN only)
+  // Create article
   createArticle: async (articleData) => {
     try {
-      const formData = new FormData();
-      formData.append('title', articleData.title);
-      formData.append('abstract', articleData.abstract);
-      formData.append('content', articleData.content);
-      if (articleData.tags) {
-        formData.append('tags', Array.isArray(articleData.tags) ? articleData.tags.join(',') : articleData.tags);
-      }
-      if (articleData.image) {
-        formData.append('image', articleData.image);
-      }
-      
-      const response = await apiClientFormData.post('/articles/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      
-      return {
-        success: true,
-        data: response.data
-      };
+      const response = await apiClient.post('/articles', articleData);
+      return response.data;
     } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.detail || 'Failed to create article'
-      };
+      console.error('Create article error:', error);
+      return { success: false, error: 'Failed to create article' };
     }
   },
 
-  // Update existing article (owner or ADMIN)
+  // Update article
   updateArticle: async (id, articleData) => {
     try {
-      const formData = new FormData();
-      if (articleData.title) formData.append('title', articleData.title);
-      if (articleData.abstract) formData.append('abstract', articleData.abstract);
-      if (articleData.content) formData.append('content', articleData.content);
-      if (articleData.tags) {
-        formData.append('tags', Array.isArray(articleData.tags) ? articleData.tags.join(',') : articleData.tags);
-      }
-      if (articleData.status) formData.append('status', articleData.status);
-      if (articleData.image) formData.append('image', articleData.image);
-      
-      const response = await apiClientFormData.put(`/articles/${id}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      
-      return {
-        success: true,
-        data: response.data
-      };
+      const response = await apiClient.put(`/articles/${id}`, articleData);
+      return response.data;
     } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.detail || 'Failed to update article'
-      };
+      console.error('Update article error:', error);
+      return { success: false, error: 'Failed to update article' };
     }
   },
 
-  // Delete article (owner or ADMIN)
+  // Delete article
   deleteArticle: async (id) => {
     try {
       const response = await apiClient.delete(`/articles/${id}`);
-      return {
-        success: true,
-        data: response.data
-      };
+      return response.data;
     } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.detail || 'Failed to delete article'
-      };
+      console.error('Delete article error:', error);
+      return { success: false, error: 'Failed to delete article' };
     }
   },
 
-  // Get articles by author
-  getArticlesByAuthor: async (authorId, page = 1, pageSize = 20) => {
+  // AI-powered search articles
+  searchArticles: async (query, limit = 10, page = 1, maxResults = 50) => {
     try {
-      const response = await apiClient.get(`/articles/author/${authorId}`, {
-        params: { page, page_size: pageSize }
+      const response = await apiClient.get('/search/articles', {
+        params: {
+          q: query,
+          k: Math.min(limit, maxResults),
+          page_index: page - 1, // Convert to 0-based for backend
+          page_size: Math.min(limit, maxResults)
+        }
       });
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.detail || 'Failed to fetch author articles'
-      };
-    }
-  },
-
-  // Search articles by keyword
-  searchArticles: async (keyword, k = 10, page = 1, pageSize = 20) => {
-    try {
-      const response = await apiClient.get(
-        `/articles/search/${encodeURIComponent(keyword)}?k=${k}&page=${page}&page_size=${pageSize}`
-      );
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.detail || 'Search failed'
-      };
-    }
-  },
-
-  // Legacy like/dislike methods (for backward compatibility)
-  likeArticle: async (id) => {
-    try {
-      const response = await apiClient.post(`/users/reactions/${id}/like`);
       return response.data;
     } catch (error) {
-      throw error;
+      console.error('AI search articles error:', error);
+      // Fallback to simple search
+      try {
+        const fallbackResponse = await apiClient.get('/articles/search', {
+          params: {
+            q: query,
+            page,
+            limit: Math.min(limit, maxResults)
+          }
+        });
+        return fallbackResponse.data;
+      } catch (fallbackError) {
+        console.error('Fallback search also failed:', fallbackError);
+        return { success: false, data: [], error: 'Search failed' };
+      }
     }
   },
 
-  dislikeArticle: async (id) => {
+  // Simple search articles (fallback)
+  searchArticlesSimple: async (query, page = 1, limit = 10) => {
     try {
-      const response = await apiClient.post(`/users/reactions/${id}/dislike`);
+      const response = await apiClient.get('/articles/search', {
+        params: {
+          q: query,
+          page,
+          limit
+        }
+      });
       return response.data;
     } catch (error) {
-      throw error;
+      console.error('Simple search articles error:', error);
+      return { success: false, data: [], error: 'Search failed' };
     }
   },
 
-  // View article (legacy method - view count is now automatically incremented on getArticle)
-  viewArticle: async (id) => {
+  // Get popular articles
+  getPopularArticles: async (limit = 10) => {
     try {
-      // This is now handled automatically by getArticle endpoint
+      const response = await apiClient.get('/articles/popular', {
+        params: { limit }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get popular articles error:', error);
+      return { success: false, data: [], error: 'Failed to fetch popular articles' };
+    }
+  },
+
+  // Increment view count
+  incrementViewCount: async (id) => {
+    try {
+      const response = await apiClient.post(`/articles/${id}/view`);
+      return response.data;
+    } catch (error) {
+      console.error('Increment view count error:', error);
+      return { success: false, error: 'Failed to increment view count' };
+    }
+  },
+
+  // Get statistics
+  getStatistics: async () => {
+    try {
+      const response = await apiClient.get('/articles/stats');
+      return response.data;
+    } catch (error) {
+      console.error('Get statistics error:', error);
+      return { 
+        success: false, 
+        data: { articles: 0, authors: 0, total_views: 0, bookmarks: 0 },
+        error: 'Failed to fetch statistics' 
+      };
+    }
+  },
+
+  // Get categories
+  getCategories: async () => {
+    try {
+      const response = await apiClient.get('/articles/categories');
+      return response.data;
+    } catch (error) {
+      console.error('Get categories error:', error);
+      return { success: false, data: [], error: 'Failed to fetch categories' };
+    }
+  },
+
+  // Get articles by category
+  getArticlesByCategory: async (category, page = 1, limit = 10) => {
+    try {
+      const response = await apiClient.get(`/articles/categories/${category}`, {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get articles by category error:', error);
+      return { success: false, data: [], error: 'Failed to fetch articles by category' };
+    }
+  },
+
+  // Get article by ID
+  getArticle: async (id) => {
+    try {
       const response = await apiClient.get(`/articles/${id}`);
       return response.data;
     } catch (error) {
-      throw error;
-    }
-  },
-
-  // Get article statistics and summary
-  getSummary: async () => {
-    try {
-      const response = await apiClient.get('/articles/summary');
-      return response.data;
-    } catch (error) {
-      throw error;
+      console.error('Get article error:', error);
+      return { success: false, error: 'Failed to fetch article' };
     }
   }
 };

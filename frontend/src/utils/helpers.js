@@ -1,11 +1,11 @@
 // Format date
 export const formatDate = (dateString) => {
-  if (!dateString) return 'Không có ngày';
+  if (!dateString) return 'No date';
   
   const date = new Date(dateString);
-  if (isNaN(date.getTime())) return 'Ngày không hợp lệ';
+  if (isNaN(date.getTime())) return 'Invalid date';
   
-  return date.toLocaleDateString('vi-VN', {
+  return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -14,7 +14,7 @@ export const formatDate = (dateString) => {
   });
 };
 
-// Format số lượng
+// Format number
 export const formatNumber = (num) => {
   // Handle null, undefined, or non-numeric values
   if (num === null || num === undefined || isNaN(num)) {
@@ -53,5 +53,5 @@ export const getErrorMessage = (error) => {
   if (error.message) {
     return error.message;
   }
-  return 'Đã xảy ra lỗi không xác định';
+  return 'An unknown error occurred';
 };

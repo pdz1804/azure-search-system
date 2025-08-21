@@ -47,22 +47,27 @@ const MyArticles = () => {
   const fetchStats = async () => {
     try {
       const response = await articleApi.getArticlesByAuthor(user.id, 1, 1000);
-      const articles = response.items || [];
-      
-      const published = articles.filter(a => a.status === 'published').length;
-      const drafts = articles.filter(a => a.status === 'draft').length;
-      const totalViews = articles.reduce((sum, a) => sum + (a.views || 0), 0);
-      const totalLikes = articles.reduce((sum, a) => sum + (a.likes || 0), 0);
-      
-      setStats({
-        total: articles.length,
-        published,
-        drafts,
-        totalViews,
-        totalLikes
-      });
+      if (response.success) {
+        const articles = response.data?.items || response.items || [];
+        
+        const published = articles.filter(a => a.status === 'published').length;
+        const drafts = articles.filter(a => a.status === 'draft').length;
+        const totalViews = articles.reduce((sum, a) => sum + (a.views || 0), 0);
+        const totalLikes = articles.reduce((sum, a) => sum + (a.likes || 0), 0);
+        
+        setStats({
+          total: articles.length,
+          published,
+          drafts,
+          totalViews,
+          totalLikes
+        });
+      } else {
+        throw new Error(response.error || 'Failed to fetch articles');
+      }
     } catch (error) {
-      message.error('Không thể tải thống kê bài viết');
+      message.error('Failed to load article statistics');
+      console.error('Error fetching stats:', error);
     }
   };
 
@@ -82,7 +87,7 @@ const MyArticles = () => {
           }}>
             <Title level={2}>
               <FileTextOutlined style={{ marginRight: 8 }} />
-              Bài viết của tôi
+              My Articles
             </Title>
             <Button 
               type="primary" 
@@ -90,7 +95,7 @@ const MyArticles = () => {
               size="large"
               onClick={handleCreateArticle}
             >
-              Viết bài mới
+              Write New Article
             </Button>
           </div>
 
@@ -99,7 +104,7 @@ const MyArticles = () => {
             <Row gutter={[16, 16]}>
               <Col xs={12} sm={6}>
                 <Statistic
-                  title="Tổng bài viết"
+                  title="Total Articles"
                   value={stats.total}
                   prefix={<FileTextOutlined />}
                   valueStyle={{ color: '#1890ff' }}
@@ -107,7 +112,7 @@ const MyArticles = () => {
               </Col>
               <Col xs={12} sm={6}>
                 <Statistic
-                  title="Đã xuất bản"
+                  title="Published"
                   value={stats.published}
                   prefix={<EditOutlined />}
                   valueStyle={{ color: '#52c41a' }}
@@ -115,7 +120,7 @@ const MyArticles = () => {
               </Col>
               <Col xs={12} sm={6}>
                 <Statistic
-                  title="Tổng lượt xem"
+                  title="Total Views"
                   value={formatNumber(stats.totalViews)}
                   prefix={<EyeOutlined />}
                   valueStyle={{ color: '#722ed1' }}
@@ -123,7 +128,7 @@ const MyArticles = () => {
               </Col>
               <Col xs={12} sm={6}>
                 <Statistic
-                  title="Tổng lượt thích"
+                  title="Total Likes"
                   value={formatNumber(stats.totalLikes)}
                   prefix={<HeartOutlined />}
                   valueStyle={{ color: '#f5222d' }}
@@ -138,7 +143,7 @@ const MyArticles = () => {
             items={[
               {
                 key: 'all',
-                label: `Tất cả (${stats.total})`,
+                label: `All (${stats.total})`,
                 children: (
                   <ArticleList 
                     authorId={user?.id}
@@ -149,7 +154,7 @@ const MyArticles = () => {
               },
               {
                 key: 'published',
-                label: `Đã xuất bản (${stats.published})`,
+                label: `Published (${stats.published})`,
                 children: (
                   <ArticleList 
                     authorId={user?.id}
@@ -161,7 +166,7 @@ const MyArticles = () => {
               },
               {
                 key: 'drafts',
-                label: `Bản nháp (${stats.drafts})`,
+                label: `Drafts (${stats.drafts})`,
                 children: (
                   <ArticleList 
                     authorId={user?.id}

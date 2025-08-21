@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
@@ -40,6 +40,30 @@ const ArticleCard = ({
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [likesCount, setLikesCount] = useState(article.likes || 0);
   const [reactionLoading, setReactionLoading] = useState(false);
+  const [statusLoaded, setStatusLoaded] = useState(false);
+
+  // Load user's reaction status when component mounts
+  useEffect(() => {
+    if (user && !statusLoaded) {
+      loadUserReactionStatus();
+    }
+  }, [user, article.id, statusLoaded]);
+
+  // Load user's reaction status from API
+  const loadUserReactionStatus = async () => {
+    try {
+      const response = await userApi.checkArticleReactionStatus(article.id);
+      if (response.success) {
+        const { reaction_type, is_bookmarked } = response.data;
+        setUserReaction(reaction_type || 'none');
+        setIsBookmarked(is_bookmarked || false);
+        setStatusLoaded(true);
+      }
+    } catch (error) {
+      // Silent fail - user might not be logged in
+      setStatusLoaded(true);
+    }
+  };
 
   // Calculate reading time
   const calculateReadingTime = (content) => {
@@ -150,9 +174,9 @@ const ArticleCard = ({
 
   // Layout variants
   const layoutClasses = {
-    grid: 'bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden',
-    list: 'bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden flex',
-    featured: 'bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow overflow-hidden'
+    grid: 'bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-blue-200',
+    list: 'bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-blue-200 flex',
+    featured: 'bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-blue-200'
   };
 
   // Featured layout for hero articles
@@ -246,10 +270,10 @@ const ArticleCard = ({
               <button
                 onClick={handleLike}
                 disabled={reactionLoading}
-                className={`p-2 rounded-full transition-colors ${
+                className={`p-2 rounded-full transition-all duration-200 transform hover:scale-110 ${
                   userReaction === 'like'
-                    ? 'bg-red-100 text-red-600'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-red-100 text-red-600 shadow-md'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-md'
                 }`}
               >
                 {userReaction === 'like' ? (
@@ -261,10 +285,10 @@ const ArticleCard = ({
               
               <button
                 onClick={handleBookmark}
-                className={`p-2 rounded-full transition-colors ${
+                className={`p-2 rounded-full transition-all duration-200 transform hover:scale-110 ${
                   isBookmarked
-                    ? 'bg-yellow-100 text-yellow-600'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-yellow-100 text-yellow-600 shadow-md'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-md'
                 }`}
               >
                 {isBookmarked ? (
@@ -535,10 +559,10 @@ const ArticleCard = ({
             <button
               onClick={handleLike}
               disabled={reactionLoading}
-              className={`p-2 rounded-full transition-colors ${
+              className={`p-2 rounded-full transition-all duration-200 transform hover:scale-110 ${
                 userReaction === 'like'
-                  ? 'bg-red-100 text-red-600'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-red-100 text-red-600 shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-md'
               }`}
             >
               {userReaction === 'like' ? (
@@ -550,10 +574,10 @@ const ArticleCard = ({
             
             <button
               onClick={handleBookmark}
-              className={`p-2 rounded-full transition-colors ${
+              className={`p-2 rounded-full transition-all duration-200 transform hover:scale-110 ${
                 isBookmarked
-                  ? 'bg-yellow-100 text-yellow-600'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-yellow-100 text-yellow-600 shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-md'
               }`}
             >
               {isBookmarked ? (

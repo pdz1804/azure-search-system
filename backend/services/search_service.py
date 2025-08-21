@@ -29,31 +29,51 @@ from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizedQuery
 from azure.core.exceptions import HttpResponseError
 
+import sys
+import os
+
+# Add the ai_search directory to the Python path so we can import from it
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'ai_search'))
+
 from ai_search.app.services.llm_service import LLMService
 from ai_search.app.services.scoring import fuse_articles, fuse_authors, business_freshness
 from ai_search.app.services.embeddings import encode
 from ai_search.config.settings import SETTINGS
+from ai_search.app.clients import articles_client, authors_client
 
-class SearchService:
+class BackendSearchService:
     def __init__(self, articles_sc: SearchClient, authors_sc: SearchClient):
-        print("🔧 Initializing SearchService...")
+        print("🔧 Initializing BackendSearchService...")
+        
+        # Azure Search clients are required
+        if not articles_sc or not authors_sc:
+            raise ValueError("Both articles_sc and authors_sc SearchClient instances are required")
+        
         self.articles = articles_sc
         self.authors = authors_sc
+        self.azure_search_available = True
+        print("✅ Azure Search clients initialized")
         
         # Initialize LLM service for query enhancement and answer generation
-        self.llm_service = LLMService()
+        try:
+            self.llm_service = LLMService()
+            print("✅ LLM service initialized")
+        except Exception as e:
+            print(f"⚠️ LLM service not available: {e}")
+            self.llm_service = None
         
         # Check semantic search capability
         self.semantic_enabled = self._test_semantic_search()
         
         # Thread pool for parallel operations
         self.executor = ThreadPoolExecutor(max_workers=4)
+        
         if self.semantic_enabled:
             print("✅ Semantic search is available")
         else:
             print("⚠️ Semantic search is not available")
         
-        print("✅ SearchService initialized successfully")
+        print("✅ BackendSearchService initialized successfully")
     
     def _apply_score_threshold(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -150,6 +170,8 @@ class SearchService:
         
         # Step 3: Route to appropriate search function based on classification
         search_type = plan.get("search_type", "articles")
+
+        print(f"🔍 Search type: {search_type}")
         
         if search_type == "authors":
             print(f"📋 Routing to authors search")
@@ -786,5 +808,38 @@ class SearchService:
         return matches[:k]
 
 
+# Global instance - will be initialized with Azure Search clients
+search_service = None
+
+def get_search_service() -> BackendSearchService:
+    """Get or create the search service instance (lazy initialization)."""
+    global search_service
+    if search_service is None:
+        print("📋 Setting up search service...")
+        try:
+            # Initialize with Azure Search clients - this is required
+            print("🔧 Creating Azure Search clients...")
+            
+            # Check if required environment variables are set
+            import os
+            if not os.getenv("AZURE_SEARCH_ENDPOINT") or not os.getenv("AZURE_SEARCH_KEY"):
+                print("❌ Missing required environment variables:")
+                print("   - AZURE_SEARCH_ENDPOINT")
+                print("   - AZURE_SEARCH_KEY")
+                print("❌ Please set these environment variables to use Azure Search")
+                raise ValueError("Missing Azure Search environment variables")
+            
+            articles_sc = articles_client()
+            authors_sc = authors_client()
+            print(f"✅ Articles client: {type(articles_sc)}")
+            print(f"✅ Authors client: {type(authors_sc)}")
+            
+            search_service = BackendSearchService(articles_sc, authors_sc)
+            print("✅ Search service initialized successfully with Azure Search")
+        except Exception as e:
+            print(f"❌ Failed to initialize Azure Search clients: {e}")
+            print("❌ Azure Search clients are required for this service to work")
+            raise
+    return search_service
 
 

@@ -1,3 +1,10 @@
+"""Repository layer for articles.
+
+This module performs direct data access against the Cosmos DB
+`articles` container. All SQL/queries and container operations live
+here so the service layer above can remain database-agnostic.
+"""
+
 from calendar import c
 import math
 import re
@@ -6,6 +13,7 @@ from backend.api import article
 from backend.database.cosmos import get_articles_container
 from backend.model.request import response_ai
 # from backend.database.mongo import get_db
+
 
 async def get_articles():
     return await get_articles_container()
@@ -96,7 +104,9 @@ async def increment_article_likes(article_id: str):
         partition_key=article_id
     )
     current_likes = article.get("likes", 0)
+    print(f"Current likes before increment: {current_likes}")
     article["likes"] = current_likes + 1
+    print(f"Likes after increment: {article['likes']}")
     await articles.upsert_item(body=article)
 
 async def increment_article_dislikes(article_id: str):
@@ -116,7 +126,9 @@ async def decrement_article_likes(article_id: str):
         partition_key=article_id
     )
     current_likes = article.get("likes", 0)
+    print(f"Current likes before decrement: {current_likes}")
     article["likes"] = current_likes - 1
+    print(f"Likes after decrement: {article['likes']}")
     await articles.upsert_item(body=article)
 
 async def decrement_article_dislikes(article_id: str):

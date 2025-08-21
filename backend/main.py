@@ -1,3 +1,15 @@
+"""Application entrypoint for the backend FastAPI app.
+
+This module configures the application lifespan (connects/disconnects
+to external services like Cosmos DB and Redis), CORS settings and
+registers the API routers (articles, files, auth, users).
+
+Requests come in to FastAPI -> matched to a router -> handler in
+`backend.api.*` which calls service layer functions in
+`backend.services.*` which in turn call repository functions in
+`backend.repositories.*` that operate on the database containers.
+"""
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import asynccontextmanager
@@ -8,6 +20,7 @@ from backend.api.article import articles
 from backend.api.file import files
 from backend.authentication.routes import auth
 from backend.api.user import users
+from backend.api.search import search
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -25,13 +38,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Article CMS - modular", lifespan=lifespan)
 
-# Cấu hình CORS
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Frontend URLs
     allow_credentials=True,
-    allow_methods=["*"],  # Cho phép tất cả HTTP methods
-    allow_headers=["*"],  # Cho phép tất cả headers
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
 )
 
 
@@ -39,13 +52,14 @@ app.include_router(articles)
 app.include_router(auth)
 app.include_router(files)
 app.include_router(users)
+app.include_router(search)
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         "main:app", 
         host="0.0.0.0", 
-        port=8000, 
+        port=8001, 
         reload=True,
         lifespan="on"
     )
