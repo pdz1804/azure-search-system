@@ -32,7 +32,8 @@ Note:
 
 # 21/08
 
-- kiểm tra lại chức năng search ( search "phú hà mã")
+- kiểm tra lại chức năng search ( search "phú hà mã" ) ==> for the unmeaningful query, by default we use article search
+- recommended authors and articles are not working now ==> now recommend articles = search (work) + recommend users thì đang làm
 - *trang profile sai number, chưa hiển thị ngày tạo account ==> DONE*
 - *trang home xóa số bài viết, lượt xem của author ==> DONE*
   ==> đã sửa thành có hiện bằng call query và tính toán ==> note là thằng cosmos db không cho xài aggregate function

@@ -1,7 +1,7 @@
 /* eslint-disable */
 /* @ts-nocheck */
 /* JAF-ignore */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Layout, 
@@ -48,6 +48,10 @@ const { Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
 const { confirm } = Modal;
 
+// Module-level caches to dedupe and avoid repeated network fetches during dev (StrictMode)
+const ARTICLE_CACHE = new Map();
+const ARTICLE_FETCH_PROMISES = new Map();
+
 const ArticleDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -61,13 +65,29 @@ const ArticleDetail = () => {
   const [recommendations, setRecommendations] = useState([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [recommendedAuthors, setRecommendedAuthors] = useState([]);
+  const [fullRecommendationCandidates, setFullRecommendationCandidates] = useState([]);
+  const [showMoreModalVisible, setShowMoreModalVisible] = useState(false);
+
+  // per-recommendation follow button removed; keep global follow handling via handleFollow
+
+  const handleBookmarkRec = async (articleId) => {
+    if (!isAuthenticated()) {
+      message.warning('Please login to bookmark');
+      return;
+    }
+    try {
+      await userApi.bookmarkArticle(articleId);
+      message.success('Bookmarked');
+    } catch (e) {
+      message.error('Failed to bookmark');
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
     
     if (id && mounted) {
       fetchArticle();
-      fetchRecommendations();
       if (isAuthenticated()) {
         loadUserReactionStatus();
       }
@@ -82,23 +102,41 @@ const ArticleDetail = () => {
     try {
       setLoading(true);
       console.log('Fetching article with ID:', id);
-      
-      // Fetch article data
-      const response = await articleApi.getArticle(id);
-      console.log('Article API Response:', response);
-      
-      if (response.success) {
+
+      let response = null;
+
+      // Use module-level cache to avoid duplicate fetches triggered by React StrictMode
+      if (ARTICLE_CACHE.has(id)) {
+        const cached = ARTICLE_CACHE.get(id);
+        setArticle(cached);
+        response = { success: true, data: cached };
+      } else if (ARTICLE_FETCH_PROMISES.has(id)) {
+        // Wait for existing in-flight request
+        response = await ARTICLE_FETCH_PROMISES.get(id);
+        if (response && response.success) {
+          ARTICLE_CACHE.set(id, response.data);
+          setArticle(response.data);
+        }
+      } else {
+        const promise = articleApi.getArticle(id);
+        ARTICLE_FETCH_PROMISES.set(id, promise);
+        response = await promise;
+        ARTICLE_FETCH_PROMISES.delete(id);
+        if (response && response.success) {
+          ARTICLE_CACHE.set(id, response.data);
+          setArticle(response.data);
+        }
+      }
+
+      if (response && response.success) {
         const data = response.data;
-        console.log('Article Data:', data);
-        setArticle(data);
-        
         // Check follow status if user is logged in and not the author
-        if (isAuthenticated() && data.author_id !== user?.id) {
+        if (isAuthenticated() && data?.author_id !== user?.id) {
           checkFollowStatus(data.author_id);
         }
       } else {
-        console.error('Article API returned error:', response.error);
-        message.error(response.error || 'Cannot load article');
+        console.error('Article API returned error:', response?.error);
+        message.error(response?.error || 'Cannot load article');
         navigate('/');
       }
     } catch (error) {
@@ -110,21 +148,44 @@ const ArticleDetail = () => {
     }
   };
 
+  // Trigger recommendations when article content becomes available
+  useEffect(() => {
+    if (article?.content) {
+      fetchRecommendations();
+    }
+  }, [article?.content]);
+
   const fetchRecommendations = async () => {
     try {
       setRecommendationsLoading(true);
-      // Use article content to search similar articles
+
+      // Use article content to search similar articles. Fetch a larger candidate set then pick top 5 non-self.
       if (article?.content) {
         const contentQuery = (article.content || '').slice(0, 4000);
-        const resp = await articleApi.searchArticles(contentQuery, 5, 1, 5);
-        const items = resp.results || resp.data || [];
-        const filtered = items.filter(rec => rec.id !== id).slice(0, 5);
-        setRecommendations(filtered);
+        // Fetch top 60 candidates
+        const resp = await articleApi.searchArticles(contentQuery, 60, 1, 60);
+        const candidates = resp?.results || resp?.data || resp || [];
+
+        const picked = [];
+        const seen = new Set();
+        for (const r of (Array.isArray(candidates) ? candidates : [])) {
+          if (!r || !r.id) continue;
+          if (r.id === id) continue; // ignore current article
+          if (seen.has(r.id)) continue;
+          seen.add(r.id);
+          picked.push(r);
+          if (picked.length === 5) break;
+        }
+
+        setRecommendations(picked);
+        // Store full candidates in state for "Show more"
+        setFullRecommendationCandidates(Array.isArray(candidates) ? candidates : []);
       } else {
-        const response = await articleApi.getPopularArticles(10);
+        const response = await articleApi.getPopularArticles(20);
         if (response.success && response.data) {
           const filtered = response.data.filter(rec => rec.id !== id).slice(0, 5);
           setRecommendations(filtered);
+          setFullRecommendationCandidates(response.data || []);
         }
       }
     } catch (error) {
@@ -686,57 +747,48 @@ const ArticleDetail = () => {
                       <Spin />
                     </div>
                   ) : recommendations.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      {recommendations.map((rec) => (
-                        <Card 
-                          key={rec.id} 
-                          size="small" 
-                          hoverable
-                          style={{ cursor: 'pointer' }}
-                          onClick={() => navigate(`/articles/${rec.id}`)}
-                          bodyStyle={{ padding: 12 }}
-                        >
-                          <div style={{ display: 'flex', gap: 12 }}>
-                            {rec.image && (
-                              <Image
-                                src={rec.image}
-                                alt={rec.title}
-                                width={60}
-                                height={60}
-                                style={{ objectFit: 'cover', borderRadius: 4 }}
-                                fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
-                              />
-                            )}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <Text 
-                                strong 
-                                style={{ 
-                                  fontSize: 14, 
-                                  lineHeight: 1.4,
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: 'vertical',
-                                  overflow: 'hidden'
-                                }}
-                              >
-                                {rec.title}
-                              </Text>
-                              <div style={{ marginTop: 4 }}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                  <UserOutlined style={{ marginRight: 4 }} />
-                                  {rec.author_name}
-                                </Text>
-                              </div>
-                              <div style={{ marginTop: 2 }}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                  <ClockCircleOutlined style={{ marginRight: 4 }} />
-                                  {formatDate(rec.created_at)}
-                                </Text>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {recommendations.map((rec) => {
+                        // Prefer the most common score fields; hide badge when score is missing or zero
+                        const recScore = rec?.score_final ?? rec?._final ?? rec?.score ?? null;
+                        const showScore = typeof recScore === 'number' && recScore > 0;
+
+                        return (
+                          <Card key={rec.id} size="small" hoverable style={{ borderRadius: 8 }}>
+                            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                              {rec.image ? (
+                                <Image src={rec.image} alt={rec.title} width={72} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} />
+                              ) : (
+                                <div style={{ width: 72, height: 56, background: '#f0f0f0', borderRadius: 6 }} />
+                              )}
+
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                  <Text strong style={{ fontSize: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{rec.title}</Text>
+                                  {showScore && (
+                                    <Tag color={recScore > 0.7 ? 'green' : 'blue'} style={{ marginLeft: 8 }}>{recScore.toFixed(2)}</Tag>
+                                  )}
+                                </div>
+                                <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
+                                  <Text type="secondary" style={{ fontSize: 12 }}><UserOutlined /> {rec.author_name}</Text>
+                                  <Text type="secondary" style={{ fontSize: 12 }}>|</Text>
+                                  <Text type="secondary" style={{ fontSize: 12 }}><ClockCircleOutlined /> {formatDate(rec.created_at)}</Text>
+                                </div>
+                                <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+                                  <Button type="primary" size="small" onClick={() => navigate(`/articles/${rec.id}`)}>Read</Button>
+                                  <Button size="small" shape="default" onClick={() => handleBookmarkRec(rec.id)} style={{ marginLeft: 4 }}>
+                                    <BookOutlined />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
-            </div>
-          </Card>
-                      ))}
+                          </Card>
+                        );
+                      })}
+
+                      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+                        <Button type="link" onClick={() => setShowMoreModalVisible(true)}>Show more</Button>
+                      </div>
                     </div>
                   ) : (
                     <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
@@ -745,6 +797,38 @@ const ArticleDetail = () => {
                     </div>
                   )}
                 </Card>
+
+                {/* Show More Modal for full recommendation candidates */}
+                <Modal
+                  title="More like this"
+                  visible={showMoreModalVisible}
+                  onCancel={() => setShowMoreModalVisible(false)}
+                  footer={null}
+                  width={720}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {fullRecommendationCandidates && fullRecommendationCandidates.length > 0 ? (
+                      fullRecommendationCandidates.filter(c => c && c.id && c.id !== id).map(c => (
+                        <Card key={c.id} size="small" hoverable style={{ borderRadius: 8 }} bodyStyle={{ padding: 12 }}>
+                          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                            {c.image ? <Image src={c.image} width={72} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} /> : <div style={{ width: 72, height: 56, background: '#f0f0f0' }} />}
+                            <div style={{ flex: 1 }}>
+                              <Text strong>{c.title}</Text>
+                              <div style={{ marginTop: 6 }}>
+                                <Text type="secondary" style={{ fontSize: 12 }}>{c.author_name} • {formatDate(c.created_at)}</Text>
+                              </div>
+                            </div>
+                            <div>
+                              <Button onClick={() => navigate(`/articles/${c.id}`)}>Open</Button>
+                            </div>
+                          </div>
+                        </Card>
+                      ))
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: 24 }}>No more results</div>
+                    )}
+                  </div>
+                </Modal>
 
                 <Card 
                   title={
