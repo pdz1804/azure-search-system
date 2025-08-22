@@ -4,6 +4,7 @@ from typing import List, Optional
 
 from backend.enum.status import Status
 from backend.services import user_service
+from backend.repositories import user_repo as user_repository
 from backend.repositories import article_repo
 from backend.utils import get_current_user
 from backend.services.search_service import search_service
@@ -17,10 +18,27 @@ async def list_users():
 
 @users.get("/{id}")
 async def get_user_by_id(id: str):
-    user = await user_service.get_user_by_id(id)
-    if not user:
-        return JSONResponse(status_code=404, content={"success": False, "data": None})
-    return {"success": True, "data": user}
+    # Try to return a sanitized raw user document (includes created_at and following lists)
+    try:
+        raw = await user_repository.get_user_by_id(id)
+        if not raw:
+            return JSONResponse(status_code=404, content={"success": False, "data": None})
+
+        # Remove sensitive fields
+        raw.pop('password', None)
+        raw.pop('_etag', None)
+        raw.pop('_rid', None)
+        raw.pop('_self', None)
+        raw.pop('_ts', None)
+
+        # Keep created_at, followers, following as-is so frontend can present them
+        return {"success": True, "data": raw}
+    except Exception:
+        # Fallback to previous DTO response if anything fails
+        user = await user_service.get_user_by_id(id)
+        if not user:
+            return JSONResponse(status_code=404, content={"success": False, "data": None})
+        return {"success": True, "data": user}
 
 @users.post("/{user_id}/follow")
 async def follow_user(user_id: str, current_user: dict = Depends(get_current_user)):

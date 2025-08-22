@@ -52,18 +52,18 @@ const ConfirmationModal = ({
 
           {/* Modal */}
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <motion.div
+              <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
+              className="relative transform overflow-hidden rounded-lg bg-surface text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg border-surface"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+              <div className="px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                 {/* Close button */}
                 <button
                   onClick={onClose}
-                  className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-4 top-4 text-muted hover:text-surface transition-colors"
                 >
                   <XMarkIcon className="w-6 h-6" />
                 </button>
@@ -82,11 +82,11 @@ const ConfirmationModal = ({
 
                   {/* Content */}
                   <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
-                    <h3 className="text-base font-semibold leading-6 text-gray-900">
+                    <h3 className="text-base font-semibold leading-6 text-surface">
                       {title}
                     </h3>
                     <div className="mt-2">
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-muted">
                         {message}
                       </p>
                     </div>
@@ -95,7 +95,7 @@ const ConfirmationModal = ({
               </div>
 
               {/* Actions */}
-              <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+              <div className="px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-surface">
                 <button
                   type="button"
                   onClick={onConfirm}
@@ -115,7 +115,7 @@ const ConfirmationModal = ({
                   type="button"
                   onClick={onClose}
                   disabled={loading}
-                  className="mt-3 w-full px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 sm:mt-0 sm:w-auto transition-colors disabled:opacity-50"
+                  className="mt-3 w-full px-4 py-2 bg-surface text-surface border border-surface rounded-lg hover:bg-surface-2 sm:mt-0 sm:w-auto transition-colors disabled:opacity-50"
                 >
                   {cancelText}
                 </button>

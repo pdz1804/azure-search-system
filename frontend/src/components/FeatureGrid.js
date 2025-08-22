@@ -28,10 +28,10 @@ const FeatureGrid = () => {
 		<section className="mx-auto max-w-7xl px-6 py-12">
 			<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
 				{features.map((f, idx) => (
-					<div key={idx} className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition hover:shadow-md">
+					<div key={idx} className="group relative overflow-hidden rounded-2xl p-6 shadow-sm transition hover:shadow-md bg-surface border-surface" style={{ borderWidth: 1 }}>
 						<div className={`absolute -right-10 -top-10 h-36 w-36 rounded-full bg-gradient-to-br ${f.color} opacity-20 blur-2xl`} />
-						<h3 className="text-lg font-semibold text-gray-900">{f.title}</h3>
-						<p className="mt-2 text-sm text-gray-600">{f.desc}</p>
+						<h3 className="text-lg font-semibold text-surface">{f.title}</h3>
+						<p className="mt-2 text-sm text-muted">{f.desc}</p>
 					</div>
 				))}
 			</div>

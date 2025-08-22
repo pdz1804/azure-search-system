@@ -60,7 +60,7 @@ const team = [
 
 const About = () => {
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+		<div className="min-h-screen" style={{ background: 'var(--bg)' }}>
 			{/* Hero Section */}
 			<section className="relative overflow-hidden py-20">
 				<div className="absolute inset-0 bg-gradient-to-br from-indigo-100/50 to-purple-100/50" />
@@ -70,12 +70,12 @@ const About = () => {
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ duration: 0.8 }}
 					>
-						<h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 mb-6">
+						<h1 className="text-5xl md:text-6xl font-extrabold text-surface mb-6">
 							<span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
 								About ArticleHub
 							</span>
 						</h1>
-						<p className="text-xl md:text-2xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
+						<p className="text-xl md:text-2xl text-muted max-w-4xl mx-auto leading-relaxed">
 							We are building a bright, modern home for ideas. Our platform helps readers discover remarkable content and empowers creators with delightful tools.
 						</p>
 					</motion.div>
@@ -103,7 +103,7 @@ const About = () => {
 						{values.map((value, index) => (
 							<motion.div
 								key={index}
-								className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-8 shadow-lg hover:shadow-xl transition-all duration-300"
+								className="group relative overflow-hidden rounded-2xl border border-surface bg-surface p-8 shadow-lg hover:shadow-xl transition-all duration-300"
 								initial={{ opacity: 0, y: 20 }}
 								whileInView={{ opacity: 1, y: 0 }}
 								transition={{ duration: 0.8, delay: index * 0.2 }}
@@ -114,8 +114,8 @@ const About = () => {
 									<div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${value.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
 										<value.icon className="w-8 h-8 text-white" />
 									</div>
-									<h3 className="text-2xl font-bold text-gray-900 mb-4">{value.title}</h3>
-									<p className="text-gray-600 leading-relaxed">{value.desc}</p>
+									<h3 className="text-2xl font-bold text-surface mb-4">{value.title}</h3>
+									<p className="text-muted leading-relaxed">{value.desc}</p>
 								</div>
 							</motion.div>
 						))}
@@ -129,7 +129,7 @@ const About = () => {
 						transition={{ duration: 0.8 }}
 						viewport={{ once: true }}
 					>
-						<h2 className="text-4xl font-bold text-gray-900 mb-12">Platform Impact</h2>
+						<h2 className="text-4xl font-bold text-surface mb-12">Platform Impact</h2>
 						<div className="grid grid-cols-2 md:grid-cols-4 gap-8">
 							{stats.map((stat, index) => (
 								<motion.div
@@ -143,8 +143,8 @@ const About = () => {
 									<div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
 										<stat.icon className="w-8 h-8 text-indigo-600" />
 									</div>
-									<div className="text-3xl font-bold text-gray-900 mb-2">{stat.value}</div>
-									<div className="text-gray-600">{stat.label}</div>
+									<div className="text-3xl font-bold text-surface mb-2">{stat.value}</div>
+									<div className="text-muted">{stat.label}</div>
 								</motion.div>
 							))}
 						</div>
@@ -153,7 +153,7 @@ const About = () => {
 			</section>
 
 			{/* Team Section */}
-			<section className="py-20 bg-white">
+			<section className="py-20 bg-surface-2">
 				<div className="max-w-7xl mx-auto px-6">
 					<motion.div 
 						className="text-center mb-16"
@@ -162,7 +162,7 @@ const About = () => {
 						transition={{ duration: 0.8 }}
 						viewport={{ once: true }}
 					>
-						<h2 className="text-4xl font-bold text-gray-900 mb-6">Meet Our Team</h2>
+						<h2 className="text-4xl font-bold text-surface mb-6">Meet Our Team</h2>
 						<p className="text-xl text-gray-600 max-w-3xl mx-auto">
 							We're a passionate group of developers, designers, and content enthusiasts working together to build the future of knowledge sharing.
 						</p>
@@ -182,7 +182,7 @@ const About = () => {
 									<img
 										src={member.avatar}
 										alt={member.name}
-										className="w-32 h-32 rounded-full mx-auto object-cover border-4 border-white shadow-lg group-hover:shadow-xl transition-all duration-300"
+										className="w-32 h-32 rounded-full mx-auto object-cover border-4 border-surface shadow-lg group-hover:shadow-xl transition-all duration-300"
 									/>
 									<div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 								</div>
@@ -211,10 +211,10 @@ const About = () => {
 								Whether you're a reader looking for great content or a creator wanting to share your knowledge, we'd love to have you on board.
 							</p>
 							<div className="flex flex-col sm:flex-row gap-4 justify-center">
-								<button className="bg-white text-indigo-700 px-8 py-3 rounded-full font-semibold hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl">
+								<button className="bg-surface text-indigo-700 px-8 py-3 rounded-full font-semibold hover:opacity-95 transition-all duration-300 shadow-lg hover:shadow-xl">
 									Start Writing
 								</button>
-								<button className="border-2 border-white text-white px-8 py-3 rounded-full font-semibold hover:bg-white hover:text-indigo-700 transition-all duration-300">
+								<button className="border-2 border-surface text-white px-8 py-3 rounded-full font-semibold hover:bg-surface hover:text-indigo-700 transition-all duration-300">
 									Explore Articles
 								</button>
 							</div>

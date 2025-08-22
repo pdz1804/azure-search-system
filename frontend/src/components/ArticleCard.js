@@ -174,18 +174,19 @@ const ArticleCard = ({
 
   // Layout variants
   const layoutClasses = {
-    grid: 'bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-blue-200',
-    list: 'bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-blue-200 flex',
-    featured: 'bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-blue-200'
+    grid: 'rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden',
+    list: 'rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden flex',
+    featured: 'rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden'
   };
 
   // Featured layout for hero articles
   if (layout === 'featured') {
     return (
       <motion.article
-        whileHover={{ y: -4 }}
-        className={`${layoutClasses[layout]} ${className}`}
-      >
+          whileHover={{ y: -4 }}
+          className={`${layoutClasses[layout]} ${className}`}
+          style={{ background: 'var(--card-bg)', border: '1px solid var(--border)' }}
+        >
         <div onClick={handleClick} className="block cursor-pointer">
           {/* Large Image */}
           {article.image && (

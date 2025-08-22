@@ -121,7 +121,7 @@ const Blogs = () => {
 				</Col>
 				<Col flex="auto">
 					<Space direction="vertical" size="small" style={{ width: '100%' }}>
-						<Title level={3} className="mb-2 text-gray-900 cursor-pointer hover:text-indigo-600 transition-colors">{author.full_name || 'Unknown Author'}</Title>
+						<Title level={3} className="mb-2 text-surface cursor-pointer hover:link-accent transition-colors">{author.full_name || 'Unknown Author'}</Title>
 						<Text type="secondary" className="block mb-3 text-base">{author.email}</Text>
 					</Space>
 				</Col>
@@ -133,15 +133,15 @@ const Blogs = () => {
 	);
 
 	return (
-		<Layout className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+		<Layout className="min-h-screen" style={{ background: 'var(--bg)' }}>
 			<Content className="py-8">
 				<div className="max-w-7xl mx-auto px-6">
 					<div className="text-center mb-12">
-						<Title level={1} className="text-5xl font-extrabold text-gray-900 mb-4"><span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">Blogs & Articles</span></Title>
-						<Paragraph className="text-xl text-gray-600 max-w-3xl mx-auto">Discover amazing content from our community of writers and creators</Paragraph>
+						<Title level={1} className="text-5xl font-extrabold text-surface mb-4"><span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">Blogs & Articles</span></Title>
+						<Paragraph className="text-xl text-muted max-w-3xl mx-auto">Discover amazing content from our community of writers and creators</Paragraph>
 					</div>
 
-					<Tabs activeKey={activeTab} onChange={handleTabChange} size="large" className="bg-white rounded-2xl shadow-xl p-6" tabBarStyle={{ marginBottom: 24 }} items={[
+					<Tabs activeKey={activeTab} onChange={handleTabChange} size="large" className="bg-surface rounded-2xl shadow-xl p-6 border-surface" tabBarStyle={{ marginBottom: 24 }} items={[
 						{
 							key: 'articles',
 							label: (<span className="text-lg font-medium"><FileTextOutlined className="mr-2" />News Articles</span>),
@@ -189,7 +189,7 @@ const Blogs = () => {
 											</div>
 										</div>
 									) : (
-										<div className="text-center py-16"><UserOutlined className="text-6xl text-gray-300 mb-4" /><Title level={3} className="text-gray-500 mb-2">No Authors Found</Title><Text className="text-gray-400">We're working on bringing you amazing authors soon!</Text></div>
+										<div className="text-center py-16"><UserOutlined className="text-6xl text-muted mb-4" /><Title level={3} className="text-muted mb-2">No Authors Found</Title><Text className="text-muted">We're working on bringing you amazing authors soon!</Text></div>
 									)}
 								</div>
 							)

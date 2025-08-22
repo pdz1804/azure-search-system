@@ -40,22 +40,22 @@ const ShareModal = ({ isOpen, onClose, article, url }) => {
 
           {/* Modal */}
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <motion.div
+              <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md"
+              className="relative transform overflow-hidden rounded-lg bg-surface text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md border-surface"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-white px-6 py-6">
+              <div className="px-6 py-6">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-surface">
                     Share Article
                   </h3>
                   <button
                     onClick={onClose}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    className="text-muted hover:text-surface transition-colors"
                   >
                     <XMarkIcon className="w-6 h-6" />
                   </button>
@@ -63,12 +63,12 @@ const ShareModal = ({ isOpen, onClose, article, url }) => {
 
                 {/* Article Preview */}
                 {article && (
-                  <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-1 line-clamp-2">
+                  <div className="mb-6 p-4 bg-surface-2 rounded-lg border-surface" style={{ borderWidth: 1 }}>
+                    <h4 className="font-medium text-surface mb-1 line-clamp-2">
                       {article.title}
                     </h4>
                     {article.abstract && (
-                      <p className="text-sm text-gray-600 line-clamp-2">
+                      <p className="text-sm text-muted line-clamp-2">
                         {article.abstract}
                       </p>
                     )}
@@ -134,10 +134,10 @@ const ShareModal = ({ isOpen, onClose, article, url }) => {
                   </div>
 
                   {/* Copy Link */}
-                  <div className="border-t pt-4">
+                    <div className="border-t pt-4 border-surface">
                     <button
                       onClick={copyToClipboard}
-                      className="w-full flex items-center justify-center px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                      className="w-full flex items-center justify-center px-4 py-3 bg-surface-2 text-surface rounded-lg hover:bg-surface transition-colors border-surface" style={{ borderWidth: 1 }}
                     >
                       {copied ? (
                         <>

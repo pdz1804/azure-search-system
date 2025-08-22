@@ -39,20 +39,21 @@ const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryCh
 
 	useEffect(() => {
 		if (isInView) {
+			// start the entrance animations when hero comes into view
 			mainControls.start('visible');
 			categoryControls.start('visible');
 		}
 	}, [isInView, mainControls, categoryControls]);
 
 	return (
-		<section ref={ref} className="relative overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+		<section ref={ref} className="relative overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-purple-50" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.03) 0%, var(--bg) 50%, rgba(236,72,153,0.02) 100%)' }}>
 			{/* Enhanced background elements */}
 			<div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-to-br from-indigo-200/40 to-purple-200/40 rounded-full blur-3xl animate-pulse" />
 			<div className="absolute -bottom-32 -left-32 w-[500px] h-[500px] bg-gradient-to-br from-blue-200/30 to-cyan-200/30 rounded-full blur-3xl animate-pulse delay-1000" />
 			<div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-purple-100/20 to-pink-100/20 rounded-full blur-3xl animate-pulse delay-500" />
 
 			<div className="relative mx-auto max-w-7xl px-6 py-20 lg:flex lg:items-center lg:gap-16 lg:py-32">
-				<motion.div 
+				<motion.div
 					className="flex-1"
 					variants={{
 						hidden: { opacity: 0, x: -50 },
@@ -60,52 +61,55 @@ const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryCh
 					}}
 					initial="hidden"
 					animate={mainControls}
-					transition={{ duration: 0.8, ease: "easeOut" }}
+					transition={{ duration: 0.8, ease: 'easeOut' }}
 				>
-					<motion.p 
-						className="inline-flex items-center rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 px-4 py-2 text-sm font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-200 shadow-sm"
+					<motion.p
+						className="inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-inset shadow-sm"
+						style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', boxShadow: 'none' }}
+						initial={{ opacity: 0, y: 8 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.05, duration: 0.5 }}
+					>
+						Curated • Insightful • Actionable
+					</motion.p>
+
+					<motion.h1
+						className="mt-6 text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl"
 						initial={{ scale: 0 }}
 						animate={{ scale: 1 }}
-						transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+						transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
 					>
-						✨ New & Improved
-					</motion.p>
-					<motion.h1 
-						className="mt-6 text-5xl font-extrabold tracking-tight text-gray-900 sm:text-6xl lg:text-7xl"
-						initial={{ opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ delay: 0.3, duration: 0.8 }}
-					>
-						<span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-							Elevate your knowledge
-						</span>
-						<br />
-						<span className="text-gray-900">with modern brilliance</span>
+						<span className="block bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">Elevate your knowledge</span>
+						<span className="block text-indigo-700">with modern brilliance</span>
 					</motion.h1>
-					<motion.p 
+
+					<motion.p
 						className="mt-6 max-w-3xl text-xl leading-8 text-gray-600"
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
-						transition={{ delay: 0.4, duration: 0.8 }}
+						transition={{ delay: 0.35, duration: 0.8 }}
 					>
 						Discover thoughtfully crafted insights from authors worldwide. Write, share, and grow with a fast, elegant interface powered by React and Tailwind CSS.
 					</motion.p>
-					<motion.div 
+
+					<motion.div
 						className="mt-10 flex flex-col items-start gap-4 sm:flex-row"
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ delay: 0.5, duration: 0.8 }}
 					>
-						<button 
-							onClick={onPrimaryClick} 
+						<button
+							onClick={onPrimaryClick}
 							className="group relative inline-flex items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300"
 						>
 							<span className="relative z-10">Start Writing</span>
 							<div className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-700 to-purple-700 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 						</button>
-						<button 
-							onClick={onSecondaryClick} 
-							className="inline-flex items-center justify-center rounded-full bg-white px-8 py-4 text-lg font-semibold text-indigo-700 ring-2 ring-inset ring-indigo-200 transition-all duration-300 hover:bg-indigo-50 hover:ring-indigo-300 hover:scale-105 shadow-md"
+
+						<button
+							onClick={onSecondaryClick}
+							className="inline-flex items-center justify-center rounded-full px-8 py-4 text-lg font-semibold ring-2 ring-inset transition-all duration-300 hover:scale-105 shadow-md"
+							style={{ background: 'var(--card-bg)', color: 'var(--text)', borderColor: 'rgba(255,255,255,0.04)' }}
 						>
 							Explore Articles
 						</button>
@@ -122,7 +126,7 @@ const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryCh
 					animate={mainControls}
 					transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
 				>
-					<div className="relative mx-auto aspect-[4/3] w-full max-w-2xl overflow-hidden rounded-3xl border border-indigo-100 bg-white shadow-2xl">
+					<div className="relative mx-auto aspect-[4/3] w-full max-w-2xl overflow-hidden rounded-3xl shadow-2xl" style={{ border: '1px solid var(--border)', background: 'var(--card-bg)' }}>
 						<div className="absolute inset-0 bg-gradient-to-tr from-indigo-100/40 via-transparent to-purple-100/40" />
 						<img
 							src="https://images.unsplash.com/photo-1525182008055-f88b95ff7980?q=80&w=1400&auto=format&fit=crop"

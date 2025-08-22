@@ -136,7 +136,7 @@ export const articleApi = {
   },
 
   // AI-powered search articles (allowed endpoint only)
-  searchArticles: async (query, limit = 10, page = 1, maxResults = 50) => {
+  searchArticles: async (query, limit = 12, page = 1, maxResults = 60) => {
     try {
       const response = await apiClient.get('/search/articles', {
         params: {

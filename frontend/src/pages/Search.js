@@ -104,7 +104,8 @@ const Search = () => {
       console.log('🔍 Starting articles search for query:', query);
       
       // Wait for the API call to complete
-      const response = await articleApi.searchArticles(query, 10, 1, 50);
+      // Request server-side page 1 with page_size=12 (backend expects page_index 0-based)
+      const response = await articleApi.searchArticles(query, 12, 1, 60);
       console.log('🔍 Articles search response:', response);
       console.log('🔍 Response type:', typeof response);
       console.log('🔍 Response keys:', Object.keys(response || {}));
@@ -137,10 +138,11 @@ const Search = () => {
       console.log('🔍 Starting users AI search for query:', query);
       
       // Try AI-powered search first
+      // Request authors with page_size=12
       const response = await userApi.searchUsersAI({
         q: query,
         page: 1,
-        limit: 50
+        limit: 12
       });
       
       console.log('🔍 Users search response:', response);
@@ -256,7 +258,7 @@ const Search = () => {
                 label: (
                   <span>
                     <FileTextOutlined />
-                    Bài viết ({articles.length})
+                    Bài viết
                   </span>
                 ),
                 children: (
@@ -265,19 +267,11 @@ const Search = () => {
                       <div style={{ textAlign: 'center', padding: '50px' }}>
                         <Spin size="large" />
                       </div>
-                    ) : articles.length > 0 ? (
-                      <ArticleList 
-                        articles={articles}
-                        showLoadMore={false}
-                      />
                     ) : (
-                      <Empty 
-                        description={
-                          searchType === 'authors' 
-                            ? "Không tìm thấy bài viết nào cho tìm kiếm tác giả"
-                            : "Không tìm thấy bài viết nào"
-                        }
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      // Let ArticleList handle fetching, pagination and empty state
+                      <ArticleList 
+                        searchQuery={query}
+                        showLoadMore={true}
                       />
                     )}
                   </div>

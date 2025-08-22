@@ -9,6 +9,8 @@ from urllib import response
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import JSONResponse
 from typing import Optional, Dict, Any, List
+import time
+import math
 from pydantic import BaseModel
 from backend.services.article_service import  search_response_articles
 from backend.services.search_service import get_search_service
@@ -34,12 +36,34 @@ class AuthorHit(BaseModel):
 
 search = APIRouter(prefix="/api/search", tags=["search"])
 
+# Simple in-memory cache for paged search results.
+# Keyed by: endpoint|query|k|page_index|page_size
+# Value: (timestamp_seconds, response_dict)
+CACHE: Dict[str, Any] = {}
+CACHE_TTL = 300  # seconds
+
+def _cache_get(key: str):
+    entry = CACHE.get(key)
+    if not entry:
+        return None
+    ts, value = entry
+    if time.time() - ts > CACHE_TTL:
+        try:
+            del CACHE[key]
+        except KeyError:
+            pass
+        return None
+    return value
+
+def _cache_set(key: str, value: Any):
+    CACHE[key] = (time.time(), value)
+
 @search.get("/")
 async def search_general(
     q: str = Query(..., min_length=1, description="Search query text"), 
-    k: int = Query(10, ge=1, le=100, description="Number of results to return"),
-    page_index: Optional[int] = Query(None, ge=0, description="Page index (0-based)"),
-    page_size: Optional[int] = Query(None, ge=1, le=100, description="Number of results per page")
+    k: int = Query(60, ge=1, le=1000, description="Number of results to return (default 5 pages * 12)") ,
+    page_index: int = Query(0, ge=0, description="Page index (0-based)"),
+    page_size: int = Query(12, ge=1, le=100, description="Number of results per page (default 12)")
 ):
     """General search endpoint with intelligent query classification and routing.
     
@@ -53,13 +77,19 @@ async def search_general(
     """
     print(f"🔍 General search: query='{q}', k={k}, page_index={page_index}, page_size={page_size}")
     try:
+        cache_key = f"general|{q}|{k}|{page_index}|{page_size}"
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            print(f"🔁 Returning cached general search page: {cache_key}")
+            return cached
+
         # Get search results from service layer using general search
         search_service = get_search_service()
         result = search_service.search(q, k, page_index, page_size)
-        
+
         if not result or not result.get("results"):
             raise HTTPException(status_code=500, detail="Search failed - no results returned")
-        
+
         print(f"Result DEBUG: {result}")
 
         # Transform results based on search type
@@ -99,18 +129,27 @@ async def search_general(
                 ) for item in result.get("results", [])
             ]
         
+        # Build pagination: "total" should be number of pages. raw total results is in total_results
+        pagination = result.get("pagination") or {}
+        total_results = pagination.get("total_results", len(items))
+        total_pages = math.ceil(total_results / page_size) if page_size else 1
+
         response = {
             "success": True,
             "data": items,
             "results": items,
             "pagination": {
-                "page": page_index + 1 if page_index is not None else 1,
-                "page_size": page_size or k,
-                "total": (result.get("pagination") or {}).get("total_results", len(items))
+                "page": page_index + 1,
+                "page_size": page_size,
+                "total": total_pages,
+                "total_results": total_results,
             },
             "normalized_query": result.get("normalized_query", q),
             "search_type": search_type
         }
+
+        # Cache the page so subsequent clicks for the same page are fast
+        _cache_set(cache_key, response)
         
         print(f"✅ General search completed: {len(items)} results, type: {search_type}")
         return response
@@ -121,9 +160,9 @@ async def search_general(
 @search.get("/articles")
 async def search_articles(
     q: str = Query(..., min_length=1, description="Search query text"), 
-    k: int = Query(10, ge=1, le=100, description="Number of results to return"),
-    page_index: Optional[int] = Query(None, ge=0, description="Page index (0-based)"),
-    page_size: Optional[int] = Query(None, ge=1, le=100, description="Number of results per page")
+    k: int = Query(60, ge=1, le=1000, description="Number of results to return (default 5 pages * 12)"),
+    page_index: int = Query(0, ge=0, description="Page index (0-based)"),
+    page_size: int = Query(12, ge=1, le=100, description="Number of results per page (default 12)")
 ):
     """Search articles with hybrid scoring and optional pagination.
     
@@ -132,10 +171,16 @@ async def search_articles(
     """
     print(f"🔍 Searching articles: query='{q}', k={k}, page_index={page_index}, page_size={page_size}")
     try:
+        cache_key = f"articles|{q}|{k}|{page_index}|{page_size}"
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            print(f"🔁 Returning cached articles search page: {cache_key}")
+            return cached
+
         # Get search results from service layer
         search_service = get_search_service()
         result = search_service.search_articles(q, k, page_index, page_size)
-        
+
         if not result or not result.get("results"):
             return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Search failed - no results returned"}})
         docs = await search_response_articles(result)
@@ -170,14 +215,18 @@ async def search_articles(
         
         # print(f"✅ Articles search completed: {len(articles)} results")
         pagination = result.get("pagination") or {}
-        mapped_pagination = None
-        if pagination:
-            mapped_pagination = {
-                "page": (pagination.get("page_index") or 0) + 1,
-                "page_size": pagination.get("page_size"),
-                "total": pagination.get("total_results")
-            }
-        return {"success": True, "data": docs, "results": docs, "pagination": mapped_pagination}
+        total_results = pagination.get("total_results", len(docs))
+        total_pages = math.ceil(total_results / page_size) if page_size else 1
+        mapped_pagination = {
+            "page": (pagination.get("page_index") or page_index) + 1,
+            "page_size": pagination.get("page_size") or page_size,
+            "total": total_pages,
+            "total_results": total_results,
+        }
+
+        response = {"success": True, "data": docs, "results": docs, "pagination": mapped_pagination}
+        _cache_set(cache_key, response)
+        return response
     except Exception as e:
         print(f"❌ Articles search failed: {e}")
         return JSONResponse(status_code=500, content={"success": False, "data": {"error": str(e)}})
@@ -185,9 +234,9 @@ async def search_articles(
 @search.get("/authors")
 async def search_authors(
     q: str = Query(..., min_length=1, description="Search query text"), 
-    k: int = Query(10, ge=1, le=100, description="Number of results to return"),
-    page_index: Optional[int] = Query(None, ge=0, description="Page index (0-based)"),
-    page_size: Optional[int] = Query(None, ge=1, le=100, description="Number of results per page")
+    k: int = Query(60, ge=1, le=1000, description="Number of results to return (default 5 pages * 12)"),
+    page_index: int = Query(0, ge=0, description="Page index (0-based)"),
+    page_size: int = Query(12, ge=1, le=100, description="Number of results per page (default 12)")
 ):
     """Search authors with hybrid scoring and optional pagination.
     
@@ -197,13 +246,19 @@ async def search_authors(
     """
     print(f"🔍 Searching authors: query='{q}', k={k}, page_index={page_index}, page_size={page_size}")
     try:
+        cache_key = f"authors|{q}|{k}|{page_index}|{page_size}"
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            print(f"🔁 Returning cached authors search page: {cache_key}")
+            return cached
+
         # Get search results from service layer
         search_service = get_search_service()
         result = search_service.search_authors(q, k, page_index, page_size)
-        
+
         if not result or not result.get("results"):
             return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Search failed - no results returned"}})
-        
+
         print(f"Result DEBUG: {result}")
         docs = await search_response_users(result)
         # # Transform results to AuthorHit format for API response
@@ -234,14 +289,18 @@ async def search_authors(
         
         # print(f"✅ Authors search completed: {len(authors)} results")
         pagination = result.get("pagination") or {}
-        mapped_pagination = None
-        if pagination:
-            mapped_pagination = {
-                "page": (pagination.get("page_index") or 0) + 1,
-                "page_size": pagination.get("page_size"),
-                "total": pagination.get("total_results")
-            }
-        return {"success": True, "data": docs, "results": docs, "pagination": mapped_pagination}
+        total_results = pagination.get("total_results", len(docs))
+        total_pages = math.ceil(total_results / page_size) if page_size else 1
+        mapped_pagination = {
+            "page": (pagination.get("page_index") or page_index) + 1,
+            "page_size": pagination.get("page_size") or page_size,
+            "total": total_pages,
+            "total_results": total_results,
+        }
+
+        response = {"success": True, "data": docs, "results": docs, "pagination": mapped_pagination}
+        _cache_set(cache_key, response)
+        return response
     except Exception as e:
         print(f"❌ Authors search failed: {e}")
         return JSONResponse(status_code=500, content={"success": False, "data": {"error": str(e)}})

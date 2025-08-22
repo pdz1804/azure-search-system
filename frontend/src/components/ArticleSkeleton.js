@@ -2,8 +2,8 @@ import React from 'react';
 
 const ArticleSkeleton = () => {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto bg-white shadow-sm">
+    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <div className="max-w-4xl mx-auto shadow-sm bg-surface border-surface" style={{ borderWidth: 1 }}>
         {/* Hero Image Skeleton */}
         <div className="w-full h-96 bg-gray-200 animate-pulse" />
 
