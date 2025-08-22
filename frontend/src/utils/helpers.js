@@ -1,10 +1,28 @@
 // Format date
 export const formatDate = (dateString) => {
   if (!dateString) return 'No date';
-  
-  const date = new Date(dateString);
+
+  // Try native parsing first
+  let date = new Date(dateString);
+
+  // Some backend timestamps use 'YYYY-MM-DD HH:mm:ss' which is not universally parseable.
+  // Try a few fallbacks before giving up.
+  if (isNaN(date.getTime())) {
+    // Replace space between date and time with 'T'
+    const tForm = dateString.replace(' ', 'T');
+    date = new Date(tForm);
+  }
+
+  if (isNaN(date.getTime())) {
+    // Try Date.parse (some environments handle more formats)
+    const parsed = Date.parse(dateString);
+    if (!isNaN(parsed)) {
+      date = new Date(parsed);
+    }
+  }
+
   if (isNaN(date.getTime())) return 'Invalid date';
-  
+
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',

@@ -80,7 +80,7 @@ const Contact = () => {
 	];
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50">
+		<div className="min-h-screen" style={{ background: 'var(--bg)' }}>
 			{/* Hero Section */}
 			<section className="relative overflow-hidden py-20">
 				<div className="absolute inset-0 bg-gradient-to-br from-indigo-100/50 to-cyan-100/50" />
@@ -90,12 +90,12 @@ const Contact = () => {
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ duration: 0.8 }}
 					>
-						<h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 mb-6">
+						<h1 className="text-5xl md:text-6xl font-extrabold text-surface mb-6">
 							<span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent">
 								Get in Touch
 							</span>
 						</h1>
-						<p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+						<p className="text-xl md:text-2xl text-muted max-w-3xl mx-auto leading-relaxed">
 							Have a question, partnership idea or need support? Send us a message and we will get back to you.
 						</p>
 					</motion.div>
@@ -113,8 +113,8 @@ const Contact = () => {
 							transition={{ duration: 0.8 }}
 							viewport={{ once: true }}
 						>
-							<div className="bg-white rounded-3xl shadow-2xl p-8 border border-gray-100">
-								<h2 className="text-3xl font-bold text-gray-900 mb-6">Send us a Message</h2>
+							<div className="bg-surface rounded-3xl shadow-2xl p-8 border border-surface">
+								<h2 className="text-3xl font-bold text-surface mb-6">Send us a Message</h2>
 								
 								{submitStatus === 'success' && (
 									<motion.div
@@ -147,7 +147,7 @@ const Contact = () => {
 								<form onSubmit={handleSubmit} className="space-y-6">
 									<div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 										<div>
-											<label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
+											<label htmlFor="fullName" className="block text-sm font-medium text-muted mb-2">
 												Full Name *
 											</label>
 											<input
@@ -157,7 +157,7 @@ const Contact = () => {
 												value={formData.fullName}
 												onChange={handleInputChange}
 												required
-												className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
+												className="w-full px-4 py-3 border border-surface rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-surface hover:opacity-95"
 												placeholder="Enter your full name"
 											/>
 										</div>
@@ -179,7 +179,7 @@ const Contact = () => {
 									</div>
 
 									<div>
-										<label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
+										<label htmlFor="subject" className="block text-sm font-medium text-muted mb-2">
 											Subject *
 										</label>
 										<input
@@ -189,13 +189,13 @@ const Contact = () => {
 											value={formData.subject}
 											onChange={handleInputChange}
 											required
-											className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
+											className="w-full px-4 py-3 border border-surface rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-surface hover:opacity-95"
 											placeholder="What is this about?"
 										/>
 									</div>
 
 									<div>
-										<label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+										<label htmlFor="message" className="block text-sm font-medium text-muted mb-2">
 											Message *
 										</label>
 										<textarea
@@ -205,7 +205,7 @@ const Contact = () => {
 											value={formData.message}
 											onChange={handleInputChange}
 											required
-											className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white resize-none"
+											className="w-full px-4 py-3 border border-surface rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-surface hover:opacity-95 resize-none"
 											placeholder="Tell us more about your inquiry..."
 										/>
 									</div>
@@ -230,8 +230,8 @@ const Contact = () => {
 							className="space-y-8"
 						>
 							<div>
-								<h2 className="text-3xl font-bold text-gray-900 mb-6">Contact Information</h2>
-								<p className="text-lg text-gray-600 mb-8">
+								<h2 className="text-3xl font-bold text-surface mb-6">Contact Information</h2>
+								<p className="text-lg text-muted mb-8">
 									We're here to help and answer any questions you might have. We look forward to hearing from you.
 								</p>
 							</div>
@@ -250,11 +250,11 @@ const Contact = () => {
 											<info.icon className="w-6 h-6 text-white" />
 										</div>
 										<div className="flex-1">
-											<h3 className="text-lg font-semibold text-gray-900 mb-1">{info.title}</h3>
+											<h3 className="text-lg font-semibold text-surface mb-1">{info.title}</h3>
 											{info.link ? (
 												<a
 													href={info.link}
-													className="text-gray-600 hover:text-indigo-600 transition-colors duration-200"
+													className="text-muted hover:link-accent transition-colors duration-200"
 												>
 													{info.value}
 												</a>
@@ -272,10 +272,10 @@ const Contact = () => {
 								whileInView={{ opacity: 1, y: 0 }}
 								transition={{ duration: 0.5, delay: 0.7 }}
 								viewport={{ once: true }}
-								className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100"
+								className="bg-surface rounded-2xl p-6 shadow-lg border border-surface"
 							>
 								<h3 className="text-xl font-semibold text-gray-900 mb-4">Our Office</h3>
-								<div className="space-y-3 text-gray-600">
+									<div className="space-y-3 text-muted">
 									<p>123 Example Street, Suite 200</p>
 									<p>District 1, Ho Chi Minh City</p>
 									<p>Vietnam</p>

@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from typing import Any, Dict, Dict, List, Optional
 from backend.model.dto.user_dto import user_dto
 from backend.repositories import article_repo, user_repo
+import asyncio
 from backend.services import article_service
 from backend.services.cache_service import CACHE_KEYS, delete_cache_pattern
 from backend.utils import get_current_user, hash_password, verify_password
@@ -18,7 +19,22 @@ from backend.utils import get_current_user, hash_password, verify_password
 
 async def list_users() -> list:
     users = await user_repo.get_list_user()
-    return users
+    if not users:
+        return []
+
+    # Enrich each user with quick author stats (articles_count, total_views)
+    async def enrich(u):
+        try:
+            stats = await article_repo.get_author_stats(u.get('id'))
+            u['articles_count'] = stats.get('articles_count', 0)
+            u['total_views'] = stats.get('total_views', 0)
+        except Exception:
+            u['articles_count'] = u.get('articles_count', 0) or 0
+            u['total_views'] = u.get('total_views', 0) or 0
+        return u
+
+    enriched = await asyncio.gather(*(enrich(u) for u in users))
+    return enriched
 
 async def login(email: str, password: str) -> Optional[dict]:
     user = await user_repo.get_by_email(email)
@@ -157,7 +173,7 @@ def map_to_user_dto(user: dict) -> user_dto:
         email=user.get("email"),
         num_followers=len(user.get("followers", [])),
         num_following=len(user.get("following", [])),
-        num_articles=len(user.get("articles", [])),
+        num_articles=len(user.get("articles", [])) if user.get("articles") else 0,
         role=user.get("role"),
         avatar_url=user.get("avatar_url")
     ) 

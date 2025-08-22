@@ -154,22 +154,32 @@ async def get_statistics():
         # Try to get data from Cosmos DB first
         try:
             articles_container = await get_articles_container()
-            
-            # Get total articles count
-            articles_count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.is_active = true"
-            articles_count_result = [item async for item in articles_container.query_items(query=articles_count_query)]
-            total_articles = articles_count_result[0] if articles_count_result else 0
-            
-            # Get total views
-            views_query = "SELECT VALUE SUM(c.views) FROM c WHERE c.is_active = true"
-            views_result = [item async for item in articles_container.query_items(query=views_query)]
-            total_views = views_result[0] if views_result else 0
-            
-            # Get total authors (unique author_ids)
-            authors_query = "SELECT VALUE COUNT(DISTINCT c.author_id) FROM c WHERE c.is_active = true"
-            authors_result = [item async for item in articles_container.query_items(query=authors_query)]
-            total_authors = authors_result[0] if authors_result else 0
-            
+
+            # Iterate across all articles and compute aggregates in code to avoid
+            # unsupported server-side DISTINCT/count aggregation across partitions.
+            total_articles = 0
+            total_views = 0
+            author_ids = set()
+
+            async for item in articles_container.read_all_items():
+                try:
+                    if not item or not item.get('is_active'):
+                        continue
+                    total_articles += 1
+                    try:
+                        total_views += int(item.get('views', 0) or 0)
+                    except Exception:
+                        # skip malformed view values
+                        pass
+                    aid = item.get('author_id')
+                    if aid:
+                        author_ids.add(aid)
+                except Exception:
+                    # ignore malformed documents
+                    continue
+
+            total_authors = len(author_ids)
+
         except Exception as db_error:
             print(f"Cosmos DB connection failed, using sample data: {db_error}")
             # Fallback to sample data from articles.json

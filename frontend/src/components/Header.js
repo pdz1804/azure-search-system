@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
@@ -10,8 +10,6 @@ import {
   BookmarkIcon,
   CogIcon,
   ArrowRightOnRectangleIcon,
-  SunIcon,
-  MoonIcon,
   HomeIcon,
   DocumentTextIcon,
   EnvelopeIcon,
@@ -21,7 +19,6 @@ import { useAuth } from '../context/AuthContext';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
@@ -38,10 +35,7 @@ const Header = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-    // Add dark mode logic here
-  };
+  // theme toggle removed - single theme only
 
   const handleLogout = () => {
     logout();
@@ -71,7 +65,7 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm sticky top-0 z-50">
+  <header className="site-header backdrop-blur-md shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -87,16 +81,16 @@ const Header = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-8">
+          <nav className="hidden md:flex ml-6 space-x-8">
             {navigationItems.map((item) => (
               <Link
                 key={item.name}
                 to={item.href}
                 className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  isActive(item.href)
-                    ? 'text-indigo-600 bg-indigo-50 border border-indigo-200'
-                    : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50'
-                }`}
+                      isActive(item.href)
+                        ? 'text-indigo-600 bg-indigo-50 border border-indigo-200'
+                        : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50'
+                    }`}
               >
                 <item.icon className="w-4 h-4" />
                 <span>{item.name}</span>
@@ -128,18 +122,8 @@ const Header = () => {
           </div>
 
           {/* Right Side Actions */}
-          <div className="flex items-center space-x-4">
-            {/* Dark Mode Toggle */}
-            <button
-              onClick={toggleDarkMode}
-              className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all duration-200"
-            >
-              {isDarkMode ? (
-                <SunIcon className="h-5 w-5" />
-              ) : (
-                <MoonIcon className="h-5 w-5" />
-              )}
-            </button>
+            <div className="flex items-center space-x-4">
+              {/* theme toggle removed */}
 
             {/* Write Button */}
             {isAuthenticated() && (
@@ -157,7 +141,7 @@ const Header = () => {
               <div className="relative">
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-all duration-200"
+                    className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-all duration-200"
                 >
                   {user?.avatar_url ? (
                     <img
@@ -170,14 +154,14 @@ const Header = () => {
                       {user?.full_name?.[0] || user?.email?.[0] || 'U'}
                     </div>
                   )}
-                  <span className="hidden sm:block text-sm font-medium text-gray-700">
+                    <span className="hidden sm:block text-sm font-medium text-gray-700">
                     {user?.full_name || user?.email || 'User'}
                   </span>
                 </button>
 
                 {/* Dropdown Menu */}
-                {isMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50">
+                  {isMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 dropdown-panel rounded-lg shadow-lg border py-1 z-50">
                     <Link
                       to="/profile"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
@@ -206,7 +190,7 @@ const Header = () => {
                       <CogIcon className="w-4 h-4 inline mr-2" />
                       Dashboard
                     </Link>
-                    <hr className="my-1" />
+                    <hr className="my-1 border-gray-100" />
                     <button
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"

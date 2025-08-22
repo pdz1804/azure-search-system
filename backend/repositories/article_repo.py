@@ -197,6 +197,35 @@ async def get_article_by_author(author_id: str, page: int = 1, page_size: int = 
     }
 
 
+async def get_author_stats(author_id: str) -> Dict:
+    """Return simple stats for an author by scanning their articles and summing fields in code.
+
+    We avoid server-side aggregation to support partitioned Cosmos containers where some aggregate
+    queries may be restricted. This reads the author's active articles and computes counts locally.
+    """
+    articles = await get_articles()
+    data_query = "SELECT * FROM c WHERE c.author_id = @author_id AND c.is_active = true"
+    parameters = [{"name": "@author_id", "value": author_id}]
+
+    total_items = 0
+    total_views = 0
+
+    try:
+        async for doc in articles.query_items(query=data_query, parameters=parameters):
+            try:
+                total_items += 1
+                total_views += int(doc.get('views', 0) or 0)
+            except Exception:
+                # If a document is malformed, skip its numeric contribution but still count it
+                total_items += 1
+                continue
+    except Exception:
+        # On any error, return zeros so caller can fallback
+        return {"articles_count": 0, "total_views": 0}
+
+    return {"articles_count": total_items, "total_views": total_views}
+
+
 async def get_articles_by_ids(article_ids: List[str]):
     articles_repo = await get_articles()
 

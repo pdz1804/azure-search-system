@@ -66,7 +66,7 @@ const RelatedArticles = ({ currentArticleId, authorId, tags = [] }) => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6">
+  <div className="bg-surface rounded-lg shadow-sm p-6 border-surface" style={{ borderWidth: 1 }}>
         <h3 className="text-xl font-bold text-gray-900 mb-6">Related Articles</h3>
         <LoadingSpinner text="Loading related articles..." />
       </div>
@@ -78,8 +78,8 @@ const RelatedArticles = ({ currentArticleId, authorId, tags = [] }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <h3 className="text-xl font-bold text-gray-900 mb-6">Related Articles</h3>
+    <div className="bg-surface rounded-lg shadow-sm p-6 border-surface" style={{ borderWidth: 1 }}>
+      <h3 className="text-xl font-bold text-surface mb-6">Related Articles</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {articles.map((article) => (
@@ -88,7 +88,7 @@ const RelatedArticles = ({ currentArticleId, authorId, tags = [] }) => {
             to={`/articles/${article.id}`}
             className="group block"
           >
-            <article className="bg-gray-50 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+            <article className="bg-surface-2 rounded-lg overflow-hidden hover:shadow-md transition-shadow border-surface" style={{ borderWidth: 1 }}>
               {/* Article Image */}
               {article.image && (
                 <div className="aspect-video overflow-hidden">
@@ -117,13 +117,13 @@ const RelatedArticles = ({ currentArticleId, authorId, tags = [] }) => {
                 )}
                 
                 {/* Title */}
-                <h4 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-2 line-clamp-2">
+                <h4 className="font-semibold text-surface group-hover:text-blue-400 transition-colors mb-2 line-clamp-2">
                   {article.title}
                 </h4>
                 
                 {/* Abstract */}
                 {article.abstract && (
-                  <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                  <p className="text-muted text-sm mb-3 line-clamp-2">
                     {article.abstract}
                   </p>
                 )}

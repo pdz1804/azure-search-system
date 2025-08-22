@@ -16,6 +16,24 @@ const { confirm } = Modal;
 // Global map to deduplicate fetches across component remounts (helps with React.StrictMode)
 const globalFetchMap = new Map();
 const globalFetchPromises = new Map();
+// Simple per-page cache for search results: key -> { ts, response }
+const globalPageCache = new Map();
+const PAGE_CACHE_TTL = 300 * 1000; // ms
+
+const _cache_get = (key) => {
+  const entry = globalPageCache.get(key);
+  if (!entry) return null;
+  const { ts, value } = entry;
+  if (Date.now() - ts > PAGE_CACHE_TTL) {
+    globalPageCache.delete(key);
+    return null;
+  }
+  return value;
+};
+
+const _cache_set = (key, value) => {
+  globalPageCache.set(key, { ts: Date.now(), value });
+};
 
 const ArticleList = ({ 
   authorId = null, 
@@ -42,7 +60,8 @@ const ArticleList = ({
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 12,
-    total: 0
+  // default to 5 pages * 12 pageSize
+  total: 5 * 12
   });
   const [searchText, setSearchText] = useState('');
   const [lastFetchKey, setLastFetchKey] = useState('');
@@ -69,10 +88,11 @@ const ArticleList = ({
 
   const fetchArticles = async (page = 1, search = '') => {
     if (externalArticles) return; // Don't fetch if articles are provided externally
-    
-    const cacheKey = (loadAll && !(search || searchQuery))
-      ? `${getCacheKey()}_ALL`
-      : `${getCacheKey()}_${page}`;
+    const q = search || searchQuery || searchText;
+    const baseKey = `${authorId || 'all'}_${category || 'all'}_${status}_${sortBy}_${q}`;
+    const cacheKey = (loadAll && !q)
+      ? `${baseKey}_ALL`
+      : `${baseKey}_${page}`;
     
     // Check if there's already a promise for this exact fetch
     if (globalFetchPromises.has(cacheKey)) {
@@ -110,6 +130,7 @@ const ArticleList = ({
 
   const performFetch = async (cacheKey, page, search) => {
     setLoading(true);
+    const pageSize = pagination.pageSize || 12;
     try {
       // Helper to normalize and sort results
       const normalize = (raw) => {
@@ -131,7 +152,7 @@ const ArticleList = ({
 
       // mark in-flight globally to survive remounts
       globalFetchMap.set(cacheKey, true);
-  // Load-all mode: fetch all pages up to a safe cap
+      // Load-all mode: fetch all pages up to a safe cap
       if (loadAll && !(search || searchQuery)) {
         const accumulated = [];
         const pageSize = 100;
@@ -155,8 +176,8 @@ const ArticleList = ({
         const sortedAll = [...accumulated].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
         setArticles(sortedAll);
         setPagination(prev => ({ ...prev, total: accumulated.length, pageSize: 12 }));
-  setLastFetchKey(cacheKey);
-  globalFetchMap.delete(cacheKey);
+        setLastFetchKey(cacheKey);
+        globalFetchMap.delete(cacheKey);
       } else {
         // Standard single page or search mode
         let response;
@@ -165,8 +186,18 @@ const ArticleList = ({
         } else if (category && category !== 'all') {
           response = await articleApi.getArticlesByCategory(category, page, pagination.pageSize);
         } else if ((search || searchQuery)) {
-          // Always get top 50 results and paginate client-side
-          response = await articleApi.searchArticles(search || searchQuery, 50, 1, 50);
+          // Server-side paged search: request page with page_size == pagination.pageSize
+          const cacheKeyPage = `${cacheKey}_PAGE_${page}`;
+          const cached = _cache_get(cacheKeyPage);
+          if (cached) {
+            console.log('[CACHE HIT]', cacheKeyPage);
+            response = cached;
+          } else {
+            console.log('[CACHE MISS]', cacheKeyPage);
+            response = await articleApi.searchArticles(search || searchQuery || searchText, pageSize, page, Math.max(pageSize, 60));
+            // store page in cache
+            try { _cache_set(cacheKeyPage, response); console.log('[CACHE SET]', cacheKeyPage); } catch (e) { /* ignore */ }
+          }
         } else {
           response = await articleApi.getArticles({ page: page, page_size: pagination.pageSize, limit: pagination.pageSize, sort_by: sortBy });
         }
@@ -178,18 +209,21 @@ const ArticleList = ({
             : items;
           setArticles(finalItems);
           
-          // Extract pagination info - total is now total pages from backend
+          // Extract pagination info - backend returns "total" as number of pages
           const paginationData = response.pagination || {};
           console.log('API Pagination data:', paginationData);
-          
-          // Convert total pages to total items for Ant Design Pagination component
-          const totalPages = paginationData.total || 1;
-          const totalItems = totalPages * pagination.pageSize;
-          
+
+          // Backend returns "total" as number of pages. If missing, default to 5 pages.
+          const totalPages = paginationData.total || 5;
+          const respPageSize = paginationData.page_size || pagination.pageSize || pageSize || 12;
+          const totalItems = totalPages * respPageSize;
+
           setPagination(prev => ({
             ...prev,
             current: paginationData.page || page,
-            total: (search || searchQuery) ? finalItems.length : totalItems
+            // always report total as totalItems (pages * pageSize)
+            total: totalItems,
+            pageSize: respPageSize
           }));
           setLastFetchKey(cacheKey);
           globalFetchMap.delete(cacheKey);
@@ -243,8 +277,8 @@ const ArticleList = ({
     }
 
     setPagination(prev => ({ ...prev, current: page }));
-    // For loadAll/search mode, data is already in memory; avoid refetch
-    if (!(loadAll || searchQuery || searchText)) {
+    // For loadAll mode, data is already in memory; otherwise always fetch server page so caching works
+    if (!loadAll) {
       fetchArticles(page, searchText);
     }
   };
@@ -352,15 +386,60 @@ const ArticleList = ({
 
             {showLoadMore && (
               <div style={{ textAlign: 'center', marginTop: 32 }}>
-                <Pagination
-                  current={pagination.current}
-                  pageSize={pagination.pageSize}
-                  total={(loadAll || searchQuery || searchText) ? articles.length : pagination.total}
-                  onChange={handlePageChange}
-                  showSizeChanger={false}
-                  showQuickJumper
-                  showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} articles`}
-                />
+                {/* If this is a search mode (has query), render a simple explicit pager of 5 pages so numbers are always visible and clickable. */}
+                {((searchQuery && searchQuery.length > 0) || searchText) ? (
+                  (() => {
+                    const respPageSize = pagination.pageSize || 12;
+                    const pagesFromBackend = Math.max(1, Math.ceil((pagination.total || (5 * respPageSize)) / respPageSize));
+                    const pagesToShow = Math.max(5, pagesFromBackend);
+                    const buttons = [];
+                    for (let i = 1; i <= pagesToShow; i++) {
+                      buttons.push(
+                        <button
+                          key={i}
+                          onClick={() => handlePageChange(i)}
+                          style={{
+                            margin: '0 6px',
+                            padding: '6px 10px',
+                            borderRadius: 6,
+                            border: i === pagination.current ? '2px solid #5b8cff' : '1px solid #ddd',
+                            background: i === pagination.current ? '#f0f5ff' : '#fff',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {i}
+                        </button>
+                      );
+                    }
+                    return (
+                      <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        <button
+                          onClick={() => handlePageChange(Math.max(1, pagination.current - 1))}
+                          style={{ marginRight: 8, padding: '6px 10px', borderRadius: 6 }}
+                        >
+                          &lt;
+                        </button>
+                        {buttons}
+                        <button
+                          onClick={() => handlePageChange(Math.min(pagesToShow, pagination.current + 1))}
+                          style={{ marginLeft: 8, padding: '6px 10px', borderRadius: 6 }}
+                        >
+                          &gt;
+                        </button>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <Pagination
+                    current={pagination.current}
+                    pageSize={pagination.pageSize}
+                    total={pagination.total}
+                    onChange={handlePageChange}
+                    showSizeChanger={false}
+                    showQuickJumper
+                    showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} articles`}
+                  />
+                )}
               </div>
             )}
           </>

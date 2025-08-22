@@ -33,7 +33,20 @@ const Home = () => {
 				setLoading(true);
 				
 				// Use static homepage stats per requirements
-				
+				// Fetch site-wide statistics from backend
+				try {
+					const statsResp = await articleApi.getStatistics();
+					if (statsResp && statsResp.success && statsResp.data) {
+						setStatistics({
+							articles: statsResp.data.articles ?? statsResp.data.total_articles ?? '0',
+							authors: statsResp.data.authors ?? '0',
+							total_views: statsResp.data.total_views ?? statsResp.data.total_views ?? '0',
+							bookmarks: statsResp.data.bookmarks ?? 0
+						});
+					}
+				} catch (e) {
+					console.warn('Failed to load statistics, using defaults', e);
+				}
 				// Fetch categories (no counts shown)
 				const categoriesResponse = await articleApi.getCategories();
 				console.log('Categories response:', categoriesResponse);
@@ -133,8 +146,8 @@ const Home = () => {
 											</Paragraph>
 										)}
 										<div className="flex justify-center gap-4 text-sm text-gray-500">
-											<span><FileTextOutlined className="mr-1" />{author.articles_count || 0}</span>
-											<span><EyeOutlined className="mr-1" />{author.total_views || 0}</span>
+											<span><FileTextOutlined className="mr-1" />{(author.articles_count || 0).toLocaleString()}</span>
+											<span><EyeOutlined className="mr-1" />{(author.total_views || 0).toLocaleString()}</span>
 										</div>
 									</div>
 								</Card>
