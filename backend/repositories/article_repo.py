@@ -227,12 +227,11 @@ async def get_author_stats(author_id: str) -> Dict:
 
 
 async def get_articles_by_ids(article_ids: List[str]):
-    articles_repo = await get_articles()  
+    articles_repo = await get_articles()
 
     if not article_ids:
         return []
 
-    # Tạo parameters cho IN query
     ids_placeholders = ", ".join([f"@id{i}" for i in range(len(article_ids))])
     parameters = [{"name": f"@id{i}", "value": id_} for i, id_ in enumerate(article_ids)]
 
@@ -241,5 +240,8 @@ async def get_articles_by_ids(article_ids: List[str]):
     results = []
     async for doc in articles_repo.query_items(query=query, parameters=parameters):
         results.append(doc)
+
+    order_map = {id_: idx for idx, id_ in enumerate(article_ids)}
+    results.sort(key=lambda x: order_map.get(x['id'], len(article_ids)))
 
     return results
