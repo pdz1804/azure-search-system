@@ -78,13 +78,13 @@ Modern ReactJS frontend application providing a beautiful, responsive interface 
 ```
 frontend/
 ├── public/
-│   ├── index.html       # HTML template
-│   └── favicon.ico      # App icon
+│   ├── index.html                # HTML template
+│   └── favicon.ico               # App icon
 ├── src/
-│   ├── App.js          # Main app component with routing
-│   ├── index.js        # React app entry point
-│   ├── index.css       # Global styles (Tailwind CSS)
-│   ├── components/     # Reusable UI components
+│   ├── App.js                    # Main app component with routing
+│   ├── index.js                  # React app entry point
+│   ├── index.css                 # Global styles (Tailwind CSS)
+│   ├── components/               # Reusable UI components
 │   │   ├── ArticleCard.js        # Article display component
 │   │   ├── ArticleForm.js        # Article creation/editing form
 │   │   ├── ArticleList.js        # Article listing with pagination
@@ -98,34 +98,33 @@ frontend/
 │   │   ├── ProtectedRoute.js     # Route protection wrapper
 │   │   ├── ShareModal.js         # Social sharing modal
 │   │   └── ConfirmationModal.js  # Action confirmation dialogs
-│   ├── pages/          # Main page components
-│   │   ├── Home.js              # Landing/homepage
-│   │   ├── Login.js             # User login
-│   │   ├── Register.js          # User registration
-│   │   ├── Dashboard.js         # User dashboard
-│   │   ├── Profile.js           # User profile management
-│   │   ├── Blogs.js             # Article browsing
-│   │   ├── ArticleDetail.js     # Individual article view
-│   │   ├── WriteArticle.js      # Article creation
-│   │   ├── MyArticles.js        # User's articles management
-│   │   ├── Search.js            # AI-powered search interface
-│   │   ├── Bookmarks.js         # Saved articles
-│   │   ├── About.js             # About page
-│   │   ├── Contact.js           # Contact page
-│   │   └── NotFound.js          # 404 error page
-│   ├── context/        # React contexts
-│   │   └── AuthContext.js       # Authentication state management
-│   ├── api/            # API service layer
-│   │   ├── config.js            # Axios configuration & interceptors
-│   │   ├── authApi.js           # Authentication API calls
-│   │   ├── articleApi.js        # Article CRUD operations
-│   │   └── userApi.js           # User management APIs
-│   ├── icons/          # Custom SVG icon components
-│   └── utils/          # Utility functions and helpers
-├── package.json        # Dependencies and scripts
-├── tailwind.config.js  # Tailwind CSS configuration
-├── postcss.config.js   # PostCSS configuration
-└── .env               # Environment variables
+│   ├── pages/                    # Main page components
+│   │   ├── Home.js               # Landing/homepage
+│   │   ├── Login.js              # User login
+│   │   ├── Register.js           # User registration
+│   │   ├── Dashboard.js          # User dashboard
+│   │   ├── Profile.js            # User profile management
+│   │   ├── Blogs.js              # Article browsing
+│   │   ├── ArticleDetail.js      # Individual article view
+│   │   ├── WriteArticle.js       # Article creation
+│   │   ├── MyArticles.js         # User's articles management
+│   │   ├── Search.js             # AI-powered search interface
+│   │   ├── Bookmarks.js          # Saved articles
+│   │   ├── About.js              # About page
+│   │   ├── Contact.js            # Contact page
+│   │   └── NotFound.js           # 404 error page
+│   ├── context/                  # React contexts
+│   │   └── AuthContext.js        # Authentication state management
+│   ├── api/                      # API service layer
+│   │   ├── config.js             # Axios configuration & interceptors
+│   │   ├── authApi.js            # Authentication API calls
+│   │   ├── articleApi.js         # Article CRUD operations
+│   │   └── userApi.js            # User management APIs
+│   ├── icons/                    # Custom SVG icon components
+│   └── utils/                    # Utility functions and helpers
+├── package.json                  # Dependencies and scripts
+├── tailwind.config.js            # Tailwind CSS configuration
+└── postcss.config.js             # PostCSS configuration
 ```
 
 ## 🎨 Styling
