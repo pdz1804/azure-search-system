@@ -15,32 +15,32 @@ This platform provides a complete article management ecosystem with advanced AI-
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Frontend (React)                        │
-│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
-│  │   User Auth     │ │  Article Mgmt   │ │  AI Search UI   │   │
-│  └─────────────────┘ └─────────────────┘ └─────────────────┘   │
+│                        Frontend (React)                         │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐    │
+│  │   User Auth     │ │  Article Mgmt   │ │  AI Search UI   │    │
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                                 │ HTTP/REST API
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Backend (FastAPI)                         │
-│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
-│  │  Auth & Users   │ │   Article API   │ │   Search API    │   │
-│  └─────────────────┘ └─────────────────┘ └─────────────────┘   │
+│                      Backend (FastAPI)                          │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐    │
+│  │  Auth & Users   │ │   Article API   │ │   Search API    │    │
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                                 │
 ┌─────────────────────────────────────────────────────────────────┐
-│                    AI Search Module                            │
-│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
-│  │  Index Mgmt     │ │  Score Fusion   │ │   Embeddings    │   │
-│  └─────────────────┘ └─────────────────┘ └─────────────────┘   │
+│                    AI Search Module                             │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐    │
+│  │  Index Mgmt     │ │  Score Fusion   │ │   Embeddings    │    │
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                                 │
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Azure Services                            │
-│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
-│  │   Cosmos DB     │ │   AI Search     │ │  Blob Storage   │   │
-│  │   (Articles)    │ │   (Indexes)     │ │   (Files)       │   │
-│  └─────────────────┘ └─────────────────┘ └─────────────────┘   │
+│                      Azure Services                             │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐    │
+│  │   Cosmos DB     │ │   AI Search     │ │  Blob Storage   │    │
+│  │   (Articles)    │ │   (Indexes)     │ │   (Files)       │    │
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -48,36 +48,36 @@ This platform provides a complete article management ecosystem with advanced AI-
 
 ```
 ai-search-cloud/
-├── ai_search/                  # Core AI search engine module
+├── ai_search/                   # Core AI search engine module
 │   ├── app/
-│   │   ├── services/          # Search algorithms & scoring
-│   │   └── clients.py         # Azure Search clients
+│   │   ├── services/            # Search algorithms & scoring
+│   │   └── clients.py           # Azure Search clients
 │   ├── config/
-│   │   ├── settings.py        # Configuration management
-│   │   └── prompts.py         # AI prompts and templates
+│   │   ├── settings.py          # Configuration management
+│   │   └── prompts.py           # AI prompts and templates
 │   ├── search/
-│   │   ├── indexes.py         # Index creation & management
-│   │   ├── ingestion.py       # Data ingestion pipeline
-│   │   └── indexers.py  	# Auto-sync with Cosmos DB
-│   └── main.py               # CLI interface & FastAPI server
-├── backend/                   # FastAPI web application
-│   ├── api/                  # REST API endpoints
-│   ├── services/             # Business logic layer
-│   ├── repositories/         # Data access layer
-│   ├── authentication/       # Auth system
-│   ├── database/            # Database connections
-│   └── main.py              # Backend server entry point
-├── frontend/                 # React web application
+│   │   ├── indexes.py           # Index creation & management
+│   │   ├── ingestion.py         # Data ingestion pipeline
+│   │   └── indexers.py  	       # Auto-sync with Cosmos DB
+│   └── main.py                  # CLI interface & FastAPI server
+├── backend/                     # FastAPI web application
+│   ├── api/                     # REST API endpoints
+│   ├── services/                # Business logic layer
+│   ├── repositories/            # Data access layer
+│   ├── authentication/          # Auth system
+│   ├── database/                # Database connections
+│   └── main.py                  # Backend server entry point
+├── frontend/                    # React web application
 │   ├── src/
-│   │   ├── components/       # Reusable UI components
-│   │   ├── pages/           # Application pages
-│   │   ├── api/             # Backend integration
-│   │   └── context/         # State management
-│   └── package.json         # Dependencies & scripts
-├── recommender/             # ML recommendation system (future)
-├── docker-compose.yml       # Multi-service orchestration
-├── requirements.txt         # Python dependencies
-└── README.md               # This file
+│   │   ├── components/          # Reusable UI components
+│   │   ├── pages/               # Application pages
+│   │   ├── api/                 # Backend integration
+│   │   └── context/             # State management
+│   └── package.json             # Dependencies & scripts
+├── recommender/                 # ML recommendation system (future)
+├── docker-compose.yml           # Multi-service orchestration
+├── requirements.txt             # Python dependencies
+└── README.md                    # This file
 ```
 
 ## ⚡ Quick Start
