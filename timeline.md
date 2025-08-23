@@ -32,14 +32,17 @@ Note:
 
 # 21/08
 
-- kiểm tra lại chức năng search ( search "phú hà mã" ) ==> for the unmeaningful query, by default we use article search
+- kiểm tra lại chức năng search ( search "phú hà mã" ) ==> for the unmeaningful query, currently by default we use article search
 - recommended authors and articles are not working now ==> now recommend articles = search (work) + recommend users thì đang làm
-- *trang profile sai number, chưa hiển thị ngày tạo account ==> DONE*
-- *trang home xóa số bài viết, lượt xem của author ==> DONE*
-  ==> đã sửa thành có hiện bằng call query và tính toán ==> note là thằng cosmos db không cho xài aggregate function
+- ***trang profile sai number, chưa hiển thị ngày tạo account ==> DONE***
+- ***trang home xóa số bài viết, lượt xem của author ==> DONE*
+  ==> đã sửa thành có hiện bằng call query và tính toán ==> note là thằng cosmos db không cho xài aggregate function**
 - đã follow/like/dislike/bookmark nhưng reload thì mất (check status follow)
 - phân trang đang xử lí bên frontend = nghĩa là hiện tại phân trang đang chưa đc take care đúng
 - return field of total for search và các thứ bên backend đang chưa đồng bộ = total phải là tổng trang tuy nhiên total bên search hiện lại đang là tổng số elements
 - trong quá trình return lại kết quả sau khi dùng DTO thì 2 thg kết quả search của articles và của authors đang bị chưa đúng thứ tự của score cao --> score thấp
 - bug lúc register: khi register thành công, nó sẽ chưa login vô đc mà bị kẹt chỗ "User vô danh". nếu log out user vô danh thì login vô lại đc bình thường --> BUG
--
+- những card của article đang hiển thị lệch và không bằng nhau --> nguyên nhân maybe do có thằng có hình có thằng không có hình và maybe do hình của tụi nó không bằng nhau nữa
+- about page có 1 hình đang chưa hiển thị
+- recheck bookmark và dashboard page
+- Chức năng cấp quyền / xóa quyền writer của ADMIN cho 1 USER nào đó + Chức năng deactivate account của user / writer nào đó

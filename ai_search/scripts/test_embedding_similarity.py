@@ -43,7 +43,9 @@ def get_embedding(text: str) -> List[float]:
             model=SETTINGS.azure_openai_model_name
         )
         
-        return response.data[0].embedding
+        embedding = response.data[0].embedding
+        print(f"   📐 Embedding dimension for '{text[:30]}...': {len(embedding)}")
+        return embedding
     
     except Exception as e:
         print(f"❌ Error getting embedding for '{text}': {e}")
@@ -108,6 +110,8 @@ def test_sentence_pairs():
         
         if emb1 and emb2:
             # Calculate similarity
+            print(f"   📏 Dimensions: Sentence 1 = {len(emb1)}, Sentence 2 = {len(emb2)}")
+            
             similarity = calculate_similarity(emb1, emb2)
             
             # Interpret similarity score

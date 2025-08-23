@@ -3,6 +3,7 @@ uvicorn
 python-dotenv
 azure-search-documents>=11.6.0b9
 azure-cosmos
+azure-functions
 openai
 sentence-transformers
 torch

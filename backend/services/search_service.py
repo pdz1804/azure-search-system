@@ -44,12 +44,21 @@ from ai_search.app.clients import articles_client, authors_client
 class BackendSearchService:
     def __init__(self, articles_sc: SearchClient, authors_sc: SearchClient):
         print("🔧 Initializing BackendSearchService...")
-        
+
         # Azure Search clients are required
         if not articles_sc or not authors_sc:
             raise ValueError("Both articles_sc and authors_sc SearchClient instances are required")
-        
-        self.articles = articles_sc
+
+        # Support passing a tuple (parent_client, chunks_client) from the ai_search clients factory.
+        if isinstance(articles_sc, (tuple, list)):
+            self.articles_parent, self.articles_chunks = articles_sc
+        else:
+            # backward compatibility: single client used for both parent and chunks
+            self.articles_parent = articles_sc
+            self.articles_chunks = articles_sc
+
+        # keep self.articles for existing usages but prefer articles_parent for parent-level ops
+        self.articles = self.articles_parent
         self.authors = authors_sc
         self.azure_search_available = True
         print("✅ Azure Search clients initialized")
@@ -64,15 +73,15 @@ class BackendSearchService:
         
         # Check semantic search capability
         self.semantic_enabled = self._test_semantic_search()
-        
-        # Thread pool for parallel operations
-        self.executor = ThreadPoolExecutor(max_workers=1)
-        
+
+        # Thread pool for parallel operations (allow some concurrency for overlapping IO)
+        self.executor = ThreadPoolExecutor(max_workers=4)
+
         if self.semantic_enabled:
             print("✅ Semantic search is available")
         else:
             print("⚠️ Semantic search is not available")
-        
+
         print("✅ BackendSearchService initialized successfully")
     
     def _apply_score_threshold(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -273,7 +282,7 @@ class BackendSearchService:
         """Test if semantic search is available on this service."""
         try:
             # Try a simple semantic search to test capability
-            test_result = self.articles.search(
+            test_result = self.articles_parent.search(
                 search_text="test",
                 query_type="semantic",
                 semantic_configuration_name="articles-semantic",
@@ -474,44 +483,20 @@ class BackendSearchService:
         
         # Continue with existing search logic but without normalization step
         try:
+            # Run text (BM25/semantic) and vector (chunk) searches concurrently using the thread pool
             # A) Text search with semantic reranker if available
-            if self.semantic_enabled:
-                print("🔍 Executing semantic+BM25 search for articles...")
-                try:
-                    # Apply enhanced search parameters
-                    search_kwargs = {
-                        "search_text": normalized_query,
-                        "query_type": "semantic",
-                        "semantic_configuration_name": "articles-semantic",
-                        "top": int(search_k*1.1),
-                        "select": ["id","title","abstract","author_name","business_date"],
-                        "highlight_fields": search_params.get("highlight_fields", "searchable_text")
-                    }
-                    
-                    # Add optional parameters from LLM enhancement
-                    if search_params.get("filter"):
-                        search_kwargs["filter"] = search_params["filter"]
-                    if search_params.get("order_by"):
-                        search_kwargs["order_by"] = search_params["order_by"]
-                    if search_params.get("search_fields"):
-                        search_kwargs["search_fields"] = search_params["search_fields"]
-                    
-                    print(f"Search params: {search_kwargs}")
-                    
-                    text_res = self.articles.search(**search_kwargs)
-                except HttpResponseError as he:
-                    # Service doesn't actually support semantic at runtime - fallback
-                    if "SemanticQueriesNotAvailable" in str(he) or "FeatureNotSupportedInService" in str(he):
-                        print("⚠️ Semantic search rejected by service at runtime - falling back to BM25")
-                        self.semantic_enabled = False
-                        
+            def run_text_search():
+                if self.semantic_enabled:
+                    print("🔍 Executing semantic+BM25 search for articles...")
+                    try:
                         # Apply enhanced search parameters
                         search_kwargs = {
                             "search_text": normalized_query,
-                            "query_type": "simple",
+                            "query_type": "semantic",
+                            "semantic_configuration_name": "articles-semantic",
                             "top": int(search_k*1.1),
                             "select": ["id","title","abstract","author_name","business_date"],
-                            "highlight_fields": "searchable_text"
+                            "highlight_fields": search_params.get("highlight_fields", "searchable_text")
                         }
                         
                         # Add optional parameters from LLM enhancement
@@ -524,111 +509,168 @@ class BackendSearchService:
                         
                         print(f"Search params: {search_kwargs}")
                         
-                        text_res = self.articles.search(**search_kwargs)
-                        
-                    else:
-                        raise
-            else:
-                print("🔍 Executing BM25-only search for articles (semantic not available)...")
-                # Apply enhanced search parameters
-                search_kwargs = {
-                    "search_text": normalized_query,
-                    "query_type": "simple",
-                    "top": int(search_k*1.3),
-                    "select": ["id","title","abstract","author_name","business_date"],
-                    "highlight_fields": "searchable_text"
-                }
+                        text_res_local = self.articles_parent.search(**search_kwargs)
+                    except HttpResponseError as he:
+                        # Service doesn't actually support semantic at runtime - fallback
+                        if "SemanticQueriesNotAvailable" in str(he) or "FeatureNotSupportedInService" in str(he):
+                            print("⚠️ Semantic search rejected by service at runtime - falling back to BM25")
+                            self.semantic_enabled = False
+                            
+                            # Apply enhanced search parameters
+                            search_kwargs = {
+                                "search_text": normalized_query,
+                                "query_type": "simple",
+                                "top": int(search_k*1.1),
+                                "select": ["id","title","abstract","author_name","business_date"],
+                                "highlight_fields": "searchable_text"
+                            }
+                            
+                            # Add optional parameters from LLM enhancement
+                            if search_params.get("filter"):
+                                search_kwargs["filter"] = search_params["filter"]
+                            if search_params.get("order_by"):
+                                search_kwargs["order_by"] = search_params["order_by"]
+                            if search_params.get("search_fields"):
+                                search_kwargs["search_fields"] = search_params["search_fields"]
+                            
+                            print(f"Search params: {search_kwargs}")
+                            
+                            text_res_local = self.articles_parent.search(**search_kwargs)
+                        else:
+                            raise
+                else:
+                    print("🔍 Executing BM25-only search for articles (semantic not available)...")
+                    # Apply enhanced search parameters
+                    search_kwargs = {
+                        "search_text": normalized_query,
+                        "query_type": "simple",
+                        "top": int(search_k*1.3),
+                        "select": ["id","title","abstract","author_name","business_date"],
+                        "highlight_fields": "searchable_text"
+                    }
+                    
+                    # Add optional parameters from LLM enhancement
+                    if search_params.get("filter"):
+                        search_kwargs["filter"] = search_params["filter"]
+                    if search_params.get("order_by"):
+                        search_kwargs["order_by"] = search_params["order_by"]
+                    if search_params.get("search_fields"):
+                        search_kwargs["search_fields"] = search_params["search_fields"]
+                    
+                    print(f"Search params: {search_kwargs}")
+                    
+                    text_res_local = self.articles_parent.search(**search_kwargs)
                 
-                # Add optional parameters from LLM enhancement
-                if search_params.get("filter"):
-                    search_kwargs["filter"] = search_params["filter"]
-                if search_params.get("order_by"):
-                    search_kwargs["order_by"] = search_params["order_by"]
-                if search_params.get("search_fields"):
-                    search_kwargs["search_fields"] = search_params["search_fields"]
+                rows_local: List[Dict[str, Any]] = []
+                text_count_local = 0
                 
-                print(f"Search params: {search_kwargs}")
-                
-                text_res = self.articles.search(**search_kwargs)
-            
-            rows: List[Dict[str, Any]] = []
-            text_count = 0
-            for d in text_res:
-                text_count += 1
-                rows.append({
-                    "id": d["id"],
-                    "doc": d,
-                    "_bm25": d["@search.score"],
-                    "_semantic": d.get("@search.rerankerScore", 0.0),  # Will be 0.0 if no semantic search
-                    "_vector": 0.0,
-                    "_business": business_freshness(d.get("business_date")),
-                })
-                
-            print(f"✅ Text search returned {text_count} results")
-            
-            # B) Vector KNN - Run in parallel with text search
+                for d in text_res_local:
+                    text_count_local += 1
+                    rows_local.append({
+                        "id": d["id"],
+                        "doc": d,
+                        "_bm25": d["@search.score"],
+                        "_semantic": d.get("@search.rerankerScore", 0.0),
+                        "_vector": 0.0,
+                        "_business": business_freshness(d.get("business_date")),
+                    })
+                print(f"✅ Text search returned {text_count_local} results")
+                return rows_local, text_count_local
+
+            # B) Vector search for chunks
             def run_vector_search():
                 print("🧮 Generating query embedding for vector search...")
                 qvec = encode(normalized_query)
                 print(f"✅ Generated embedding vector (dim={len(qvec)})")
-                
-                print("🔍 Executing vector search for articles...")
-                
-                # Apply same enhanced search parameters to vector search for consistency
+                print("🔍 Executing vector search for chunks (articles-chunks-index)...")
+
+                # Determine number of chunk-level hits to request. Heuristic: request up to search_k * 4 chunks
+                chunk_hits = int(search_k * 4)
+
                 vector_search_kwargs = {
                     "search_text": None,
-                    "vector_queries": [VectorizedQuery(vector=qvec, k=int(search_k*1.1), fields="content_vector")],
-                    "top": int(search_k*1.1),
-                    "select": ["id"]
+                    "vector_queries": [VectorizedQuery(vector=qvec, k=chunk_hits, fields="chunk_vector")],
+                    "top": chunk_hits,
+                    "select": ["chunk_id", "parent_id", "chunk", "chunk_ordinal"]
                 }
-                
+
                 # Add same filter, order_by parameters from LLM enhancement for consistent results
                 if search_params.get("filter"):
                     vector_search_kwargs["filter"] = search_params["filter"]
                 if search_params.get("order_by"):
                     vector_search_kwargs["order_by"] = search_params["order_by"]
-                
+
                 print(f"Vector search params: {vector_search_kwargs}")
-                
-                return self.articles.search(**vector_search_kwargs)
-            
-            # Run vector search in parallel with text search processing
+
+                return list(self.articles_chunks.search(**vector_search_kwargs))
+
+            # Submit both tasks to the executor to allow overlap of network I/O
+            text_future = self.executor.submit(run_text_search)
             vector_future = self.executor.submit(run_vector_search)
+
+            # Wait for both to complete
+            rows, text_count = text_future.result()
             vec_res = vector_future.result()
             
             id_to_row = {r["id"]: r for r in rows}
             vec_count = 0
             vec_new_ids = []
             
+            # vec_res are chunk documents; aggregate by parent_id to form article-level vector scores
+            parent_scores: Dict[str, Dict[str, Any]] = {}
             for d in vec_res:
-                vec_count += 1
-                vid = d["id"]
-                vscore = d["@search.score"]  # cosine sim ~ [0,1] after normalization in Azure
-                if vid in id_to_row:
-                    id_to_row[vid]["_vector"] = vscore
-                else:
-                    vec_new_ids.append((vid, vscore))
-            
-            # Batch retrieve new documents found only in vector search
-            if vec_new_ids:
-                new_doc_ids = [vid for vid, _ in vec_new_ids]
-                batch_docs = self._batch_get_documents(self.articles, new_doc_ids)
-                
-                for vid, vscore in vec_new_ids:
-                    if vid in batch_docs:
-                        full = batch_docs[vid]
-                        id_to_row[vid] = {
-                            "id": vid, "doc": full,
-                            "_bm25": 0.0, "_semantic": 0.0, "_vector": vscore,
-                            "_business": business_freshness(full.get("business_date"))
+                try:
+                    vec_count += 1
+                    parent = d.get("parent_id")
+                    if not parent:
+                        continue
+                    score = d.get("@search.score", 0.0)
+                    if parent not in parent_scores:
+                        parent_scores[parent] = {
+                            "id": parent,
+                            "_vector": score,
+                            "chunks": [d],
+                            "_bm25": 0.0,
+                            "_semantic": 0.0,
+                            "_business": 0.0,
                         }
-            
-            vec_new_count = len(vec_new_ids)
-            print(f"✅ Vector search returned {vec_count} results ({vec_new_count} new documents)")
-            
+                    else:
+                        parent_scores[parent]["_vector"] = max(parent_scores[parent]["_vector"], score)
+                        parent_scores[parent]["chunks"].append(d)
+                except Exception:
+                    continue
+
+            # Merge parent-level vector scores into id_to_row
+            for pid, pdata in parent_scores.items():
+                if pid in id_to_row:
+                    id_to_row[pid]["_vector"] = max(id_to_row[pid].get("_vector", 0.0), pdata["_vector"])
+                else:
+                    id_to_row[pid] = {
+                        "id": pid,
+                        "doc": None,
+                        "_bm25": 0.0,
+                        "_semantic": 0.0,
+                        "_vector": pdata["_vector"],
+                        "_business": 0.0,
+                        "_chunks": pdata["chunks"],
+                    }
+
+            print(f"✅ Vector (chunk) search returned {vec_count} chunk results across {len(parent_scores)} parents")
+
+            # Batch retrieve parent docs for any ids missing the doc payload
+            missing_parent_ids = [pid for pid, row in id_to_row.items() if row.get("doc") is None]
+            if missing_parent_ids:
+                print(f"📦 Fetching {len(missing_parent_ids)} parent article documents")
+                batch_parents = self._batch_get_documents(self.articles_parent, missing_parent_ids)
+                for pid in missing_parent_ids:
+                    if pid in batch_parents:
+                        parent_doc = batch_parents[pid]
+                        id_to_row[pid]["doc"] = parent_doc
+                        id_to_row[pid]["_business"] = business_freshness(parent_doc.get("business_date"))
+
             print("⚖️ Fusing article scores...")
             all_fused_results = fuse_articles(list(id_to_row.values()))
-            
+
             # Apply score threshold filtering
             all_fused_results = self._apply_score_threshold(all_fused_results)
             

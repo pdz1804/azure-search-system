@@ -184,7 +184,28 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
         ),
     )
 
-    for idx in (articles_index, authors_index):
+    # Also create the child chunk index used by the indexer projection (articles-chunks-index)
+    # This index stores per-chunk text + vector and a parent_id that links back to the article.
+    chunk_fields = [
+        SearchField(name="chunk_id", type=SearchFieldDataType.String, key=True, filterable=True, analyzer_name="keyword"),
+        SearchField(name="parent_id", type=SearchFieldDataType.String, filterable=True),
+        SearchField(name="title", type=SearchFieldDataType.String, searchable=True, filterable=True, sortable=True),
+        SearchField(name="chunk", type=SearchFieldDataType.String, searchable=True),
+        # Keep ordinal as string to avoid projection type-mismatch unless your enrichment guarantees ints
+        SearchField(name="chunk_ordinal", type=SearchFieldDataType.String, filterable=True, sortable=True),
+        SearchField(
+            name="chunk_vector",
+            type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
+            searchable=True,
+            vector_search_dimensions=dim,
+            vector_search_profile_name="vs-default",
+        ),
+    ]
+
+    chunk_index = SearchIndex(name="articles-chunks-index", fields=chunk_fields, vector_search=_vector_search())
+
+    # Create or update all indexes we need
+    for idx in (articles_index, authors_index, chunk_index):
         if reset:
             try:
                 client.delete_index(idx.name)
@@ -231,4 +252,4 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
             traceback.print_exc()
             raise
 
-    print(f"Created indexes with vector dim={dim}: articles-index, authors-index")
+    print(f"Created indexes with vector dim={dim}: articles-index, authors-index, articles-chunks-index")

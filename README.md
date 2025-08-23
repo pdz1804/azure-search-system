@@ -1,408 +1,356 @@
-# Blog Hybrid Search (Azure AI Search + Cosmos DB + OpenAI)
+# AI-Powered Article Search & Management System
 
-This project wires your existing **Cosmos DB (blogs)** into **Azure AI Search** and exposes a **FastAPI** layer that performs **hybrid search** over articles and authors with an **explicit, weighted score fusion**.
+A comprehensive full-stack solution combining **Azure AI Search**, **FastAPI backend**, and **React frontend** to deliver intelligent article management with hybrid search capabilities.
 
-## Architecture
+## 🚀 System Overview
+
+This platform provides a complete article management ecosystem with advanced AI-powered search, featuring:
+
+- **Hybrid Search Engine** - BM25 + Vector + Semantic + Business scoring
+- **Full-Stack Web Application** - Modern React frontend with FastAPI backend
+- **Azure Integration** - Cosmos DB, AI Search, Blob Storage, and OpenAI services
+- **Advanced Features** - Fuzzy matching, freshness scoring, role-based access control
+
+## 🏗️ Architecture
 
 ```
-Cosmos DB (blogs)
- ├─ articles
- └─ users
-        │
-        ▼
-Azure AI Search (Native Indexers + Manual Ingestion)
-        │
-        ▼
-Azure AI Search
- ├─ articles-index  (BM25 + Semantic + Vector + Freshness)
- └─ authors-index   (BM25 + Semantic + Vector)
-        │
-        ▼
-FastAPI + CLI
- ├─ python main.py create-indexes
- ├─ python main.py ingest
- ├─ python main.py setup-indexers    # Azure-native indexers
- ├─ python main.py check-indexers    # Monitor indexer status
- ├─ python main.py serve
- ├─ GET /search/articles?q=...&page_index=...&page_size=...
- └─ GET /search/authors?q=...&page_index=...&page_size=...
+┌─────────────────────────────────────────────────────────────────┐
+│                        Frontend (React)                        │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
+│  │   User Auth     │ │  Article Mgmt   │ │  AI Search UI   │   │
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                                │ HTTP/REST API
+┌─────────────────────────────────────────────────────────────────┐
+│                      Backend (FastAPI)                         │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
+│  │  Auth & Users   │ │   Article API   │ │   Search API    │   │
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+┌─────────────────────────────────────────────────────────────────┐
+│                    AI Search Module                            │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
+│  │  Index Mgmt     │ │  Score Fusion   │ │   Embeddings    │   │
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+┌─────────────────────────────────────────────────────────────────┐
+│                      Azure Services                            │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
+│  │   Cosmos DB     │ │   AI Search     │ │  Blob Storage   │   │
+│  │   (Articles)    │ │   (Indexes)     │ │   (Files)       │   │
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Scoring Strategy
-
-This project wires your existing **Cosmos DB (blogs)** into **Azure AI Search** and exposes a **FastAPI** layer that performs **hybrid search** over articles and authors with an **explicit, weighted score fusion**:
-
-- **Articles**: `final = 0.5 * semantic + 0.3 * BM25 + 0.1 * vector + 0.1 * business`
-- **Authors** (default): `final = 0.6 * semantic + 0.4 * BM25`
-
-Semantic ≠ Vector in Azure AI Search:
-
-- **Semantic search** = Azure **semantic ranker** that re-ranks text results (for example those retrieved by BM25), returning `@search.rerankerScore`. You don’t store vectors for this.
-- **Vector search** = KNN over your **embedding field** (HNSW), returning a similarity `@search.score` for the vector query.
-
-But because when using the free tier version on Azure, so we cannot use the semantic search:
-
-- **Articles**: `final = 0.3 * BM25 + 0.6 * vector + 0.1 * business`
-- **Authors** (default): `final = BM25`
-
----
-
-## 1) Features
-
-- Two **separate indexes**: `articles-index` and `authors-index` (schema-fit, better relevance, isolation).
-- **Azure-native indexers** for automatic Cosmos DB synchronization with high-water mark change detection.
-- **Semantic re-ranking** (Azure AI Search semantic ranker) with automatic fallback to BM25.
-- **BM25** sparse keyword scoring over `searchable_text` (title + abstract + content).
-- **Vector search** on stored embeddings (configurable provider: OpenAI or Hugging Face).
-- **Business/Freshness** signal computed from `updated_at || created_at` with exponential decay.
-- **Client-side score fusion** with configurable weights.
-- **Pagination support** with page_index and page_size parameters.
-- **Automatic error recovery** and semantic search capability detection.
-- Clean, modular code and configuration-driven behavior.
-
----
-
-## 2) Project Structure
+## 📁 Project Structure
 
 ```
 ai-search-cloud/
-├─ .env.example
-├─ README.md
-├─ requirements.txt
-├─ main.py              # CLI entry point + FastAPI app
-├─ config/
-│  └─ settings.py       # Environment configuration
-├─ search/
-│  ├─ indexes.py        # Index creation logic
-│  ├─ ingestion.py      # Manual data ingestion from Cosmos DB
-│  └─ azure_indexers.py # Azure-native indexers for automatic sync
-├─ app/
-│  ├─ clients.py        # Azure Search client factories
-│  ├─ models.py         # Pydantic response models
-│  └─ services/
-│     ├─ embeddings.py  # Embedding provider abstraction
-│     ├─ scoring.py     # Score fusion algorithms
-│     └─ search_service.py  # High-level search orchestration
-├─ utils/
-│  ├─ timeparse.py      # Date parsing utilities
-│  └─ cli.py           # Command-line argument parser
-├─ scripts/
-│  └─ blog_data_generator.py  # Generate sample blog data
-└─ data/
-   ├─ articles.json     # Sample articles data
-   ├─ users.json        # Sample users data
-   └─ blog_seed_UPDATED.json  # Generated blog data
+├── ai_search/                  # Core AI search engine module
+│   ├── app/
+│   │   ├── services/          # Search algorithms & scoring
+│   │   └── clients.py         # Azure Search clients
+│   ├── config/
+│   │   ├── settings.py        # Configuration management
+│   │   └── prompts.py         # AI prompts and templates
+│   ├── search/
+│   │   ├── indexes.py         # Index creation & management
+│   │   ├── ingestion.py       # Data ingestion pipeline
+│   │   └── indexers.py  	# Auto-sync with Cosmos DB
+│   └── main.py               # CLI interface & FastAPI server
+├── backend/                   # FastAPI web application
+│   ├── api/                  # REST API endpoints
+│   ├── services/             # Business logic layer
+│   ├── repositories/         # Data access layer
+│   ├── authentication/       # Auth system
+│   ├── database/            # Database connections
+│   └── main.py              # Backend server entry point
+├── frontend/                 # React web application
+│   ├── src/
+│   │   ├── components/       # Reusable UI components
+│   │   ├── pages/           # Application pages
+│   │   ├── api/             # Backend integration
+│   │   └── context/         # State management
+│   └── package.json         # Dependencies & scripts
+├── recommender/             # ML recommendation system (future)
+├── docker-compose.yml       # Multi-service orchestration
+├── requirements.txt         # Python dependencies
+└── README.md               # This file
 ```
 
----
+## ⚡ Quick Start
 
-## 3) Installation
+### Prerequisites
+
+- **Python 3.8+** with pip
+- **Node.js 16+** with npm
+- **Docker & Docker Compose** (optional)
+- **Azure subscription** with:
+  - Cosmos DB account
+  - AI Search service
+  - Storage account
+  - OpenAI/Azure OpenAI service
+
+### 🚀 One-Command Setup (Docker) (NOT DONE)
 
 ```bash
-pip install -r requirements.txt
+# Clone repository
+git clone <repository-url>
+cd ai-search-cloud
+
+# Configure environment
 cp .env.example .env
-# Edit .env with your Azure credentials and storage settings
-# Required: Azure Search, Cosmos DB, and Storage for caching
+# Edit .env with your Azure credentials
+
+# Start all services
+docker-compose up -d
+
+# Access applications
+# Frontend: http://localhost:3000
+# Backend API: http://localhost:8001
+# AI Search API: http://localhost:8000
 ```
 
----
+### 🔧 Manual Setup
 
-## 4) CLI Commands
-
-The `main.py` file provides a command-line interface with several subcommands:
-
-### 🚀 Complete Setup (Recommended)
+#### 1. AI Search Engine Setup
 
 ```bash
-# 1. Create search indexes first
+# Navigate to ai_search directory
+cd ai_search
+
+# Install dependencies
+pip install -r ../requirements.txt
+
+# Configure environment
+cp .env.example .env
+# Edit .env with Azure credentials
+
+# Create search indexes
 python main.py create-indexes --verbose
 
-# 2. Set up automatic indexers with deletion tracking and caching
+# Set up automatic indexers
 python main.py setup-indexers --verbose
 
-# 3. Check everything is working
-python main.py check-indexers --verbose
-python main.py health --verbose
-```
-
-### 🏗️ Create Search Indexes
-
-```bash
-# Create indexes with default settings (reset existing indexes)
-python main.py create-indexes
-
-# Create indexes with verbose debugging output
-python main.py create-indexes --verbose
-
-# Create indexes without resetting existing ones
-python main.py create-indexes --no-reset
-```
-
-### ⚙️ Azure-Native Indexers (Automatic Sync)
-
-**Features**: Automatic Cosmos DB sync, deletion tracking, incremental caching
-
-```bash
-# Set up indexers with deletion tracking and caching (uses .env settings)
-python main.py setup-indexers --verbose
-
-# Reset and recreate all indexers
-python main.py setup-indexers --reset --verbose
-
-# Check indexer status and performance
-python main.py check-indexers --verbose
-```
-
-### 📊 Monitoring & Health Checks
-
-```bash
-# Comprehensive system health check
+# Verify setup
 python main.py health --verbose
 
-# Check indexer status only
-python main.py check-indexers --verbose
-
-# Check cache status (if enabled)
-python -c "from search.azure_indexers import check_cache_status; check_cache_status(verbose=True)"
-
-# Check soft delete setup guidance
-python -c "from search.azure_indexers import check_soft_delete_setup; check_soft_delete_setup(verbose=True)"
+# Start AI search service
+python main.py serve --port 8000
 ```
 
-### 📥 Manual Data Ingestion (Legacy)
-
-**Note**: Indexers handle automatic sync, so manual ingestion is rarely needed.
+#### 2. Backend API Setup
 
 ```bash
-# Manual one-time data ingestion from Cosmos DB
-python main.py ingest --verbose --batch-size 50
+# Navigate to backend directory
+cd backend
+
+# Install dependencies (if not done above)
+pip install -r ../requirements.txt
+
+# Configure environment (shares .env with ai_search)
+# Ensure .env has backend-specific variables
+
+# Start backend server
+python main.py
+# Or: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 ```
 
-### 🌐 Start API Server
+#### 3. Frontend Application Setup
 
 ```bash
-# Start server with default settings (127.0.0.1:8000)
-python main.py serve
+# Navigate to frontend directory
+cd frontend
 
-# Start server with custom host/port
-python main.py serve --host 0.0.0.0 --port 8080
+# Install dependencies
+npm install
 
-# Start server in development mode with auto-reload
-python main.py serve --reload
+# Configure environment
+echo "REACT_APP_API_BASE_URL=http://localhost:8001" > .env
 
-# Start server with multiple workers
-python main.py serve --workers 4
+# Start development server
+npm start
 ```
 
-### ❓ Get Help
+## 🔍 Search Capabilities
+
+### Hybrid Search Algorithm
+
+The system combines multiple search techniques for optimal relevance:
+
+#### Articles Search
+
+```
+Final Score = 0.3 × BM25 + 0.6 × Vector + 0.1 × Business
+```
+
+- **BM25 (30%)**: Keyword matching with TF-IDF scoring
+- **Vector (60%)**: Semantic similarity using OpenAI embeddings
+- **Business (10%)**: Freshness decay with configurable half-life
+
+#### Authors Search
+
+```
+Pure BM25 with Fuzzy Matching (~1 edit distance)
+```
+
+- **Fuzzy BM25**: Handles typos and name variations
+- **No vector search**: Optimized for exact name matching
+- **Search syntax**: `{normalized_query}~1` with `search_mode="any"`
+
+### Business Freshness Scoring
+
+Content freshness uses exponential decay based on the documented formula:
+
+```
+score = exp(-ln(2) × age_days / half_life)
+```
+
+**Default Configuration:**
+
+- **Half-life**: 250 days (configurable via `FRESHNESS_HALFLIFE_DAYS`)
+- **Score Range**: 1.0 (new) → 0.5 (250 days) → 0.0 (very old)
+- **Date Hierarchy**: `business_date` → `updated_at` → `created_at`
+
+## 🔐 Authentication & Roles
+
+### User Roles Hierarchy
+
+```
+ADMIN    │ Full system access, user management, system settings
+WRITER   │ Create/edit own articles, publish content
+USER     │ Read articles, search, personal bookmarks
+```
+
+### Security Features
+
+- **JWT Authentication** with configurable expiration
+- **Password hashing** using bcrypt
+- **Role-based access control** at API level
+- **Protected routes** in frontend
+- **CORS configuration** for cross-origin requests
+
+## 🗄️ Data Management
+
+### Database Schema
+
+#### Articles Collection (Cosmos DB)
+
+```json
+{
+  "id": "uuid",
+  "title": "string",
+  "abstract": "string", 
+  "content": "rich-text",
+  "author_id": "uuid",
+  "author_name": "string",
+  "tags": ["category", "technology"],
+  "status": "published|draft",
+  "business_date": "2024-01-15T10:00:00Z",
+  "views": 150,
+  "likes": 25,
+  "created_at": "datetime",
+  "updated_at": "datetime"
+}
+```
+
+#### Search Index Schema
+
+```json
+{
+  "id": "string",
+  "searchable_text": "title + abstract + content",
+  "content_vector": [1536-dim embedding],
+  "business_score": 0.75,
+  "metadata": {
+    "status": "published",
+    "tags": ["ai", "search"],
+    "author_name": "John Doe"
+  }
+}
+```
+
+### Data Synchronization
+
+#### Automatic Sync (Recommended)
 
 ```bash
-# Show all available commands
-python main.py --help
-
-# Show help for specific command
-python main.py create-indexes --help
-python main.py ingest --help
-python main.py setup-indexers --help
-python main.py check-indexers --help
-python main.py serve --help
-```
-
----
-
-## 5) Configuration (.env)
-
-```ini
-# Azure AI Search (REQUIRED)
-AZURE_SEARCH_ENDPOINT=https://<your-search>.search.windows.net
-AZURE_SEARCH_KEY=<admin-key>
-
-# Cosmos DB (REQUIRED)
-COSMOS_ENDPOINT=https://<your-cosmos>.documents.azure.com:443/
-COSMOS_KEY=<cosmos-key>
-COSMOS_DB=blogs
-COSMOS_ARTICLES=articles
-COSMOS_USERS=users
-
-# Azure Storage for Indexer Caching (RECOMMENDED)
-AZURE_STORAGE_ACCOUNT=cacheindex
-AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=cacheindex;AccountKey=<your-key>;EndpointSuffix=core.windows.net
-ENABLE_INDEXER_CACHE=true
-
-# Embeddings Configuration
-EMBEDDING_PROVIDER=openai
-ENABLE_EMBEDDINGS=true
-
-# OpenAI/Azure OpenAI
-OPENAI_API_KEY=<key>
-OPENAI_BASE_URL=                  # optional (Azure OpenAI)
-OPENAI_API_VERSION=2024-06-01
-EMBEDDING_MODEL=text-embedding-ada-002
-
-# Azure OpenAI for Indexer Skills
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_KEY=<azure-openai-key>
-AZURE_OPENAI_DEPLOYMENT=text-embedding-ada-002
-AZURE_OPENAI_MODELNAME=text-embedding-ada-002
-# Hugging Face (SentenceTransformers)
-HF_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
-
-# Optional override for vector dimension (else auto-resolve)
-EMBEDDING_DIM=
-
-# Weights (articles)
-WEIGHT_SEMANTIC=0.5
-WEIGHT_BM25=0.3
-WEIGHT_VECTOR=0.1
-WEIGHT_BUSINESS=0.1
-
-# Weights (authors) - default semantic+bm25 only
-AUTHORS_WEIGHT_SEMANTIC=0.6
-AUTHORS_WEIGHT_BM25=0.4
-AUTHORS_WEIGHT_VECTOR=0.0
-AUTHORS_WEIGHT_BUSINESS=0.0
-
-# Freshness (business) controls
-FRESHNESS_HALFLIFE_DAYS=250
-FRESHNESS_WINDOW_DAYS=365
-
-# Toggle embedding compute/store during ingestion
-ENABLE_EMBEDDINGS=true
-```
-
----
-
-## 6) Index Structure
-
-### Articles Index (`articles-index`)
-
-**Core Fields:**
-
-- `id` (String, key): Primary identifier
-- `title` (Searchable String): Article title with `en.lucene` analyzer
-- `abstract` (Searchable String): Article summary
-- `content` (Searchable String): Full article content
-- `author_name` (Searchable String): Author's name
-- `searchable_text` (Searchable String): Consolidated text for highlighting
-- `content_vector` (Vector): Embedding for semantic similarity
-
-**Metadata Fields:**
-
-- `status` (String): Publication status (filterable, facetable)
-- `tags` (Collection[String]): Article tags (filterable, facetable)
-- `created_at`, `updated_at`, `business_date` (DateTimeOffset): Temporal fields
-
-**Search Configurations:**
-
-- **Semantic**: `articles-semantic` (title=title, content=abstract+content, keywords=tags)
-- **Vector**: HNSW algorithm with cosine similarity
-- **Scoring Profile**: Freshness boost based on `business_date`
-
-### Authors Index (`authors-index`)
-
-**Core Fields:**
-
-- `id` (String, key): Primary identifier
-- `full_name` (Searchable String): Author's full name
-- `searchable_text` (Searchable String): Consolidated searchable text
-- `name_vector` (Vector): Name embedding for semantic similarity
-
-**Metadata Fields:**
-
-- `role` (String): User role (filterable, facetable)
-- `created_at` (DateTimeOffset): Account creation date
-
-**Search Configurations:**
-
-- **Semantic**: `authors-semantic` (title=full_name, content=searchable_text)
-- **Vector**: HNSW algorithm with cosine similarity
-
----
-
-## 7) Data Synchronization
-
-### Option 1: Manual Ingestion
-
-```bash
-# Using CLI (recommended)
-python main.py ingest --verbose --batch-size 50
-
-# Using direct Python (legacy)
-python -c "from search.ingestion import ingest; ingest()"
-```
-
-**Process:**
-
-1. Read items from Cosmos DB containers (`articles` and `users`)
-2. For each article: build `searchable_text`, compute `business_date`, generate embeddings
-3. For each user: create `searchable_text` from `full_name`, generate name embeddings
-4. Upload documents to respective search indexes
-
-### Option 2: Azure-Native Indexers (Automatic)
-
-```bash
-# Set up automatic synchronization
+# Set up Azure indexers for real-time sync
+cd ai_search
 python main.py setup-indexers --verbose
 
-# Monitor indexer status
+# Monitor sync status
 python main.py check-indexers --verbose
 ```
 
 **Features:**
 
-- **High-water mark change detection** using Cosmos DB `_ts` field
-- **Automatic scheduling** (runs every 5 minutes)
-- **Skillsets** for computed fields (searchable_text, business_date, embeddings)
-- **Error handling** and retry logic
-- **Zero-downtime sync** with incremental updates
+- **High-water mark** change detection using Cosmos DB `_ts`
+- **Incremental updates** every 5 minutes
+- **Deletion tracking** with soft delete support
+- **Error recovery** and retry logic
 
----
-
-## 8) API Endpoints
-
-### Starting the Server
+#### Manual Sync (Legacy)
 
 ```bash
-# Using CLI (recommended)
-python main.py serve --reload --port 8000
-
-# Using uvicorn directly
-uvicorn main:app --reload --port 8000
+# One-time data ingestion
+cd ai_search
+python main.py ingest --verbose --batch-size 50
 ```
 
-### Article Search
+## 🌐 API Reference
+
+### AI Search API (Port 8000)
 
 ```
-GET /search/articles?q={query}&k={limit}&page_index={index}&page_size={size}
+GET /search/articles?q={query}&k={limit}&page_index={idx}&page_size={size}
+GET /search/authors?q={query}&page_index={idx}&page_size={size}
+GET /health - System health check
 ```
 
-**Parameters:**
+### Backend API (Port 8001)
 
-- `q` (required): Search query text
-- `k` (optional, default=10): Number of results to return
-- `page_index` (optional): Zero-based page index for pagination
-- `page_size` (optional): Number of results per page
+```bash
+# Authentication
+POST /api/auth/login
+POST /api/auth/register
 
-**Response Format:**
+# Articles
+GET    /api/articles/              # List with pagination
+POST   /api/articles/              # Create (WRITER+)
+GET    /api/articles/{id}          # Get by ID
+PUT    /api/articles/{id}          # Update (Owner/ADMIN)
+DELETE /api/articles/{id}          # Delete (Owner/ADMIN)
+
+# Search (integrates with AI Search)
+GET /api/search/articles?q={query}
+GET /api/search/authors?q={query}
+
+# Users
+GET /api/users/me                  # Current user profile
+PUT /api/users/me                  # Update profile
+```
+
+### Response Format
 
 ```json
 {
   "articles": [
     {
       "id": "article-uuid",
-      "title": "Article Title",
-      "abstract": "Article summary...",
-      "author_name": "Author Name",
+      "title": "AI-Powered Search Systems",
+      "abstract": "Building intelligent search...",
       "score_final": 0.8421,
       "scores": {
-        "semantic": 3.82,
         "bm25": 12.45,
         "vector": 0.87,
         "business": 0.61
       },
       "highlights": {
         "@search.highlights": {
-          "searchable_text": ["...highlighted text..."]
+          "searchable_text": ["...AI-powered <em>search</em>..."]
         }
       }
     }
@@ -411,99 +359,292 @@ GET /search/articles?q={query}&k={limit}&page_index={index}&page_size={size}
     "page_index": 0,
     "page_size": 10,
     "total_results": 156,
-    "total_pages": 16,
-    "has_next": true,
-    "has_previous": false
+    "has_next": true
   }
 }
 ```
 
-### Author Search
+## ⚙️ Configuration
 
+### Environment Variables (.env)
+
+```ini
+# === Azure AI Search ===
+AZURE_SEARCH_ENDPOINT=https://your-search.search.windows.net
+AZURE_SEARCH_KEY=your-admin-key
+
+# === Cosmos DB ===
+COSMOS_ENDPOINT=https://your-cosmos.documents.azure.com:443/
+COSMOS_KEY=your-cosmos-key
+COSMOS_DB=blogs
+COSMOS_ARTICLES=articles
+COSMOS_USERS=users
+
+# === OpenAI/Azure OpenAI ===
+OPENAI_API_KEY=your-openai-key
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_KEY=your-azure-openai-key
+AZURE_OPENAI_DEPLOYMENT=text-embedding-ada-002
+
+# === Authentication ===
+SECRET_KEY=your-jwt-secret
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+
+# === Search Configuration ===
+# Article scoring weights
+WEIGHT_BM25=0.3
+WEIGHT_VECTOR=0.6
+WEIGHT_BUSINESS=0.1
+
+# Author scoring (BM25 only with fuzzy matching)
+AUTHORS_WEIGHT_BM25=1.0
+AUTHORS_WEIGHT_VECTOR=0.0
+
+# Business freshness
+FRESHNESS_HALFLIFE_DAYS=250
+
+# === Caching ===
+ENABLE_INDEXER_CACHE=true
+AZURE_STORAGE_CONNECTION_STRING=your-storage-connection
+
+# === Redis (Backend) ===
+REDIS_URL=redis://localhost:6379/0
 ```
-GET /search/authors?q={query}&k={limit}&page_index={index}&page_size={size}
+
+## 🚀 Deployment
+
+### Docker Compose (Recommended)
+
+```bash
+# Production deployment
+docker-compose -f docker-compose.yml up -d
+
+# Development with hot-reload
+docker-compose -f docker-compose.dev.yml up -d
 ```
 
-**Parameters:** Same as article search
+### Individual Service Deployment
 
-**Response Format:**
+#### AI Search Service
 
-```json
-{
-  "authors": [
-    {
-      "id": "user-uuid",
-      "full_name": "Dr. Sarah Johnson",
-      "score_final": 0.9231,
-      "scores": {
-        "semantic": 3.45,
-        "bm25": 8.76,
-        "vector": 0.0,
-        "business": 0.0
-      }
-    }
-  ],
-  "pagination": {
-    "page_index": 0,
-    "page_size": 10,
-    "total_results": 23,
-    "total_pages": 3,
-    "has_next": true,
-    "has_previous": false
-  }
-}
+```bash
+# Build image
+docker build -f Dockerfile.backend -t ai-search-service .
+
+# Run container
+docker run -p 8000:8000 --env-file .env ai-search-service
 ```
 
-### Interactive Documentation
+#### Backend API
 
-Access Swagger UI at: `http://localhost:8000/docs`
+```bash
+# Build and run
+docker build -f Dockerfile.backend -t article-backend .
+docker run -p 8001:8001 --env-file .env article-backend
+```
+
+#### Frontend Application
+
+```bash
+# Build and run
+docker build -f Dockerfile.frontend -t article-frontend .
+docker run -p 3000:3000 article-frontend
+```
+
+## 📊 Monitoring & Health
+
+### Health Checks
+
+```bash
+# AI Search service health
+curl http://localhost:8000/health
+
+# Backend API health
+curl http://localhost:8001/api/health
+
+# Check indexer status
+cd ai_search
+python main.py check-indexers --verbose
+```
+
+### Performance Monitoring
+
+- **Search latency**: Track query response times
+- **Index stats**: Monitor document counts and update frequency
+- **Cache hit rates**: Redis performance metrics
+- **Error rates**: API and search error tracking
+
+## 🎯 Usage Examples
+
+### Basic Article Search
+
+```bash
+# Search articles
+curl "http://localhost:8000/search/articles?q=artificial%20intelligence&k=5"
+
+# Search with pagination
+curl "http://localhost:8000/search/articles?q=machine%20learning&page_index=1&page_size=10"
+```
+
+### Author Search with Fuzzy Matching
+
+```bash
+# Exact name
+curl "http://localhost:8000/search/authors?q=John%20Smith"
+
+# Fuzzy matching (handles typos)
+curl "http://localhost:8000/search/authors?q=Jon%20Smyth"  # Finds "John Smith"
+```
+
+### Article Management via Backend
+
+```bash
+# Get articles (requires auth)
+curl -H "Authorization: Bearer your-jwt-token" \
+     "http://localhost:8001/api/articles/"
+
+# Create article (WRITER role required)
+curl -X POST \
+     -H "Authorization: Bearer your-jwt-token" \
+     -H "Content-Type: application/json" \
+     -d '{"title":"New Article","content":"Content...","tags":["tech"]}' \
+     "http://localhost:8001/api/articles/"
+```
+
+## 🔧 Development
+
+### Running Tests
+
+```bash
+# AI Search module tests
+cd ai_search
+pytest tests/ -v
+
+# Backend API tests  
+cd backend
+pytest tests/ -v
+
+# Frontend tests
+cd frontend
+npm test
+```
+
+### Code Quality
+
+```bash
+# Python linting
+cd ai_search
+flake8 app/ search/
+black app/ search/
+
+# JavaScript/React linting
+cd frontend
+npm run lint
+npm run format
+```
+
+## 📈 Performance Optimization
+
+### Search Performance
+
+- **Index optimization**: Proper field configurations and analyzers
+- **Caching strategy**: 5-minute TTL for search results
+- **Batch operations**: Efficient bulk indexing
+- **Connection pooling**: Reuse Azure Search clients
+
+### Application Performance
+
+- **Code splitting**: Route-based React lazy loading
+- **Image optimization**: Lazy loading and compression
+- **Database indexing**: Cosmos DB partition keys and indexes
+- **CDN delivery**: Static asset optimization
+
+## 🔮 Future Enhancements
+
+### Planned Features
+
+- **ML Recommendations** - Content recommendation engine
+- **Real-time Collaboration** - Multi-user article editing
+- **Advanced Analytics** - User behavior and content insights
+- **Multi-language Support** - International content management
+- **Progressive Web App** - Offline capability and push notifications
+
+### AI/ML Roadmap
+
+- **Custom embedding models** for domain-specific search
+- **Query expansion** using GPT for better recall
+- **Semantic clustering** for content organization
+- **Auto-tagging** using NLP classification
+- **Content quality scoring** using AI assessment
+
+## 🆘 Troubleshooting
+
+### Common Issues
+
+#### Search Index Problems
+
+```bash
+# Check index status
+cd ai_search
+python main.py check-indexers --verbose
+
+# Recreate indexes if corrupted
+python main.py create-indexes --reset --verbose
+```
+
+#### Authentication Issues
+
+```bash
+# Verify JWT configuration
+echo $SECRET_KEY
+python -c "from backend.utils import create_access_token; print('JWT OK')"
+```
+
+#### Database Connection
+
+```bash
+# Test Cosmos DB connection
+cd ai_search  
+python -c "from search.ingestion import test_cosmos; test_cosmos()"
+```
+
+### Performance Issues
+
+1. **Slow search**: Check index fragmentation and rebuild if needed
+2. **High memory usage**: Adjust batch sizes and connection pools
+3. **Auth timeouts**: Increase JWT expiration or implement refresh tokens
+
+## 📚 Documentation
+
+- **AI Search Module**: [`ai_search/README.md`](./ai_search/README.md)
+- **Backend API**: [`backend/README.md`](./backend/README.md)
+- **Frontend App**: [`frontend/README.md`](./frontend/README.md)
+- **API Documentation**:
+  - Swagger UI (AI Search): `http://localhost:8000/docs`
+  - Swagger UI (Backend): `http://localhost:8001/docs`
+
+## 🤝 Contributing
+
+1. **Fork the repository**
+2. **Create feature branch**: `git checkout -b feature/amazing-feature`
+3. **Make changes** and add tests
+4. **Run quality checks**: `make lint test`
+5. **Commit changes**: `git commit -m 'Add amazing feature'`
+6. **Push to branch**: `git push origin feature/amazing-feature`
+7. **Create Pull Request**
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📞 Support
+
+- **Documentation**: Check component-specific README files
+- **Issues**: Create GitHub issues for bug reports
+- **Questions**: Use GitHub Discussions for questions
+- **Enterprise Support**: Contact the development team
 
 ---
 
-## 9) Search Process (End-to-End)
-
-### Articles Search Flow
-
-1. **Query Processing**: Receive query text, pagination parameters
-2. **Semantic Search Capability Check**: Automatically detect if semantic search is available
-3. **Text Search**: Execute BM25 + semantic search (with automatic fallback to BM25-only)
-4. **Vector Search**: Generate query embedding and perform KNN search
-5. **Result Merging**: Combine text and vector results by document ID
-6. **Score Computation**: Calculate business/freshness scores
-7. **Score Fusion**: Apply configurable weights to combine all score components
-8. **Pagination**: Apply page_index and page_size if specified
-9. **Response**: Return structured results with pagination metadata
-
-### Authors Search Flow
-
-1. **Query Processing**: Similar to articles but optimized for name search
-2. **Text Search**: BM25 + semantic search on author names
-3. **Optional Vector Search**: Only if `AUTHORS_WEIGHT_VECTOR > 0`
-4. **Score Fusion**: Combine semantic and BM25 scores (vector/business optional)
-5. **Pagination**: Apply pagination if requested
-6. **Response**: Return author results with pagination metadata
-
-### Automatic Error Recovery
-
-- **Semantic Search Fallback**: Automatically falls back to BM25 if semantic search fails
-- **Runtime Detection**: Tests semantic capability on startup and during queries
-- **Graceful Degradation**: Continues operation even if some components fail
-
----
-
-## 12) Why two indexes (articles & authors)?
-
-- Different schemas/analyzers, different semantic configs, different scoring needs (freshness for articles, not for users).
-- Better performance and relevance; smaller per-index HNSW graphs.
-- Operational isolation (rebuild articles without touching users).
-- Code is cleaner: each API targets just one index.
-
----
-
-## 13) Next steps (optional)
-
-- **Chunked multi-vector** for long documents.
-- **Integrated vectorization** with Azure indexers and skills.
-- **RRF**-based hybrid as an alternative to client-side weighted fusion.
-- **Telemetry dashboards** for score components and latency.
-- **Synonyms / custom analyzers** for domain terms.
+**Built with ❤️ using Azure AI Search, FastAPI, and React**

@@ -153,12 +153,14 @@ def handle_serve(args: Any) -> None:
         workers = 1
     
     print(f"📋 Server options: {host}:{port}, reload={reload}, workers={workers}")
+    # Use package-qualified module path so the reloader can import the app when running
+    # via `python -m ai_search.main serve`.
     uvicorn.run(
-        "main:app", 
-        host=host, 
-        port=port, 
-        reload=reload, 
-        workers=workers
+        "ai_search.main:app",
+        host=host,
+        port=port,
+        reload=reload,
+        workers=workers,
     )
 
 
