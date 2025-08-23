@@ -70,29 +70,29 @@ ai-search-cloud/
 ├─ .env.example
 ├─ README.md
 ├─ requirements.txt
-├─ main.py              # CLI entry point + FastAPI app
+├─ main.py                   # CLI entry point + FastAPI app
 ├─ config/
-│  └─ settings.py       # Environment configuration
+│  └─ settings.py            # Environment configuration
 ├─ search/
-│  ├─ indexes.py        # Index creation logic
-│  ├─ ingestion.py      # Manual data ingestion from Cosmos DB
-│  └─ azure_indexers.py # Azure-native indexers for automatic sync
+│  ├─ indexes.py             # Index creation logic
+│  ├─ ingestion.py           # Manual data ingestion from Cosmos DB
+│  └─ azure_indexers.py      # Azure-native indexers for automatic sync
 ├─ app/
-│  ├─ clients.py        # Azure Search client factories
-│  ├─ models.py         # Pydantic response models
+│  ├─ clients.py             # Azure Search client factories
+│  ├─ models.py              # Pydantic response models
 │  └─ services/
-│     ├─ embeddings.py  # Embedding provider abstraction
-│     ├─ scoring.py     # Score fusion algorithms
-│     └─ search_service.py  # High-level search orchestration
+│     ├─ embeddings.py       # Embedding provider abstraction
+│     ├─ scoring.py          # Score fusion algorithms
+│     └─ search_service.py   # High-level search orchestration
 ├─ utils/
-│  ├─ timeparse.py      # Date parsing utilities
-│  └─ cli.py           # Command-line argument parser
+│  ├─ timeparse.py           # Date parsing utilities
+│  └─ cli.py                 # Command-line argument parser
 ├─ scripts/
-│  └─ blog_data_generator.py  # Generate sample blog data
+│  └─ blog_data_generator.py # Generate sample blog data
 └─ data/
-   ├─ articles.json     # Sample articles data
-   ├─ users.json        # Sample users data
-   └─ blog_seed_UPDATED.json  # Generated blog data
+   ├─ articles.json          # Sample articles data
+   ├─ users.json             # Sample users data
+   └─ blog_seed_UPDATED.json # Generated blog data
 ```
 
 ---
