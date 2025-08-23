@@ -73,36 +73,36 @@ HTTP Request → FastAPI Router → Service Layer → Repository Layer → Cosmo
 
 ```
 backend/
-├── main.py                 # FastAPI app entry point
-├── utils.py               # Authentication & utility helpers
-├── api/                   # API route handlers
-│   ├── article.py         # Article CRUD operations
-│   ├── search.py         # AI search endpoints  
-│   ├── user.py           # User management
-│   ├── file.py           # File upload handling
-│   └── cache.py          # Cache management
-├── authentication/        # Auth system
-│   └── routes.py         # Login/register endpoints
-├── services/             # Business logic layer
-│   ├── article_service.py    # Article operations
-│   ├── user_service.py       # User operations
-│   ├── search_service.py     # AI search integration
-│   ├── cache_service.py      # Redis caching
-│   └── azure_blob_service.py # File storage
-├── repositories/         # Data access layer
-│   ├── article_repo.py   # Article database operations
-│   └── user_repo.py      # User database operations
-├── database/            # Database configuration
-│   └── cosmos.py        # Cosmos DB client setup
-├── config/              # Configuration modules
-│   ├── settings.py      # Environment variables
-│   ├── redis_config.py  # Redis connection
-│   └── azure_blob.py    # Azure Storage config
-├── model/               # Data models
-│   ├── article.py       # Article schema
-│   └── user.py         # User schema
-└── enum/               # Enumerations
-    └── roles.py        # User role definitions
+├── main.py                    # FastAPI app entry point
+├── utils.py                   # Authentication & utility helpers
+├── api/                       # API route handlers
+│   ├── article.py             # Article CRUD operations
+│   ├── search.py              # AI search endpoints  
+│   ├── user.py                # User management
+│   ├── file.py                # File upload handling
+│   └── cache.py               # Cache management
+├── authentication/            # Auth system
+│   └── routes.py              # Login/register endpoints
+├── services/                  # Business logic layer
+│   ├── article_service.py     # Article operations
+│   ├── user_service.py        # User operations
+│   ├── search_service.py      # AI search integration
+│   ├── cache_service.py       # Redis caching
+│   └── azure_blob_service.py  # File storage
+├── repositories/              # Data access layer
+│   ├── article_repo.py        # Article database operations
+│   └── user_repo.py           # User database operations
+├── database/                  # Database configuration
+│   └── cosmos.py              # Cosmos DB client setup
+├── config/                    # Configuration modules
+│   ├── settings.py            # Environment variables
+│   ├── redis_config.py        # Redis connection
+│   └── azure_blob.py          # Azure Storage config
+├── model/                     # Data models
+│   ├── article.py             # Article schema
+│   └── user.py                # User schema
+└── enum/                      # Enumerations
+    └── roles.py               # User role definitions
 ```
 
 ## 🔧 Core Components
