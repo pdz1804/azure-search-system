@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
@@ -19,10 +19,12 @@ import { useAuth } from '../context/AuthContext';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const profileDropdownRef = useRef(null);
 
   const navigationItems = [
     { name: 'Home', href: '/', icon: HomeIcon },
@@ -34,6 +36,44 @@ const Header = () => {
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
+
+  const toggleProfileDropdown = () => {
+    setIsProfileDropdownOpen(!isProfileDropdownOpen);
+  };
+
+  const closeProfileDropdown = () => {
+    setIsProfileDropdownOpen(false);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        closeProfileDropdown();
+      }
+    };
+
+    const handleEscapeKey = (event) => {
+      if (event.key === 'Escape') {
+        closeProfileDropdown();
+      }
+    };
+
+    if (isProfileDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscapeKey);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [isProfileDropdownOpen]);
+
+  // Close dropdown on route change
+  useEffect(() => {
+    closeProfileDropdown();
+  }, [location.pathname]);
 
   // theme toggle removed - single theme only
 
@@ -138,9 +178,9 @@ const Header = () => {
 
             {/* User Menu */}
             {isAuthenticated() ? (
-              <div className="relative">
+              <div className="relative" ref={profileDropdownRef}>
                 <button
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  onClick={toggleProfileDropdown}
                     className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-all duration-200"
                 >
                   {user?.avatar_url ? (
@@ -160,10 +200,11 @@ const Header = () => {
                 </button>
 
                 {/* Dropdown Menu */}
-                  {isMenuOpen && (
+                  {isProfileDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 dropdown-panel rounded-lg shadow-lg border py-1 z-50">
                     <Link
                       to="/profile"
+                      onClick={closeProfileDropdown}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
                     >
                       <UserIcon className="w-4 h-4 inline mr-2" />
@@ -171,6 +212,7 @@ const Header = () => {
                     </Link>
                     <Link
                       to="/my-articles"
+                      onClick={closeProfileDropdown}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
                     >
                       <DocumentTextIcon className="w-4 h-4 inline mr-2" />
@@ -178,6 +220,7 @@ const Header = () => {
                     </Link>
                     <Link
                       to="/bookmarks"
+                      onClick={closeProfileDropdown}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
                     >
                       <BookmarkIcon className="w-4 h-4 inline mr-2" />
@@ -185,6 +228,7 @@ const Header = () => {
                     </Link>
                     <Link
                       to="/dashboard"
+                      onClick={closeProfileDropdown}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
                     >
                       <CogIcon className="w-4 h-4 inline mr-2" />
@@ -192,7 +236,10 @@ const Header = () => {
                     </Link>
                     <hr className="my-1 border-gray-100" />
                     <button
-                      onClick={handleLogout}
+                      onClick={() => {
+                        handleLogout();
+                        closeProfileDropdown();
+                      }}
                       className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
                     >
                       <ArrowRightOnRectangleIcon className="w-4 h-4 inline mr-2" />

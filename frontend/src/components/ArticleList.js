@@ -2,38 +2,17 @@
 /* @ts-nocheck */
 /* JAF-ignore */
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Pagination, Input, Select, Spin, Empty, message, Modal } from 'antd';
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { ExclamationTriangleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import ArticleCard from './ArticleCard';
 import { articleApi } from '../api/articleApi';
 import { userApi } from '../api/userApi';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
-const { Search } = Input;
-const { Option } = Select;
-const { confirm } = Modal;
-
+// Redis caching is now handled on the backend - no frontend cache needed
 // Global map to deduplicate fetches across component remounts (helps with React.StrictMode)
 const globalFetchMap = new Map();
 const globalFetchPromises = new Map();
-// Simple per-page cache for search results: key -> { ts, response }
-const globalPageCache = new Map();
-const PAGE_CACHE_TTL = 300 * 1000; // ms
-
-const _cache_get = (key) => {
-  const entry = globalPageCache.get(key);
-  if (!entry) return null;
-  const { ts, value } = entry;
-  if (Date.now() - ts > PAGE_CACHE_TTL) {
-    globalPageCache.delete(key);
-    return null;
-  }
-  return value;
-};
-
-const _cache_set = (key, value) => {
-  globalPageCache.set(key, { ts: Date.now(), value });
-};
 
 const ArticleList = ({ 
   authorId = null, 
@@ -76,15 +55,7 @@ const ArticleList = ({
     return `${authorId || 'all'}_${category || 'all'}_${status}_${sortBy}_${searchText}`;
   };
   
-  // Debug log
-  console.log('ArticleList Debug:', { 
-    externalArticles: !!externalArticles, 
-    externalLoading, 
-    loading, 
-    isLoading, 
-    articlesCount: articles.length,
-    cacheKey: getCacheKey()
-  });
+  // Debug log removed to prevent console spam
 
   const fetchArticles = async (page = 1, search = '') => {
     if (externalArticles) return; // Don't fetch if articles are provided externally
@@ -96,7 +67,7 @@ const ArticleList = ({
     
     // Check if there's already a promise for this exact fetch
     if (globalFetchPromises.has(cacheKey)) {
-      console.log('Reusing existing promise for', cacheKey);
+      // Reusing existing promise
       try {
         const result = await globalFetchPromises.get(cacheKey);
         return result;
@@ -108,11 +79,11 @@ const ArticleList = ({
     
     // If another instance or previous lifecycle already started this fetch, skip
     if (globalFetchMap.has(cacheKey)) {
-      console.log('Global fetch already in progress for', cacheKey);
+      // Global fetch already in progress
       return;
     }
     if (lastFetchKey === cacheKey) {
-      console.log('Skipping duplicate fetch for same cache key', cacheKey);
+      // Skipping duplicate fetch for same cache key
       return;
     }
     
@@ -186,18 +157,8 @@ const ArticleList = ({
         } else if (category && category !== 'all') {
           response = await articleApi.getArticlesByCategory(category, page, pagination.pageSize);
         } else if ((search || searchQuery)) {
-          // Server-side paged search: request page with page_size == pagination.pageSize
-          const cacheKeyPage = `${cacheKey}_PAGE_${page}`;
-          const cached = _cache_get(cacheKeyPage);
-          if (cached) {
-            console.log('[CACHE HIT]', cacheKeyPage);
-            response = cached;
-          } else {
-            console.log('[CACHE MISS]', cacheKeyPage);
-            response = await articleApi.searchArticles(search || searchQuery || searchText, pageSize, page, Math.max(pageSize, 60));
-            // store page in cache
-            try { _cache_set(cacheKeyPage, response); console.log('[CACHE SET]', cacheKeyPage); } catch (e) { /* ignore */ }
-          }
+          // Server-side paged search with Redis caching on backend
+          response = await articleApi.searchArticles(search || searchQuery || searchText, pageSize, page, Math.max(pageSize, 60));
         } else {
           response = await articleApi.getArticles({ page: page, page_size: pagination.pageSize, limit: pagination.pageSize, sort_by: sortBy });
         }
@@ -211,7 +172,7 @@ const ArticleList = ({
           
           // Extract pagination info - backend returns "total" as number of pages
           const paginationData = response.pagination || {};
-          console.log('API Pagination data:', paginationData);
+          // API Pagination data received
 
           // Backend returns "total" as number of pages. If missing, default to 5 pages.
           const totalPages = paginationData.total || 5;
@@ -243,21 +204,23 @@ const ArticleList = ({
     }
   };
 
+  // Single unified effect to prevent duplicate API calls
   useEffect(() => {
-    if (!externalArticles) {
-      const startPage = currentPage || 1;
-      // sync local pagination with prop if provided
-      setPagination(prev => ({ ...prev, current: startPage }));
-      fetchArticles(startPage, searchText);
+    if (!externalArticles && !inFlight) {
+      const pageToFetch = currentPage || 1;
+      setPagination(prev => ({ ...prev, current: pageToFetch }));
+      fetchArticles(pageToFetch, searchQuery || searchText);
     }
-  }, [authorId, category, externalArticles, currentPage]);
-
-  // Separate effect for search/filter changes
-  useEffect(() => {
-    if (!externalArticles && (searchQuery || tags.length > 0 || status !== 'published' || sortBy !== 'created_at' || category)) {
-      fetchArticles(1, searchQuery);
-    }
-  }, [searchQuery, tags, status, sortBy]);
+  }, [
+    authorId, 
+    category, 
+    externalArticles, 
+    currentPage, 
+    searchQuery, 
+    JSON.stringify(tags), 
+    status, 
+    sortBy
+  ]);
 
   useEffect(() => {
     if (externalArticles) {
@@ -293,100 +256,100 @@ const ArticleList = ({
   };
 
   const handleDelete = (article) => {
-    confirm({
-      title: 'Are you sure you want to delete this article?',
-      icon: React.createElement(ExclamationCircleOutlined),
-      content: `Article "${article.title}" will be permanently deleted.`,
-      okText: 'Delete',
-      okType: 'danger',
-      cancelText: 'Cancel',
-      async onOk() {
-        try {
-          await articleApi.deleteArticle(article.id);
-          message.success('Article deleted successfully');
-          fetchArticles(pagination.current, searchText);
-        } catch (error) {
-          message.error('Failed to delete article');
-        }
-      },
-    });
+    if (window.confirm(`Are you sure you want to delete "${article.title}"? This action cannot be undone.`)) {
+      deleteArticle(article);
+    }
+  };
+
+  const deleteArticle = async (article) => {
+    try {
+      await articleApi.deleteArticle(article.id);
+      toast.success('Article deleted successfully');
+      fetchArticles(pagination.current, searchText);
+    } catch (error) {
+      toast.error('Failed to delete article');
+    }
   };
 
   const handleLike = async (articleId) => {
     try {
       await userApi.likeArticle(articleId);
-      message.success('Article liked');
+      toast.success('Article liked');
       fetchArticles(pagination.current, searchText);
     } catch (error) {
-      message.error('Failed to like article');
+      toast.error('Failed to like article');
     }
   };
 
   const handleDislike = async (articleId) => {
     try {
       await userApi.dislikeArticle(articleId);
-      message.success('Article disliked');
+      toast.success('Article disliked');
       fetchArticles(pagination.current, searchText);
     } catch (error) {
-      message.error('Failed to dislike article');
+      toast.error('Failed to dislike article');
     }
   };
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ 
-          color: '#1a1a1a', 
-          fontSize: 24, 
-          fontWeight: 600,
-          marginBottom: 16
-        }}>
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
           {title}
         </h2>
         {showFilters && !authorId && (
-          <Search
-            placeholder="Search articles..."
-            allowClear
-            enterButton="Search"
-            size="large"
-            onSearch={handleSearch}
-            style={{ 
-              maxWidth: 400,
-              borderRadius: 20
-            }}
-          />
+          <div className="relative max-w-md">
+            <input
+              type="text"
+              placeholder="Search articles..."
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSearch(e.target.value);
+                }
+              }}
+              className="w-full px-4 py-3 pl-12 pr-4 text-gray-700 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent shadow-sm"
+            />
+            <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          </div>
         )}
       </div>
 
-      <Spin spinning={isLoading}>
-        {/* top pager intentionally disabled; only bottom pager will show */}
+      <div className="relative">
+        {isLoading && (
+          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          </div>
+        )}
+        
         {articles.length === 0 && !isLoading ? (
-          <Empty 
-            description="No articles found" 
-            style={{ 
-              padding: '60px 0',
-              color: '#666'
-            }}
-          />
+          <div className="text-center py-16">
+            <div className="w-16 h-16 mx-auto mb-4 text-gray-400">
+              <svg fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0v12h8V4H6z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No articles found</h3>
+            <p className="text-gray-500">Try adjusting your search criteria or check back later.</p>
+          </div>
         ) : (
           <>
-            <Row gutter={[16, 16]}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {(loadAll ? articles.slice((pagination.current - 1) * pagination.pageSize, pagination.current * pagination.pageSize) : articles).map(article => (
-                <Col xs={24} sm={12} lg={6} xl={6} key={article.id}>
+                <div key={article.id} className="h-full">
                   <ArticleCard
                     article={article}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onLike={handleLike}
                     onDislike={handleDislike}
+                    layout="grid"
                   />
-                </Col>
+                </div>
               ))}
-            </Row>
+            </div>
 
             {showLoadMore && (
-              <div style={{ textAlign: 'center', marginTop: 32 }}>
-                {/* If this is a search mode (has query), render a simple explicit pager of 5 pages so numbers are always visible and clickable. */}
+              <div className="flex justify-center mt-8">
                 {((searchQuery && searchQuery.length > 0) || searchText) ? (
                   (() => {
                     const respPageSize = pagination.pageSize || 12;
@@ -398,53 +361,62 @@ const ArticleList = ({
                         <button
                           key={i}
                           onClick={() => handlePageChange(i)}
-                          style={{
-                            margin: '0 6px',
-                            padding: '6px 10px',
-                            borderRadius: 6,
-                            border: i === pagination.current ? '2px solid #5b8cff' : '1px solid #ddd',
-                            background: i === pagination.current ? '#f0f5ff' : '#fff',
-                            cursor: 'pointer'
-                          }}
+                          className={`mx-1 px-3 py-2 rounded-lg font-medium transition-colors ${
+                            i === pagination.current
+                              ? 'bg-indigo-600 text-white border-2 border-indigo-600'
+                              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                          }`}
                         >
                           {i}
                         </button>
                       );
                     }
                     return (
-                      <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      <div className="flex items-center space-x-2">
                         <button
                           onClick={() => handlePageChange(Math.max(1, pagination.current - 1))}
-                          style={{ marginRight: 8, padding: '6px 10px', borderRadius: 6 }}
+                          disabled={pagination.current === 1}
+                          className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          &lt;
+                          ←
                         </button>
                         {buttons}
                         <button
                           onClick={() => handlePageChange(Math.min(pagesToShow, pagination.current + 1))}
-                          style={{ marginLeft: 8, padding: '6px 10px', borderRadius: 6 }}
+                          disabled={pagination.current === pagesToShow}
+                          className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          &gt;
+                          →
                         </button>
                       </div>
                     );
                   })()
                 ) : (
-                  <Pagination
-                    current={pagination.current}
-                    pageSize={pagination.pageSize}
-                    total={pagination.total}
-                    onChange={handlePageChange}
-                    showSizeChanger={false}
-                    showQuickJumper
-                    showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} articles`}
-                  />
+                  <div className="flex items-center justify-center space-x-4">
+                    <button
+                      onClick={() => handlePageChange(Math.max(1, pagination.current - 1))}
+                      disabled={pagination.current === 1}
+                      className="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-sm text-gray-700">
+                      Page {pagination.current} of {Math.ceil(pagination.total / pagination.pageSize)}
+                    </span>
+                    <button
+                      onClick={() => handlePageChange(pagination.current + 1)}
+                      disabled={pagination.current >= Math.ceil(pagination.total / pagination.pageSize)}
+                      className="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
                 )}
               </div>
             )}
           </>
         )}
-      </Spin>
+      </div>
     </div>
   );
 };

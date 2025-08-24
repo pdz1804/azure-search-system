@@ -1,43 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { 
-  Layout, 
-  Card, 
-  Avatar, 
-  Typography, 
-  Space, 
-  Button, 
-  Statistic, 
-  Row, 
-  Col,
-  message,
-  Spin,
-  Modal,
-  List
-} from 'antd';
-import { 
-  UserAddOutlined, 
-  UserDeleteOutlined,
+import { useParams, useNavigate } from 'react-router-dom';
+import { message, Modal, List, Spin } from 'antd';
+import {
+  UserOutlined,
   EditOutlined,
-  FileTextOutlined,
+  CalendarOutlined,
   EyeOutlined,
-  HeartOutlined
+  HeartOutlined,
+  FileTextOutlined,
+  TeamOutlined,
+  MailOutlined
 } from '@ant-design/icons';
 import { userApi } from '../api/userApi';
 import { articleApi } from '../api/articleApi';
 import { useAuth } from '../context/AuthContext';
 import ArticleList from '../components/ArticleList';
-import { formatDate, formatNumber } from '../utils/helpers';
-
-const { Content } = Layout;
-const { Title, Text } = Typography;
+import { formatNumber } from '../utils/helpers';
 
 const Profile = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user: currentUser, isAuthenticated } = useAuth();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
   const [stats, setStats] = useState({
     totalArticles: 0,
     totalViews: 0,
@@ -60,15 +47,30 @@ const Profile = () => {
     if (!targetUserId) return;
 
     const run = async () => {
-      const fetched = await fetchUserData();
-      await fetchUserStats(fetched);
-      if (isAuthenticated() && !isOwnProfile) {
-        checkFollowStatus();
+      setLoading(true);
+      try {
+        // Fetch user data first (needed by fetchUserStats)
+        const fetched = await fetchUserData();
+        
+        // Run stats and follow status in parallel (independent operations)
+        const promises = [
+          fetchUserStats(fetched)
+        ];
+        
+        if (isAuthenticated() && !isOwnProfile) {
+          promises.push(checkFollowStatus());
+        }
+        
+        await Promise.all(promises);
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
     run();
-  }, [targetUserId]);
+  }, [targetUserId, currentUser]); // Add currentUser as dependency to re-run when auth loads
 
   const fetchUserData = async () => {
     try {
@@ -188,9 +190,14 @@ const Profile = () => {
   const fetchUserStats = async (userObj = null) => {
     try {
       if (!targetUserId) return;
-      const articlesResponse = await articleApi.getArticlesByAuthor(targetUserId, 1, 1000);
+      
+      // Only fetch first page (10-20 articles) for performance - most users don't have 1000s of articles
+      const articlesResponse = await articleApi.getArticlesByAuthor(targetUserId, 1, 50);
       if (articlesResponse.success) {
         const articles = (articlesResponse.data?.items) || (Array.isArray(articlesResponse.data) ? articlesResponse.data : []) || [];
+        
+        // Use pagination info if available for accurate article count
+        const totalArticleCount = articlesResponse.data?.total || articlesResponse.data?.totalCount || articles.length;
 
         const totalViews = articles.reduce((sum, article) => sum + (article.views || 0), 0);
         const totalLikes = articles.reduce((sum, article) => sum + (article.likes || 0), 0);
@@ -211,14 +218,14 @@ const Profile = () => {
             : Number(u.following) || 0;
 
         setStats({
-          totalArticles: articles.length,
+          totalArticles: totalArticleCount,
           totalViews,
           totalLikes,
           followers: followersCount,
           following: followingCount
         });
 
-        console.log('User stats updated:', { totalViews, totalLikes, articleCount: articles.length, followersCount });
+        console.log('User stats updated (optimized):', { totalViews, totalLikes, articleCount: totalArticleCount, followersCount });
       }
     } catch (error) {
       console.error('Error fetching user stats:', error);
@@ -226,11 +233,33 @@ const Profile = () => {
   };
 
   const checkFollowStatus = async () => {
+    if (!targetUserId || !isAuthenticated()) {
+      console.log('Skip follow status check - not authenticated or no target user');
+      setIsFollowing(false);
+      return;
+    }
+    
     try {
+      console.log('Checking follow status for user:', targetUserId);
       const response = await userApi.checkFollowStatus(targetUserId);
-      setIsFollowing(response.is_following);
+      console.log('Raw follow status response:', JSON.stringify(response, null, 2));
+      
+      // Handle different response formats - check all possible nested structures
+      let followStatus = false;
+      if (response?.data?.data?.is_following !== undefined) {
+        followStatus = response.data.data.is_following;
+      } else if (response?.data?.is_following !== undefined) {
+        followStatus = response.data.is_following;
+      } else if (response?.is_following !== undefined) {
+        followStatus = response.is_following;
+      }
+      
+      console.log('Parsed follow status:', followStatus);
+      setIsFollowing(followStatus);
     } catch (error) {
-      // Silent fail
+      console.error('Failed to check follow status:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      setIsFollowing(false);
     }
   };
 
@@ -240,6 +269,7 @@ const Profile = () => {
       return;
     }
     
+    setFollowLoading(true);
     try {
       if (isFollowing) {
         await userApi.unfollowUser(targetUserId);
@@ -255,6 +285,8 @@ const Profile = () => {
       await fetchUserStats(fresh);
     } catch (error) {
       message.error('Failed to perform action');
+    } finally {
+      setFollowLoading(false);
     }
   };
 
@@ -269,153 +301,267 @@ const Profile = () => {
   if (!user) {
     return (
       <div style={{ textAlign: 'center', padding: '50px' }}>
-        <Title level={3}>User not found</Title>
+        <h1>User not found</h1>
       </div>
     );
   }
 
   return (
-    <Layout style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <Content style={{ padding: '24px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <Card className="bg-surface border-surface" style={{ marginBottom: 24 }}>
-            <Row gutter={[24, 24]}>
-              <Col xs={24} md={8}>
-                <div style={{ textAlign: 'center' }} className="text-center">
-                  <Avatar 
-                    size={120} 
-                    src={user.avatar_url}
-                    style={{ marginBottom: 16 }}
-                  >
-                    {user.full_name?.[0]}
-                  </Avatar>
-                  <Title level={2} className="text-surface">{user.full_name}</Title>
-                  <Text className="text-muted">{user.email}</Text>
-                  <br />
-                  <Text className="text-muted">
-                    Joined {formatDate(user.created_at)}
-                  </Text>
-                  <br />
-                  <Text style={{ cursor: 'pointer' }} onClick={handleShowFollowing}>
-                    {stats.following} Following
-                  </Text>
-                  
-                  {!isOwnProfile && isAuthenticated() && (
-                    <div style={{ marginTop: 16 }}>
-                      <Button
-                        type={isFollowing ? "default" : "primary"}
-                        icon={isFollowing ? <UserDeleteOutlined /> : <UserAddOutlined />}
-                        onClick={handleFollow}
-                      >
-                        {isFollowing ? 'Unfollow' : 'Follow'}
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {isOwnProfile && (
-                    <div style={{ marginTop: 16 }}>
-                      <Button
-                        type="primary"
-                        icon={<EditOutlined />}
-                        onClick={() => message.info('Edit profile functionality will be developed')}
-                      >
-                        Edit Profile
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </Col>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="flex flex-col lg:flex-row items-center gap-8">
+            {/* Avatar */}
+            <div className="relative">
+              <div className="w-40 h-40 rounded-full overflow-hidden ring-4 ring-white/20 shadow-2xl">
+                {user?.avatar_url ? (
+                  <img 
+                    src={user.avatar_url} 
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-white/20 flex items-center justify-center">
+                    <UserOutlined className="text-6xl text-white/70" />
+                  </div>
+                )}
+              </div>
+              <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
+                <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+              </div>
+            </div>
+            
+            {/* User Info */}
+            <div className="text-center lg:text-left flex-1">
+              <h1 className="text-5xl font-bold mb-3">{user?.name || user?.full_name || user?.username || 'Anonymous'}</h1>
               
-              <Col xs={24} md={16}>
-                <Row gutter={[16, 16]}>
-                  <Col xs={12} sm={6}>
-                    <Statistic
-                      title="Articles"
-                      value={stats.totalArticles}
-                      prefix={<FileTextOutlined />}
-                    />
-                  </Col>
-                  <Col xs={12} sm={6}>
-                    <Statistic
-                      title="Views"
-                      value={formatNumber(stats.totalViews)}
-                      prefix={<EyeOutlined />}
-                    />
-                  </Col>
-                  <Col xs={12} sm={6}>
-                    <Statistic
-                      title="Likes"
-                      value={formatNumber(stats.totalLikes)}
-                      prefix={<HeartOutlined />}
-                    />
-                  </Col>
-                  <Col xs={12} sm={6}>
-                    <div style={{ cursor: 'pointer', textAlign: 'center' }} onClick={handleShowFollowers}>
-                      <Statistic
-                        title="Followers"
-                        value={stats.followers}
-                        prefix={<UserAddOutlined />}
-                      />
-                    </div>
-                  </Col>
-                </Row>
-              </Col>
-            </Row>
-          </Card>
-
-          <Modal
-            title={`${user?.full_name || 'User'} - Following`}
-            visible={followingModalVisible}
-            onCancel={() => setFollowingModalVisible(false)}
-            footer={null}
-            width={600}
-          >
-            <List
-              loading={followingLoading}
-              itemLayout="horizontal"
-              dataSource={followingList}
-              renderItem={item => (
-                <List.Item>
-                  <List.Item.Meta
-                    avatar={<Avatar src={item.avatar_url}>{item.full_name?.[0]}</Avatar>}
-                    title={<Link to={`/profile/${item.id || item._id}`}>{item.full_name}</Link>}
-                    description={item.bio || item.email}
-                  />
-                </List.Item>
+              {user?.email && (
+                <div className="flex items-center justify-center lg:justify-start gap-2 text-blue-100 mb-3">
+                  <MailOutlined className="text-lg" />
+                  <span className="text-lg">{user.email}</span>
+                </div>
               )}
-            />
-          </Modal>
-
-          <Modal
-            title={`${user?.full_name || 'User'} - Followers`}
-            visible={followersModalVisible}
-            onCancel={() => setFollowersModalVisible(false)}
-            footer={null}
-            width={600}
-          >
-            <List
-              loading={followersLoading}
-              itemLayout="horizontal"
-              dataSource={followersList}
-              renderItem={item => (
-                <List.Item>
-                  <List.Item.Meta
-                    avatar={<Avatar src={item.avatar_url}>{item.full_name?.[0]}</Avatar>}
-                    title={<Link to={`/profile/${item.id || item._id}`}>{item.full_name}</Link>}
-                    description={item.bio || item.email}
-                  />
-                </List.Item>
+              
+              {(user?.created_at || user?.joined) && (
+                <div className="flex items-center justify-center lg:justify-start gap-2 text-blue-100 mb-4">
+                  <CalendarOutlined className="text-lg" />
+                  <span className="text-lg">
+                    Joined {new Date(user.created_at || user.joined).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long', 
+                      day: 'numeric'
+                    })}
+                  </span>
+                </div>
               )}
-            />
-          </Modal>
-
-          <ArticleList 
-            authorId={targetUserId}
-            title={isOwnProfile ? "Your Articles" : `Articles by ${user.full_name}`}
-          />
+              
+              {user?.bio && (
+                <p className="text-blue-100 text-xl leading-relaxed mb-6 max-w-2xl">
+                  {user.bio}
+                </p>
+              )}
+              
+              {/* Followers Info */}
+              <div 
+                onClick={handleShowFollowers}
+                className="flex items-center justify-center lg:justify-start gap-2 text-blue-100 mb-6 cursor-pointer hover:text-white transition-colors"
+              >
+                <TeamOutlined className="text-lg" />
+                <span className="text-lg font-semibold">
+                  {stats.followers} Followers
+                </span>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex gap-4 justify-center lg:justify-start">
+                {currentUser?.id === user?.id ? (
+                  <button
+                    onClick={() => message.info('Edit profile functionality will be developed')}
+                    className="bg-white text-indigo-600 px-8 py-3 rounded-full font-semibold hover:bg-blue-50 transition-all duration-200 flex items-center gap-2 shadow-lg"
+                  >
+                    <EditOutlined />
+                    Edit Profile
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleFollow}
+                    disabled={followLoading}
+                    className={`px-8 py-3 rounded-full font-semibold transition-all duration-200 flex items-center gap-2 shadow-lg ${
+                      isFollowing 
+                        ? 'bg-red-500 hover:bg-red-600 text-white' 
+                        : 'bg-white text-indigo-600 hover:bg-blue-50'
+                    } ${followLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
+                  >
+                    {followLoading ? (
+                      <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <TeamOutlined />
+                    )}
+                    {isFollowing ? 'Unfollow' : 'Follow'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-      </Content>
-    </Layout>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
+          <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-200 text-center hover:shadow-2xl transition-shadow duration-300">
+            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileTextOutlined className="text-indigo-600 text-3xl" />
+            </div>
+            <div className="text-4xl font-bold text-slate-900 mb-2">{stats.totalArticles}</div>
+            <div className="text-slate-600 font-semibold">Articles</div>
+          </div>
+          
+          <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-200 text-center hover:shadow-2xl transition-shadow duration-300">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <EyeOutlined className="text-green-600 text-3xl" />
+            </div>
+            <div className="text-4xl font-bold text-slate-900 mb-2">{formatNumber(stats.totalViews)}</div>
+            <div className="text-slate-600 font-semibold">Views</div>
+          </div>
+          
+          <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-200 text-center hover:shadow-2xl transition-shadow duration-300">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <HeartOutlined className="text-red-600 text-3xl" />
+            </div>
+            <div className="text-4xl font-bold text-slate-900 mb-2">{formatNumber(stats.totalLikes)}</div>
+            <div className="text-slate-600 font-semibold">Likes</div>
+          </div>
+          
+          <div 
+            onClick={handleShowFollowing}
+            className="bg-white rounded-3xl p-8 shadow-xl border border-slate-200 text-center hover:shadow-2xl transition-all duration-300 cursor-pointer hover:scale-105"
+          >
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <TeamOutlined className="text-yellow-600 text-3xl" />
+            </div>
+            <div className="text-4xl font-bold text-slate-900 mb-2">{stats.following}</div>
+            <div className="text-slate-600 font-semibold">Following</div>
+          </div>
+        </div>
+
+        {/* Articles Section */}
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-8 py-6 border-b border-slate-200">
+            <h2 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <FileTextOutlined className="text-white text-xl" />
+              </div>
+              {(user?.name || user?.full_name || user?.username) ? `${user.name || user.full_name || user.username}'s Articles` : 'Articles'}
+            </h2>
+            <p className="text-slate-600 text-lg mt-2">
+              {stats.totalArticles > 0 
+                ? `Discover ${stats.totalArticles} insightful ${stats.totalArticles === 1 ? 'article' : 'articles'}`
+                : 'No articles published yet'
+              }
+            </p>
+          </div>
+          
+          <div className="p-8">
+            <ArticleList 
+              authorId={user?.id}
+              showAuthor={false}
+              limit={6}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Followers Modal */}
+      <Modal
+        title={`${user?.name || 'User'} - Followers`}
+        open={followersModalVisible}
+        onCancel={() => setFollowersModalVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <List
+          loading={followersLoading}
+          itemLayout="horizontal"
+          dataSource={followersList}
+          renderItem={item => (
+            <List.Item>
+              <List.Item.Meta
+                avatar={
+                  <div className="w-10 h-10 rounded-full overflow-hidden">
+                    {item.avatar_url ? (
+                      <img src={item.avatar_url} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-slate-200 flex items-center justify-center">
+                        <UserOutlined className="text-slate-500" />
+                      </div>
+                    )}
+                  </div>
+                }
+                title={
+                  <button 
+                    onClick={() => {
+                      setFollowersModalVisible(false);
+                      navigate(`/profile/${item.id || item._id}`);
+                    }}
+                    className="text-indigo-600 hover:text-indigo-800 font-semibold"
+                  >
+                    {item.name || item.full_name}
+                  </button>
+                }
+                description={item.bio || item.email}
+              />
+            </List.Item>
+          )}
+        />
+      </Modal>
+
+      {/* Following Modal */}
+      <Modal
+        title={`${user?.name || 'User'} - Following`}
+        open={followingModalVisible}
+        onCancel={() => setFollowingModalVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <List
+          loading={followingLoading}
+          itemLayout="horizontal"
+          dataSource={followingList}
+          renderItem={item => (
+            <List.Item>
+              <List.Item.Meta
+                avatar={
+                  <div className="w-10 h-10 rounded-full overflow-hidden">
+                    {item.avatar_url ? (
+                      <img src={item.avatar_url} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-slate-200 flex items-center justify-center">
+                        <UserOutlined className="text-slate-500" />
+                      </div>
+                    )}
+                  </div>
+                }
+                title={
+                  <button 
+                    onClick={() => {
+                      setFollowingModalVisible(false);
+                      navigate(`/profile/${item.id || item._id}`);
+                    }}
+                    className="text-indigo-600 hover:text-indigo-800 font-semibold"
+                  >
+                    {item.name || item.full_name}
+                  </button>
+                }
+                description={item.bio || item.email}
+              />
+            </List.Item>
+          )}
+        />
+      </Modal>
+    </div>
   );
 };
 

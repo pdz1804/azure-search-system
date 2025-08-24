@@ -96,7 +96,14 @@ const ArticleDetail = () => {
     return () => {
       mounted = false;
     };
-  }, [id]); // Remove user from dependency array to prevent re-fetching
+  }, [id]);
+
+  // Separate useEffect to load reaction status when user data changes
+  useEffect(() => {
+    if (id && isAuthenticated() && user) {
+      loadUserReactionStatus();
+    }
+  }, [user, id]); // Load reaction status when user data becomes available
 
   const fetchArticle = async () => {
     try {
@@ -216,12 +223,50 @@ const ArticleDetail = () => {
 
   const loadUserReactionStatus = async () => {
     try {
-      const res = await userApi.checkArticleReactionStatus(id);
-      if (res.success) {
-        const { reaction_type, is_bookmarked } = res.data;
-        setReactionType(reaction_type || 'none');
-        setIsBookmarked(is_bookmarked || false);
-        console.log('Loaded user reaction status:', { reaction_type, is_bookmarked });
+      console.log('loadUserReactionStatus called with user:', user);
+      console.log('Article ID:', id);
+      
+      if (!user) {
+        console.log('No user data available yet, setting defaults');
+        setReactionType('none');
+        setIsBookmarked(false);
+        return;
+      }
+      
+      // First check user data for immediate feedback
+      const userLikedArticles = user?.liked_articles || [];
+      const userDislikedArticles = user?.disliked_articles || [];
+      const userBookmarkedArticles = user?.bookmarked_articles || [];
+      
+      const isLiked = userLikedArticles.includes(id);
+      const isDisliked = userDislikedArticles.includes(id);
+      const isBookmarked = userBookmarkedArticles.includes(id);
+      
+      // Set initial state from user data
+      setReactionType(isLiked ? 'like' : isDisliked ? 'dislike' : 'none');
+      setIsBookmarked(isBookmarked);
+      
+      console.log('Loaded reaction status from user data:', {
+        isLiked,
+        isDisliked, 
+        isBookmarked,
+        userLikedArticles,
+        userBookmarkedArticles,
+        reactionType: isLiked ? 'like' : isDisliked ? 'dislike' : 'none'
+      });
+      
+      // Try to get updated status from API as well (optional enhancement)
+      try {
+        const res = await userApi.checkArticleReactionStatus(id);
+        if (res.success) {
+          const { reaction_type, is_bookmarked } = res.data;
+          setReactionType(reaction_type || 'none');
+          setIsBookmarked(is_bookmarked || false);
+          console.log('Updated reaction status from API:', { reaction_type, is_bookmarked });
+        }
+      } catch (apiError) {
+        console.log('API status check failed, using user data:', apiError.message);
+        // Keep the values from user data
       }
     } catch (error) {
       console.error('Error loading user reaction status:', error);

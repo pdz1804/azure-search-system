@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from backend.services.article_service import  search_response_articles
 from backend.services.search_service import get_search_service
 from backend.services.user_service import search_response_users
+from backend.services.cache_service import get_cache, set_cache
 
 # Pydantic models matching ai_search structure
 class ArticleHit(BaseModel):
@@ -36,27 +37,7 @@ class AuthorHit(BaseModel):
 
 search = APIRouter(prefix="/api/search", tags=["search"])
 
-# Simple in-memory cache for paged search results.
-# Keyed by: endpoint|query|k|page_index|page_size
-# Value: (timestamp_seconds, response_dict)
-CACHE: Dict[str, Any] = {}
-CACHE_TTL = 300  # seconds
-
-def _cache_get(key: str):
-    entry = CACHE.get(key)
-    if not entry:
-        return None
-    ts, value = entry
-    if time.time() - ts > CACHE_TTL:
-        try:
-            del CACHE[key]
-        except KeyError:
-            pass
-        return None
-    return value
-
-def _cache_set(key: str, value: Any):
-    CACHE[key] = (time.time(), value)
+# Redis caching is now handled via cache_service - no in-memory cache needed
 
 @search.get("/")
 async def search_general(
@@ -77,11 +58,13 @@ async def search_general(
     """
     print(f"🔍 General search: query='{q}', k={k}, page_index={page_index}, page_size={page_size}")
     try:
-        cache_key = f"general|{q}|{k}|{page_index}|{page_size}"
-        cached = _cache_get(cache_key)
+        cache_key = f"search:general:{q}:{k}:{page_index}:{page_size}"
+        cached = await get_cache(cache_key)
         if cached is not None:
-            print(f"🔁 Returning cached general search page: {cache_key}")
+            print(f"🔍 Redis Cache HIT for general search: {q}")
             return cached
+        
+        print(f"🔍 Redis Cache MISS for general search: {q} - Loading from search service...")
 
         # Get search results from service layer using general search
         search_service = get_search_service()
@@ -149,7 +132,8 @@ async def search_general(
         }
 
         # Cache the page so subsequent clicks for the same page are fast
-        _cache_set(cache_key, response)
+        await set_cache(cache_key, response, ttl=300)
+        print(f"🔍 Redis Cache SET for general search: {q}")
         
         print(f"✅ General search completed: {len(items)} results, type: {search_type}")
         return response
@@ -171,11 +155,13 @@ async def search_articles(
     """
     print(f"🔍 Searching articles: query='{q}', k={k}, page_index={page_index}, page_size={page_size}")
     try:
-        cache_key = f"articles|{q}|{k}|{page_index}|{page_size}"
-        cached = _cache_get(cache_key)
+        cache_key = f"search:articles:{q}:{k}:{page_index}:{page_size}"
+        cached = await get_cache(cache_key)
         if cached is not None:
-            print(f"🔁 Returning cached articles search page: {cache_key}")
+            print(f"🔍 Redis Cache HIT for articles search: {q}")
             return cached
+        
+        print(f"🔍 Redis Cache MISS for articles search: {q} - Loading from search service...")
 
         # Get search results from service layer
         search_service = get_search_service()
@@ -225,7 +211,11 @@ async def search_articles(
         }
 
         response = {"success": True, "data": docs, "results": docs, "pagination": mapped_pagination}
-        _cache_set(cache_key, response)
+        
+        # Cache the results for 5 minutes (300 seconds)
+        await set_cache(cache_key, response, ttl=300)
+        print(f"🔍 Redis Cache SET for articles search: {q}")
+        
         return response
     except Exception as e:
         print(f"❌ Articles search failed: {e}")
@@ -246,11 +236,13 @@ async def search_authors(
     """
     print(f"🔍 Searching authors: query='{q}', k={k}, page_index={page_index}, page_size={page_size}")
     try:
-        cache_key = f"authors|{q}|{k}|{page_index}|{page_size}"
-        cached = _cache_get(cache_key)
+        cache_key = f"search:authors:{q}:{k}:{page_index}:{page_size}"
+        cached = await get_cache(cache_key)
         if cached is not None:
-            print(f"🔁 Returning cached authors search page: {cache_key}")
+            print(f"👥 Redis Cache HIT for authors search: {q}")
             return cached
+        
+        print(f"👥 Redis Cache MISS for authors search: {q} - Loading from search service...")
 
         # Get search results from service layer
         search_service = get_search_service()
@@ -299,7 +291,11 @@ async def search_authors(
         }
 
         response = {"success": True, "data": docs, "results": docs, "pagination": mapped_pagination}
-        _cache_set(cache_key, response)
+        
+        # Cache the results for 5 minutes (300 seconds)
+        await set_cache(cache_key, response, ttl=300)
+        print(f"👥 Redis Cache SET for authors search: {q}")
+        
         return response
     except Exception as e:
         print(f"❌ Authors search failed: {e}")

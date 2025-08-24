@@ -6,9 +6,11 @@ import { useAuth } from '../context/AuthContext';
 import { articleApi } from '../api/articleApi';
 import { userApi } from '../api/userApi';
 import Hero from '../components/Hero';
-import FeatureGrid from '../components/FeatureGrid';
 import CTASection from '../components/CTASection';
 import StatsBar from '../components/StatsBar';
+import FeatureGrid from '../components/FeatureGrid';
+
+// Redis caching is now handled on the backend - no frontend cache needed
 
 const { Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -26,33 +28,37 @@ const Home = () => {
 	const [categories, setCategories] = useState([]);
 	const [featuredAuthors, setFeaturedAuthors] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [statsLoading, setStatsLoading] = useState(true);
+	const [categoriesLoading, setCategoriesLoading] = useState(true);
+	const [authorsLoading, setAuthorsLoading] = useState(true);
 
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
 				setLoading(true);
 				
-				// Use static homepage stats per requirements
-				// Fetch site-wide statistics from backend
-				try {
-					const statsResp = await articleApi.getStatistics();
-					if (statsResp && statsResp.success && statsResp.data) {
-						setStatistics({
-							articles: statsResp.data.articles ?? statsResp.data.total_articles ?? '0',
-							authors: statsResp.data.authors ?? '0',
-							total_views: statsResp.data.total_views ?? statsResp.data.total_views ?? '0',
-							bookmarks: statsResp.data.bookmarks ?? 0
-						});
-					}
-				} catch (e) {
-					console.warn('Failed to load statistics, using defaults', e);
+				// Launch all API calls concurrently - Redis caching handled on backend
+				const [statsResult, categoriesResult, authorsResult] = await Promise.allSettled([
+					articleApi.getStatistics().finally(() => setStatsLoading(false)),
+					articleApi.getCategories().finally(() => setCategoriesLoading(false)),
+					userApi.getAllUsers(1, 7).finally(() => setAuthorsLoading(false))
+				]);
+
+				// Handle statistics result
+				if (statsResult.status === 'fulfilled' && statsResult.value?.success && statsResult.value.data) {
+					setStatistics({
+						articles: statsResult.value.data.articles ?? statsResult.value.data.total_articles ?? '0',
+						authors: statsResult.value.data.authors ?? '0',
+						total_views: statsResult.value.data.total_views ?? '0',
+						bookmarks: statsResult.value.data.bookmarks ?? 0
+					});
+				} else if (statsResult.status === 'rejected') {
+					console.warn('Failed to load statistics:', statsResult.reason);
 				}
-				// Fetch categories (no counts shown)
-				const categoriesResponse = await articleApi.getCategories();
-				console.log('Categories response:', categoriesResponse);
-				if (categoriesResponse.success) {
-					// Transform categories to include colors for the Hero component
-					const transformedCategories = categoriesResponse.data.map((cat, index) => {
+
+				// Handle categories result
+				if (categoriesResult.status === 'fulfilled' && categoriesResult.value?.success) {
+					const transformedCategories = categoriesResult.value.data.map((cat, index) => {
 						const colors = [
 							'from-blue-500 to-indigo-600',
 							'from-purple-500 to-pink-600',
@@ -66,14 +72,19 @@ const Home = () => {
 							color: colors[index % colors.length]
 						};
 					});
-					console.log('Transformed categories:', transformedCategories);
+					console.log('Categories loaded:', transformedCategories.length);
 					setCategories(transformedCategories);
+				} else if (categoriesResult.status === 'rejected') {
+					console.warn('Failed to load categories:', categoriesResult.reason);
 				}
-				
-				// Load authors list using allowed endpoint
-				const authorsResponse = await userApi.getAllUsers(1, 7);
-				if (authorsResponse.success) {
-					setFeaturedAuthors((authorsResponse.data?.items || authorsResponse.data || []).slice(0, 7));
+
+				// Handle authors result
+				if (authorsResult.status === 'fulfilled' && authorsResult.value?.success) {
+					const authorsData = (authorsResult.value.data?.items || authorsResult.value.data || []).slice(0, 7);
+					setFeaturedAuthors(authorsData);
+					console.log('Authors loaded:', authorsData.length);
+				} else if (authorsResult.status === 'rejected') {
+					console.warn('Failed to load authors:', authorsResult.reason);
 				}
 			} catch (error) {
 				console.error('Error fetching home data:', error);
@@ -104,11 +115,12 @@ const Home = () => {
 					selectedCategory={selectedCategory}
 					onCategoryChange={handleCategoryChange}
 					categories={categories}
+					loading={categoriesLoading}
 				/>
 				
 				<FeatureGrid />
 				
-				<StatsBar totals={statistics} />
+				<StatsBar totals={statistics} loading={statsLoading} />
 				
 				{/* Featured Authors Section */}
 				{featuredAuthors.length > 0 && (

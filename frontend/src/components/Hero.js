@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, useInView, useAnimation } from 'framer-motion';
 
-const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryChange, categories = [] }) => {
+const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryChange, categories = [], loading = false }) => {
 	const ref = useRef(null);
 	const isInView = useInView(ref, { once: true });
 	const mainControls = useAnimation();
@@ -154,8 +154,17 @@ const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryCh
 					<p className="text-gray-600">Discover content that matches your interests</p>
 				</div>
 				<div className="flex flex-wrap justify-center gap-4">
-					{displayCategories.map((category, index) => (
-						<motion.button
+					{loading ? (
+						// Show loading skeleton for categories
+						Array.from({ length: 6 }).map((_, index) => (
+							<div
+								key={index}
+								className="animate-pulse rounded-2xl bg-gray-200 px-6 py-4 h-12 w-24"
+							/>
+						))
+					) : (
+						displayCategories.map((category, index) => (
+							<motion.button
 							key={category.name}
 							onClick={() => onCategoryChange?.(category.name)}
 							className={`group relative overflow-hidden rounded-2xl px-6 py-4 text-sm font-semibold text-white shadow-2xl transition-all duration-300 hover:scale-110 hover:shadow-3xl border border-white/20 ${
@@ -200,7 +209,8 @@ const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryCh
 							{/* Shine effect */}
 							<div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
 						</motion.button>
-					))}
+					))
+					)}
 				</div>
 			</motion.div>
 		</section>

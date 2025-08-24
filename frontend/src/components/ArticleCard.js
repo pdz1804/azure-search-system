@@ -49,16 +49,27 @@ const ArticleCard = ({
     }
   }, [user, article.id, statusLoaded]);
 
-  // Load user's reaction status from API
+  // Load user's reaction status from user data (no API call)
   const loadUserReactionStatus = async () => {
     try {
-      const response = await userApi.checkArticleReactionStatus(article.id);
-      if (response.success) {
-        const { reaction_type, is_bookmarked } = response.data;
-        setUserReaction(reaction_type || 'none');
-        setIsBookmarked(is_bookmarked || false);
-        setStatusLoaded(true);
-      }
+      // Get reaction status from user data instead of making API calls
+      const userLikedArticles = user?.liked_articles || [];
+      const userDislikedArticles = user?.disliked_articles || [];
+      const userBookmarkedArticles = user?.bookmarked_articles || [];
+      
+      const isLiked = userLikedArticles.includes(article.id);
+      const isDisliked = userDislikedArticles.includes(article.id);
+      const isBookmarked = userBookmarkedArticles.includes(article.id);
+      
+      setUserReaction(isLiked ? 'like' : isDisliked ? 'dislike' : 'none');
+      setIsBookmarked(isBookmarked);
+      setStatusLoaded(true);
+      
+      console.log(`Article ${article.id} status from user data:`, {
+        isLiked,
+        isDisliked,
+        isBookmarked
+      });
     } catch (error) {
       // Silent fail - user might not be logged in
       setStatusLoaded(true);
@@ -174,9 +185,9 @@ const ArticleCard = ({
 
   // Layout variants
   const layoutClasses = {
-    grid: 'rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden',
-    list: 'rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden flex',
-    featured: 'rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden'
+    grid: 'bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full flex flex-col',
+    list: 'bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-row',
+    featured: 'bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden'
   };
 
   // Featured layout for hero articles
@@ -189,16 +200,17 @@ const ArticleCard = ({
         >
         <div onClick={handleClick} className="block cursor-pointer">
           {/* Large Image */}
-          {article.image && (
-            <div className="aspect-[16/9] overflow-hidden">
-              <LazyLoadImage
-                src={article.image}
-                alt={article.title}
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                effect="opacity"
-              />
-            </div>
-          )}
+          <div className="aspect-[16/9] overflow-hidden">
+            <LazyLoadImage
+              src={article.image || '/blog_default.jpg'}
+              alt={article.title}
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+              effect="opacity"
+              onError={(e) => {
+                e.target.src = '/blog_default.jpg';
+              }}
+            />
+          </div>
           
           <div className="p-8">
             {/* Tags */}
@@ -401,16 +413,17 @@ const ArticleCard = ({
           </div>
           
           {/* Image */}
-          {article.image && (
-            <div className="w-48 flex-shrink-0">
-              <LazyLoadImage
-                src={article.image}
-                alt={article.title}
-                className="w-full h-full object-cover"
-                effect="opacity"
-              />
-            </div>
-          )}
+          <div className="w-48 h-32 flex-shrink-0">
+            <LazyLoadImage
+              src={article.image || '/blog_default.jpg'}
+              alt={article.title}
+              className="w-full h-full object-cover"
+              effect="opacity"
+              onError={(e) => {
+                e.target.src = '/blog_default.jpg';
+              }}
+            />
+          </div>
         </div>
         
         {/* Action Buttons */}
@@ -474,80 +487,85 @@ const ArticleCard = ({
   return (
     <motion.article
       whileHover={{ y: -4 }}
-      className={`${layoutClasses[layout]} ${className}`}
+      className={`${layoutClasses[layout]} ${className} h-full flex flex-col`}
     >
-      <div onClick={handleClick} className="block cursor-pointer">
+      <div onClick={handleClick} className="block cursor-pointer flex-1 flex flex-col">
         {/* Image */}
-        {article.image && (
-          <div className="aspect-video overflow-hidden">
-            <LazyLoadImage
-              src={article.image}
-              alt={article.title}
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-              effect="opacity"
-            />
-          </div>
-        )}
+        <div className="aspect-video overflow-hidden">
+          <LazyLoadImage
+            src={article.image || '/blog_default.jpg'}
+            alt={article.title}
+            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            effect="opacity"
+            onError={(e) => {
+              e.target.src = '/src/imgs/blog_default.jpg';
+            }}
+          />
+        </div>
         
-        <div className="p-6">
-          {/* Tags */}
-          {article.tags && article.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-3">
-              {article.tags.slice(0, 2).map((tag, index) => (
-                <span
-                  key={index}
-                  className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-                >
-                  {tag}
+        <div className="p-6 flex-1 flex flex-col">
+          <div className="flex-1">
+            {/* Tags */}
+            {article.tags && article.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-3">
+                {article.tags.slice(0, 2).map((tag, index) => (
+                  <span
+                    key={index}
+                    className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+            
+            {/* Title */}
+            <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-blue-600 transition-colors">
+              {article.title}
+            </h3>
+            
+            {/* Abstract */}
+            {(article.abstract || article.content) && (
+              <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                {truncateText(article.abstract || article.content, 150)}
+              </p>
+            )}
+          </div>
+          
+          {/* Author & Meta - Fixed at bottom */}
+          <div className="mt-auto">
+            {showAuthor && (
+              <div className="flex items-center space-x-3 mb-4" onClick={handleAuthorClick}>
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium cursor-pointer">
+                  {(article.author_name || article.author?.full_name)?.charAt(0).toUpperCase() || <UserIcon className="w-4 h-4" />}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600">
+                    {article.author_name || article.author?.full_name || 'Unknown Author'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {formatDistanceToNow(new Date(article.created_at), { addSuffix: true })}
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {/* Stats */}
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <div className="flex items-center space-x-3">
+                <span className="flex items-center">
+                  <ClockIcon className="w-3 h-3 mr-1" />
+                  {calculateReadingTime(article.content)} min
                 </span>
-              ))}
-            </div>
-          )}
-          
-          {/* Title */}
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-blue-600 transition-colors">
-            {article.title}
-          </h3>
-          
-          {/* Abstract */}
-          {(article.abstract || article.content) && (
-            <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-              {truncateText(article.abstract || article.content, 150)}
-            </p>
-          )}
-          
-          {/* Author & Meta */}
-          {showAuthor && (
-            <div className="flex items-center space-x-3 mb-4" onClick={handleAuthorClick}>
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium cursor-pointer">
-                {(article.author_name || article.author?.full_name)?.charAt(0).toUpperCase() || <UserIcon className="w-4 h-4" />}
+                <span className="flex items-center">
+                  <EyeIcon className="w-3 h-3 mr-1" />
+                  {formatNumber(article.views || 0)}
+                </span>
+                <span className="flex items-center">
+                  <HeartIcon className="w-3 h-3 mr-1" />
+                  {formatNumber(likesCount)}
+                </span>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600">
-                  {article.author_name || article.author?.full_name || 'Unknown Author'}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {formatDistanceToNow(new Date(article.created_at), { addSuffix: true })}
-                </p>
-              </div>
-            </div>
-          )}
-          
-          {/* Stats */}
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <div className="flex items-center space-x-3">
-              <span className="flex items-center">
-                <ClockIcon className="w-3 h-3 mr-1" />
-                {calculateReadingTime(article.content)} min
-              </span>
-              <span className="flex items-center">
-                <EyeIcon className="w-3 h-3 mr-1" />
-                {formatNumber(article.views || 0)}
-              </span>
-              <span className="flex items-center">
-                <HeartIcon className="w-3 h-3 mr-1" />
-                {formatNumber(likesCount)}
-              </span>
             </div>
           </div>
         </div>

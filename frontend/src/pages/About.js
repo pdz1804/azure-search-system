@@ -9,6 +9,11 @@ import {
 	HeartIcon
 } from '@heroicons/react/24/outline';
 
+// Import local team images
+import PDZ01 from '../imgs/PDZ_01.jpg';
+import PDZ02 from '../imgs/PDZ_02.jpg';
+import PDZ03 from '../imgs/PDZ_03.jpg';
+
 const values = [
 	{
 		title: 'Quality over quantity',
@@ -41,19 +46,19 @@ const team = [
 	{
 		name: 'Quang Phu Nguyen',
 		role: 'Lead Developer',
-		avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+		avatar: PDZ01,
 		bio: 'Passionate about creating beautiful, functional web experiences.'
 	},
 	{
 		name: 'Development Team',
 		role: 'Full Stack Engineers',
-		avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+		avatar: PDZ02,
 		bio: 'Building the future of content creation and discovery.'
 	},
 	{
 		name: 'Design Team',
 		role: 'UX/UI Designers',
-		avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+		avatar: PDZ03,
 		bio: 'Crafting intuitive and delightful user experiences.'
 	}
 ];
