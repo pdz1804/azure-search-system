@@ -1,29 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { message } from 'antd';
 import { 
-  Layout, 
-  Typography, 
-  Row, 
-  Col, 
-  Card, 
-  Statistic,
-  Spin,
-  message,
-  Progress
-} from 'antd';
+  DocumentTextIcon,
+  EyeIcon,
+  HeartIcon,
+  UserIcon,
+  ChartBarIcon,
+  PencilIcon,
+  BookOpenIcon
+} from '@heroicons/react/24/outline';
 import { 
-  FileTextOutlined,
-  EyeOutlined,
-  HeartOutlined,
-  UserOutlined,
-  TrophyOutlined,
-  RiseOutlined
-} from '@ant-design/icons';
+  DocumentTextIcon as DocumentSolid,
+  EyeIcon as EyeSolid,
+  HeartIcon as HeartSolid,
+  UserIcon as UserSolid
+} from '@heroicons/react/24/solid';
 import { articleApi } from '../api/articleApi';
 import { useAuth } from '../context/AuthContext';
 import { formatNumber } from '../utils/helpers';
-
-const { Content } = Layout;
-const { Title, Text } = Typography;
+import { motion } from 'framer-motion';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -72,13 +67,12 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <Layout style={{ minHeight: '100vh' }}>
-        <Content style={{ padding: '24px' }}>
-          <div style={{ textAlign: 'center', paddingTop: '50px' }}>
-            <Spin size="large" />
-          </div>
-        </Content>
-      </Layout>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading dashboard...</p>
+        </div>
+      </div>
     );
   }
 
@@ -87,156 +81,181 @@ const Dashboard = () => {
     ? Math.round((stats.published_articles / stats.total_articles) * 100) 
     : 0;
 
+  const statCards = [
+    {
+      title: 'Total Articles',
+      value: stats.total_articles || 0,
+      icon: DocumentSolid,
+      color: 'from-blue-500 to-indigo-600',
+      bgColor: 'from-blue-50 to-indigo-50'
+    },
+    {
+      title: 'Published',
+      value: stats.published_articles || 0,
+      icon: BookOpenIcon,
+      color: 'from-green-500 to-emerald-600',
+      bgColor: 'from-green-50 to-emerald-50'
+    },
+    {
+      title: 'Total Views',
+      value: formatNumber(stats.total_views || 0),
+      icon: EyeSolid,
+      color: 'from-purple-500 to-indigo-600',
+      bgColor: 'from-purple-50 to-indigo-50'
+    },
+    {
+      title: 'Total Likes',
+      value: formatNumber(stats.total_likes || 0),
+      icon: HeartSolid,
+      color: 'from-pink-500 to-red-500',
+      bgColor: 'from-pink-50 to-red-50'
+    }
+  ];
+
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Content style={{ padding: '24px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <Title level={1} style={{ 
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              marginBottom: 16
-            }}>
-              Dashboard
-            </Title>
-            <Text style={{ fontSize: 18, color: '#666' }}>
-              {user?.role === 'admin' ? 'Global system overview and analytics' : 'Your personal writing statistics'}
-            </Text>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
+      <div className="max-w-7xl mx-auto px-6 py-12">
+        {/* Header */}
+        <motion.div 
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+            Dashboard
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            {user?.role === 'admin' ? 'Global system overview and analytics' : 'Your personal writing statistics and achievements'}
+          </p>
+        </motion.div>
 
-          <Row gutter={[24, 24]}>
-            <Col xs={24} sm={12} lg={6}>
-              <Card style={{ 
-                borderRadius: 16,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                border: 'none',
-                textAlign: 'center'
-              }}>
-                <Statistic
-                  title="Total Articles"
-                  value={stats.total_articles || 0}
-                  prefix={<FileTextOutlined style={{ color: '#1890ff' }} />}
-                  valueStyle={{ color: '#1a1a1a', fontSize: 24 }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card style={{ 
-                borderRadius: 16,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                border: 'none',
-                textAlign: 'center'
-              }}>
-                <Statistic
-                  title="Published"
-                  value={stats.published_articles || 0}
-                  prefix={<FileTextOutlined style={{ color: '#52c41a' }} />}
-                  valueStyle={{ color: '#1a1a1a', fontSize: 24 }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card style={{ 
-                borderRadius: 16,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                border: 'none',
-                textAlign: 'center'
-              }}>
-                <Statistic
-                  title="Total Views"
-                  value={formatNumber(stats.total_views || 0)}
-                  prefix={<EyeOutlined style={{ color: '#722ed1' }} />}
-                  valueStyle={{ color: '#1a1a1a', fontSize: 24 }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card style={{ 
-                borderRadius: 16,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                border: 'none',
-                textAlign: 'center'
-              }}>
-                <Statistic
-                  title="Total Likes"
-                  value={formatNumber(stats.total_likes || 0)}
-                  prefix={<HeartOutlined style={{ color: '#ff4d4f' }} />}
-                  valueStyle={{ color: '#1a1a1a', fontSize: 24 }}
-                />
-              </Card>
-            </Col>
-          </Row>
-
-          <Row gutter={[16, 16]}>
-            {isAdmin && (
-              <Col xs={24} md={12}>
-                <Card title="Overview Statistics">
-                  <Row gutter={[16, 16]}>
-                    <Col span={12}>
-                      <Statistic
-                        title="Total Authors"
-                        value={stats?.authors || 0}
-                        prefix={<UserOutlined />}
-                      />
-                    </Col>
-                    <Col span={12}>
-                      <Statistic
-                        title="Drafts"
-                        value={stats?.drafts || stats?.draft_articles || 0}
-                        prefix={<FileTextOutlined />}
-                      />
-                    </Col>
-                  </Row>
-                </Card>
-              </Col>
-            )}
-            
-            <Col xs={24} md={isAdmin ? 12 : 24}>
-              <Card title="Publication Rate">
-                <Progress
-                  type="circle"
-                  percent={publishRate}
-                  format={percent => `${percent}%`}
-                  size={120}
-                  strokeColor={{
-                    '0%': '#108ee9',
-                    '100%': '#87d068',
-                  }}
-                />
-                <div style={{ textAlign: 'center', marginTop: 16 }}>
-                  <div>
-                    {stats?.published_articles || stats?.published || 0} / {stats?.total_articles || stats?.total || 0} articles
+        {/* Stats Cards */}
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          {statCards.map((card, index) => {
+            const IconComponent = card.icon;
+            return (
+              <motion.div
+                key={card.title}
+                className={`bg-gradient-to-br ${card.bgColor} rounded-2xl shadow-lg border border-white/50 p-8 hover:shadow-xl transition-all duration-300`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 * index }}
+                whileHover={{ scale: 1.02 }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${card.color} flex items-center justify-center shadow-lg`}>
+                    <IconComponent className="w-6 h-6 text-white" />
                   </div>
                 </div>
-              </Card>
-            </Col>
+                <h3 className="text-gray-600 text-sm font-medium mb-2">{card.title}</h3>
+                <p className="text-3xl font-bold text-gray-900">{card.value}</p>
+              </motion.div>
+            );
+          })}
+        </motion.div>
 
-            {!isAdmin && (
-              <Col xs={24} md={12}>
-                <Card title="Performance">
-                  <Statistic
-                    title="Average Views/Article"
-                    value={stats?.avg_views || 0}
-                    prefix={<EyeOutlined />}
-                    suffix="views"
+        {/* Charts and Analytics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Publication Rate */}
+          <motion.div
+            className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
+            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+              <ChartBarIcon className="w-6 h-6 mr-3 text-indigo-600" />
+              Publication Rate
+            </h3>
+            <div className="flex items-center justify-center">
+              <div className="relative w-32 h-32">
+                <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="50"
+                    fill="none"
+                    stroke="#e5e7eb"
+                    strokeWidth="8"
                   />
-                  <div style={{ marginTop: 16 }}>
-                    <Statistic
-                      title="Engagement Rate"
-                      value={stats?.total_views > 0 ? Math.round((stats.total_likes / stats.total_views) * 100 * 100) / 100 : 0}
-                      suffix="%"
-                      precision={2}
-                      prefix={<HeartOutlined />}
-                    />
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="50"
+                    fill="none"
+                    stroke="url(#gradient)"
+                    strokeWidth="8"
+                    strokeDasharray={`${publishRate * 3.14} 314`}
+                    strokeLinecap="round"
+                  />
+                  <defs>
+                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#10b981" />
+                      <stop offset="100%" stopColor="#059669" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-gray-900">{publishRate}%</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-center mt-6">
+              <p className="text-gray-600">
+                <span className="font-semibold text-green-600">{stats?.published_articles || 0}</span> published out of{' '}
+                <span className="font-semibold text-gray-900">{stats?.total_articles || 0}</span> total articles
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Performance Metrics */}
+          <motion.div
+            className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
+            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+              <PencilIcon className="w-6 h-6 mr-3 text-purple-600" />
+              Performance
+            </h3>
+            <div className="space-y-6">
+              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-gray-600 font-medium">Avg Views/Article</span>
+                  <EyeIcon className="w-5 h-5 text-purple-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">{stats?.avg_views || 0}</p>
+              </div>
+              <div className="bg-gradient-to-r from-pink-50 to-red-50 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-gray-600 font-medium">Engagement Rate</span>
+                  <HeartIcon className="w-5 h-5 text-pink-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.total_views > 0 ? ((stats.total_likes / stats.total_views) * 100).toFixed(2) : 0}%
+                </p>
+              </div>
+              {isAdmin && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-600 font-medium">Draft Articles</span>
+                    <DocumentTextIcon className="w-5 h-5 text-blue-600" />
                   </div>
-                </Card>
-              </Col>
-            )}
-          </Row>
+                  <p className="text-2xl font-bold text-gray-900">{stats?.draft_articles || 0}</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
         </div>
-      </Content>
-    </Layout>
+      </div>
+    </div>
   );
 };
 

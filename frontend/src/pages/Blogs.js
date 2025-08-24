@@ -1,28 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Typography, Tabs, Card, Avatar, Spin, Button, Tag, Space, Row, Col, Pagination, Input, Select } from 'antd';
 import { 
-	FileTextOutlined, 
-	UserOutlined, 
-	EyeOutlined, 
-	HeartOutlined, 
-	BookOutlined,
-	ClockCircleOutlined,
-	MessageOutlined,
-	EditOutlined,
-	DeleteOutlined
-} from '@ant-design/icons';
+	DocumentTextIcon, 
+	UserIcon, 
+	EyeIcon, 
+	HeartIcon, 
+	BookOpenIcon,
+	ClockIcon,
+	ChatBubbleLeftIcon,
+	PencilIcon,
+	TrashIcon,
+	FunnelIcon,
+	MagnifyingGlassIcon
+} from '@heroicons/react/24/outline';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ArticleList from '../components/ArticleList';
 import { userApi } from '../api/userApi';
 import { articleApi } from '../api/articleApi';
 import { formatNumber, formatDate } from '../utils/helpers';
-
-const { Content } = Layout;
-const { Title, Paragraph, Text } = Typography;
-const { TabPane } = Tabs;
-const { Search } = Input;
-const { Option } = Select;
 
 const Blogs = () => {
 	const navigate = useNavigate();
@@ -49,8 +44,9 @@ const Blogs = () => {
 	const [authorPage, setAuthorPage] = useState(qAuthorPage);
 	const authorPageSize = 10;
 
-	// Sync URL on changes
+	// Sync URL on changes - but avoid triggering unnecessary navigation
 	useEffect(() => {
+		const currentParams = new URLSearchParams(location.search);
 		const next = new URLSearchParams();
 		next.set('tab', activeTab);
 		next.set('category', selectedCategory || 'all');
@@ -58,8 +54,12 @@ const Blogs = () => {
 		if (articleSearch) next.set('search', articleSearch); else next.delete('search');
 		next.set('page', String(articlePage || 1));
 		next.set('apage', String(authorPage || 1));
-		navigate({ pathname: '/blogs', search: `?${next.toString()}` }, { replace: true });
-	}, [activeTab, selectedCategory, articleSortBy, articleSearch, articlePage, authorPage]);
+		
+		// Only navigate if URL actually changed to prevent pagination reset loops
+		if (currentParams.toString() !== next.toString()) {
+			navigate({ pathname: '/blogs', search: `?${next.toString()}` }, { replace: true });
+		}
+	}, [activeTab, selectedCategory, articleSortBy, articleSearch, articlePage, authorPage, location.search]);
 
 	// Load categories (top 10) from backend with graceful fallback
 	useEffect(() => {
@@ -114,90 +114,208 @@ const Blogs = () => {
 	const handleTabChange = (key) => { setActiveTab(key); };
 
 	const renderAuthorCard = (author) => (
-		<Card key={author.id} className="mb-6 border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" bodyStyle={{ padding: '24px' }} onClick={() => navigate(`/profile/${author.id}`)}>
-			<Row align="middle" gutter={24}>
-				<Col>
-					<Avatar size={80} src={author.avatar_url} className="border-4 border-indigo-100 shadow-md">{author.full_name?.[0] || <UserOutlined />}</Avatar>
-				</Col>
-				<Col flex="auto">
-					<Space direction="vertical" size="small" style={{ width: '100%' }}>
-						<Title level={3} className="mb-2 text-surface cursor-pointer hover:link-accent transition-colors">{author.full_name || 'Unknown Author'}</Title>
-						<Text type="secondary" className="block mb-3 text-base">{author.email}</Text>
-					</Space>
-				</Col>
-				<Col>
-					<Button type="primary" size="large" className="rounded-full px-8 py-2 h-12 text-base font-medium shadow-lg hover:shadow-xl transition-all duration-300" onClick={(e) => { e.stopPropagation(); navigate(`/profile/${author.id}`); }}>View Profile</Button>
-				</Col>
-			</Row>
-		</Card>
+		<div key={author.id} className="mb-6 bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer p-6" onClick={() => navigate(`/profile/${author.id}`)}>
+			<div className="flex items-center space-x-6">
+				<div className="relative">
+					{author.avatar_url ? (
+						<img 
+							src={author.avatar_url} 
+							alt={author.full_name || 'Author'} 
+							className="w-20 h-20 rounded-full border-4 border-indigo-100 shadow-md object-cover" 
+						/>
+					) : (
+						<div className="w-20 h-20 rounded-full border-4 border-indigo-100 shadow-md bg-indigo-100 flex items-center justify-center">
+							<UserIcon className="w-8 h-8 text-indigo-600" />
+						</div>
+					)}
+				</div>
+				<div className="flex-1">
+					<h3 className="text-xl font-semibold text-gray-900 mb-2 cursor-pointer hover:text-indigo-600 transition-colors">{author.full_name || 'Unknown Author'}</h3>
+					<p className="text-gray-600 text-base">{author.email}</p>
+				</div>
+				<div>
+					<button 
+						type="button" 
+						className="bg-indigo-600 text-white px-8 py-3 rounded-full text-base font-medium shadow-lg hover:shadow-xl hover:bg-indigo-700 transition-all duration-300" 
+						onClick={(e) => { e.stopPropagation(); navigate(`/profile/${author.id}`); }}
+					>
+						View Profile
+					</button>
+				</div>
+			</div>
+		</div>
 	);
 
 	return (
-		<Layout className="min-h-screen" style={{ background: 'var(--bg)' }}>
-			<Content className="py-8">
+		<div className="min-h-screen bg-gray-50">
+			<div className="py-8">
 				<div className="max-w-7xl mx-auto px-6">
 					<div className="text-center mb-12">
-						<Title level={1} className="text-5xl font-extrabold text-surface mb-4"><span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">Blogs & Articles</span></Title>
-						<Paragraph className="text-xl text-muted max-w-3xl mx-auto">Discover amazing content from our community of writers and creators</Paragraph>
+						<h1 className="text-5xl font-extrabold text-gray-900 mb-4">
+							<span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">Blogs & Articles</span>
+						</h1>
+						<p className="text-xl text-gray-600 max-w-3xl mx-auto">Discover amazing content from our community of writers and creators</p>
 					</div>
 
-					<Tabs activeKey={activeTab} onChange={handleTabChange} size="large" className="bg-surface rounded-2xl shadow-xl p-6 border-surface" tabBarStyle={{ marginBottom: 24 }} items={[
-						{
-							key: 'articles',
-							label: (<span className="text-lg font-medium"><FileTextOutlined className="mr-2" />News Articles</span>),
-							children: (
-								<div>
-									<div className="mb-6 flex flex-wrap gap-3 items-center justify-between">
-										<div className="flex flex-wrap gap-3">
-											{categories.map((category) => (
-												<Button key={category.key} type={selectedCategory === category.key ? 'primary' : 'default'} className={`rounded-full px-6 py-2 h-10 font-medium transition-all duration-300 ${selectedCategory === category.key ? 'bg-gradient-to-r from-indigo-600 to-purple-600 border-0 shadow-lg' : 'hover:shadow-md'}`} onClick={() => { setSelectedCategory(category.key); setArticlePage(1); }}>
-													{category.label}
-												</Button>
-											))}
-										</div>
-										<div className="flex items-center gap-3">
-											<Select value={articleSortBy} onChange={(v) => { setArticleSortBy(v); setArticlePage(1); }} style={{ width: 180 }}>
-												<Option value="updated_at">Sort by: Updated</Option>
-												<Option value="created_at">Sort by: Created</Option>
-											</Select>
-											<Search placeholder="Search articles..." allowClear enterButton defaultValue={articleSearch} onSearch={(v) => { setArticleSearch(v); setArticlePage(1); }} style={{ maxWidth: 320 }} />
+					{/* Tab Navigation */}
+					<div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
+						<div className="flex space-x-8 border-b border-gray-200 mb-6">
+							<button
+								type="button"
+								className={`pb-4 px-2 text-lg font-medium transition-colors duration-200 border-b-2 ${
+									activeTab === 'articles' 
+										? 'text-indigo-600 border-indigo-600' 
+										: 'text-gray-500 border-transparent hover:text-gray-700'
+								}`}
+								onClick={() => handleTabChange('articles')}
+							>
+								<DocumentTextIcon className="w-5 h-5 inline-block mr-2" />
+								News Articles
+							</button>
+							<button
+								type="button"
+								className={`pb-4 px-2 text-lg font-medium transition-colors duration-200 border-b-2 ${
+									activeTab === 'authors' 
+										? 'text-indigo-600 border-indigo-600' 
+										: 'text-gray-500 border-transparent hover:text-gray-700'
+								}`}
+								onClick={() => handleTabChange('authors')}
+							>
+								<UserIcon className="w-5 h-5 inline-block mr-2" />
+								Hot Authors
+							</button>
+						</div>
+
+						{/* Articles Tab Content */}
+						{activeTab === 'articles' && (
+							<div>
+								<div className="mb-6 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+									<div className="flex flex-wrap gap-3">
+										{categories.map((category) => (
+											<button
+												key={category.key}
+												type="button"
+												className={`rounded-full px-6 py-2 font-medium transition-all duration-300 ${
+													selectedCategory === category.key 
+														? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' 
+														: 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md'
+												}`}
+												onClick={() => { setSelectedCategory(category.key); setArticlePage(1); }}
+											>
+												{category.label}
+											</button>
+										))}
+									</div>
+									<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+										<select
+											value={articleSortBy}
+											onChange={(e) => { setArticleSortBy(e.target.value); setArticlePage(1); }}
+											className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none bg-white min-w-[180px]"
+										>
+											<option value="updated_at">Sort by: Updated</option>
+											<option value="created_at">Sort by: Created</option>
+										</select>
+										<div className="relative max-w-xs w-full">
+											<input
+												type="text"
+												placeholder="Search articles..."
+												defaultValue={articleSearch}
+												onKeyDown={(e) => {
+													if (e.key === 'Enter') {
+														setArticleSearch(e.target.value);
+														setArticlePage(1);
+													}
+												}}
+												className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+											/>
+											<MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
 										</div>
 									</div>
-									<ArticleList showFilters={false} category={selectedCategory} sortBy={articleSortBy} searchQuery={articleSearch} currentPage={articlePage} onPageChange={setArticlePage} showTopPager loadAll />
 								</div>
-							)
-						},
-						{
-							key: 'authors',
-							label: (<span className="text-lg font-medium"><UserOutlined className="mr-2" />Hot Authors</span>),
-							children: (
-								<div>
-									<div className="mb-6 flex justify-end">
-										<Search placeholder="Search authors..." allowClear enterButton onSearch={async (val) => { if (!val) { loadAuthors(); return; } try { const res = await userApi.searchUsersAI({ q: val, limit: 100, page: 1 }); const list = res.results || res.data || []; setAuthors(list); setAuthorPage(1); } catch {} }} style={{ maxWidth: 320 }} />
+								<ArticleList 
+									showFilters={false} 
+									category={selectedCategory} 
+									sortBy={articleSortBy} 
+									searchQuery={articleSearch} 
+									currentPage={articlePage} 
+									onPageChange={setArticlePage} 
+									showTopPager 
+								/>
+							</div>
+						)}
+
+						{/* Authors Tab Content */}
+						{activeTab === 'authors' && (
+							<div>
+								<div className="mb-6 flex justify-end">
+									<div className="relative max-w-xs w-full">
+										<input
+											type="text"
+											placeholder="Search authors..."
+											onKeyDown={async (e) => {
+												if (e.key === 'Enter') {
+													const val = e.target.value;
+													if (!val) {
+														loadAuthors();
+														return;
+													}
+													try {
+														const res = await userApi.searchUsersAI({ q: val, limit: 100, page: 1 });
+														const list = res.results || res.data || [];
+														setAuthors(list);
+														setAuthorPage(1);
+													} catch {}
+												}
+											}}
+											className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+										/>
+										<MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
 									</div>
-									{authorsLoading ? (
-										<div className="text-center py-16"><Spin size="large" /></div>
-									) : authors.length > 0 ? (
-										<div>
-											{authors
-												.slice()
-												.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||''))
-												.slice((authorPage - 1) * authorPageSize, authorPage * authorPageSize)
-												.map(renderAuthorCard)}
-											<div className="mt-6 flex justify-center">
-												<Pagination current={authorPage} pageSize={authorPageSize} total={authors.length} showSizeChanger={false} onChange={setAuthorPage} />
+								</div>
+								{authorsLoading ? (
+									<div className="text-center py-16">
+										<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+									</div>
+								) : authors.length > 0 ? (
+									<div>
+										{authors
+											.slice()
+											.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||''))
+											.slice((authorPage - 1) * authorPageSize, authorPage * authorPageSize)
+											.map(renderAuthorCard)}
+										<div className="mt-6 flex justify-center">
+											{/* Simple pagination */}
+											<div className="flex space-x-2">
+												{Array.from({ length: Math.ceil(authors.length / authorPageSize) }, (_, i) => i + 1).map(page => (
+													<button
+														key={page}
+														type="button"
+														className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+															authorPage === page
+																? 'bg-indigo-600 text-white'
+																: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+														}`}
+														onClick={() => setAuthorPage(page)}
+													>
+														{page}
+													</button>
+												))}
 											</div>
 										</div>
-									) : (
-										<div className="text-center py-16"><UserOutlined className="text-6xl text-muted mb-4" /><Title level={3} className="text-muted mb-2">No Authors Found</Title><Text className="text-muted">We're working on bringing you amazing authors soon!</Text></div>
-									)}
-								</div>
-							)
-						}
-					]} />
+									</div>
+								) : (
+									<div className="text-center py-16">
+										<UserIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+										<h3 className="text-xl font-semibold text-gray-600 mb-2">No Authors Found</h3>
+										<p className="text-gray-500">We're working on bringing you amazing authors soon!</p>
+									</div>
+								)}
+							</div>
+						)}
+					</div>
 				</div>
-			</Content>
-		</Layout>
+			</div>
+		</div>
 	);
 };
 

@@ -210,7 +210,7 @@ const Search = () => {
         <Col>
           <Button type="primary">
             <Link to={`/profile/${user.id || user._id}`}>
-              Xem hồ sơ
+              View Profile
             </Link>
           </Button>
         </Col>
@@ -224,9 +224,9 @@ const Search = () => {
         <Content style={{ padding: '24px' }}>
           <div style={{ maxWidth: 800, margin: '0 auto', textAlign: 'center', paddingTop: 50 }}>
             <SearchOutlined style={{ fontSize: 64, color: '#ccc', marginBottom: 16 }} />
-            <Title level={3}>Tìm kiếm bài viết và người dùng</Title>
+            <Title level={3}>Search Articles and Users</Title>
             <Text type="secondary">
-              Sử dụng thanh tìm kiếm ở trên để tìm kiếm bài viết và người dùng
+              Use the search bar above to search for articles and users
             </Text>
           </div>
         </Content>
@@ -240,11 +240,11 @@ const Search = () => {
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
           <div style={{ marginBottom: 24 }}>
             <Title level={2}>
-              Kết quả tìm kiếm cho "{query}"
+              Search results for "{query}"
             </Title>
             {searchType === 'authors' && (
               <Text type="secondary" style={{ fontSize: 16 }}>
-                Tìm kiếm tác giả với AI
+                AI-powered author search
               </Text>
             )}
           </div>
@@ -258,7 +258,7 @@ const Search = () => {
                 label: (
                   <span>
                     <FileTextOutlined />
-                    Bài viết
+                    Articles
                   </span>
                 ),
                 children: (
@@ -267,6 +267,12 @@ const Search = () => {
                       <div style={{ textAlign: 'center', padding: '50px' }}>
                         <Spin size="large" />
                       </div>
+                    ) : searchType === 'authors' ? (
+                      // Don't show articles for author-specific searches
+                      <Empty 
+                        description="Switch to 'Users' tab to see author search results"
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      />
                     ) : (
                       // Let ArticleList handle fetching, pagination and empty state
                       <ArticleList 
@@ -282,7 +288,7 @@ const Search = () => {
                 label: (
                   <span>
                     <UserOutlined />
-                    Người dùng ({users.length})
+                    Users ({users.length})
                   </span>
                 ),
                 children: (
@@ -299,8 +305,8 @@ const Search = () => {
                       <Empty 
                         description={
                           searchType === 'authors' 
-                            ? "Không tìm thấy tác giả nào với tên 'Chuonggg'"
-                            : "Không tìm thấy người dùng nào"
+                            ? "No authors found matching the search"
+                            : "No users found"
                         }
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
                       />

@@ -142,11 +142,27 @@ export const userApi = {
   getBookmarkedArticles: async () => {
     try {
       const response = await apiClient.get('/users/bookmarks');
-      return { success: true, data: response.data };
+      console.log('Raw bookmarks API response:', response.data);
+      
+      // Handle different possible response structures
+      if (response.data?.success && response.data?.data) {
+        // If backend returns { success: true, data: [...articles] }
+        return { success: true, data: response.data.data };
+      } else if (Array.isArray(response.data)) {
+        // If backend returns articles array directly
+        return { success: true, data: response.data };
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        // If backend returns { data: [...articles] }
+        return { success: true, data: response.data.data };
+      } else {
+        // Fallback to raw response data
+        return { success: true, data: response.data || [] };
+      }
     } catch (error) {
+      console.error('Bookmarks API error:', error);
       return {
         success: false,
-        error: error.response?.data?.detail || 'Failed to load bookmarks'
+        error: error.response?.data?.detail || error.response?.data?.message || 'Failed to load bookmarks'
       };
     }
   },

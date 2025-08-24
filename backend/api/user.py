@@ -7,7 +7,7 @@ from backend.services import user_service
 from backend.repositories import user_repo as user_repository
 from backend.repositories import article_repo
 from backend.utils import get_current_user
-from backend.services.search_service import search_service
+from backend.services.cache_service import get_cache, set_cache
 
 users = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -129,6 +129,14 @@ async def get_all_users(
     featured: bool = Query(False, description="Get only featured users")
 ):
     """Get all users with pagination and optional featured filter."""
+    # Check Redis cache first
+    cache_key = f"homepage:authors:page_{page}_limit_{limit}_featured_{featured}"
+    cached_users = await get_cache(cache_key)
+    if cached_users:
+        print("👥 Redis Cache HIT for authors")
+        return cached_users
+    
+    print("👥 Redis Cache MISS for authors - Loading from DB...")
     try:
         users_data = await user_service.list_users()
         
@@ -155,7 +163,7 @@ async def get_all_users(
         end_idx = start_idx + limit
         paginated_users = users_data[start_idx:end_idx]
         
-        return {
+        result = {
             "success": True,
             "data": paginated_users,
             "pagination": {
@@ -164,6 +172,12 @@ async def get_all_users(
                 "total": total
             }
         }
+        
+        # Cache the results for 3 minutes (180 seconds)
+        await set_cache(cache_key, result, ttl=180)
+        print("👥 Redis Cache SET for authors")
+        
+        return result
     except Exception as e:
         print(f"Error fetching users: {e}")
         return JSONResponse(status_code=500, content={

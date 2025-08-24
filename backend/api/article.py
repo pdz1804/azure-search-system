@@ -12,6 +12,7 @@ from backend.services.article_service import (
     list_articles, update_article, 
     get_articles_by_author, get_popular_articles
 )
+from backend.services.cache_service import get_cache, set_cache, CACHE_TTL
 from backend.services.search_service import search_service
 from backend.database.cosmos import get_articles_container
 
@@ -85,7 +86,7 @@ async def create(
     return {"success": True, "data": art}
 
 @articles.get("/")
-async def list_all(
+async def get_articles(
     page: Optional[int] = Query(None, alias="page[page]"),
     page_size: Optional[int] = Query(None, alias="page[page_size]"),
     q: Optional[str] = Query(None, alias="page[q]"),
@@ -94,6 +95,14 @@ async def list_all(
     limit: Optional[int] = Query(10)
 ):
     """Get articles with pagination and filtering."""
+    # Check Redis cache first
+    cache_key = f"articles:list:page_{page or 1}_size_{page_size or limit or 20}_status_{status or 'published'}_sort_{sort_by or 'created_at'}"
+    cached_articles = await get_cache(cache_key)
+    if cached_articles:
+        print("📚 Redis Cache HIT for articles list")
+        return cached_articles
+    
+    print("📚 Redis Cache MISS for articles list - Loading from DB...")
     try:
         # Use provided parameters or defaults
         current_page = page or 1
@@ -109,7 +118,7 @@ async def list_all(
         total_pages = (total_items + current_page_size - 1) // current_page_size  # Ceiling division
         
         # Return in expected format
-        return {
+        result = {
             "success": True,
             "data": articles_data,
             "pagination": {
@@ -118,6 +127,12 @@ async def list_all(
                 "total": total_pages  # Changed to total pages
             }
         }
+        
+        # Cache the results for 3 minutes (180 seconds)
+        await set_cache(cache_key, result, ttl=180)
+        print("📚 Redis Cache SET for articles list")
+        
+        return result
     except Exception as e:
         print(f"Error fetching articles: {e}")
         return JSONResponse(status_code=500, content={
@@ -150,6 +165,14 @@ async def home_popular_articles(page: int = 1, page_size: int = 10):
 @articles.get("/stats")
 async def get_statistics():
     """Get statistics for articles, authors, views, and bookmarks."""
+    # Check Redis cache first
+    cache_key = "homepage:statistics"
+    cached_stats = await get_cache(cache_key)
+    if cached_stats:
+        print("📊 Redis Cache HIT for statistics")
+        return {"success": True, "data": cached_stats}
+    
+    print("📊 Redis Cache MISS for statistics - Loading from DB...")
     try:
         # Try to get data from Cosmos DB first
         try:
@@ -207,14 +230,20 @@ async def get_statistics():
         # This is a simplified version - in a real app you'd count actual bookmarks
         total_bookmarks = 0  # Placeholder for now
         
+        stats_data = {
+            "articles": total_articles,
+            "authors": total_authors,
+            "total_views": total_views,
+            "bookmarks": total_bookmarks
+        }
+        
+        # Cache the results for 3 minutes (180 seconds)
+        await set_cache(cache_key, stats_data, ttl=180)
+        print("📊 Redis Cache SET for statistics")
+        
         return {
             "success": True,
-            "data": {
-                "articles": total_articles,
-                "authors": total_authors,
-                "total_views": total_views,
-                "bookmarks": total_bookmarks
-            }
+            "data": stats_data
         }
     except Exception as e:
         print(f"Error fetching statistics: {e}")
@@ -232,6 +261,14 @@ async def get_statistics():
 @articles.get("/categories")
 async def get_categories():
     """Get all available categories and their article counts."""
+    # Check Redis cache first
+    cache_key = "homepage:categories"
+    cached_categories = await get_cache(cache_key)
+    if cached_categories:
+        print("🏷️ Redis Cache HIT for categories")
+        return {"success": True, "data": cached_categories}
+    
+    print("🏷️ Redis Cache MISS for categories - Loading from DB...")
     try:
         # Try to get data from Cosmos DB first
         try:
@@ -306,6 +343,10 @@ async def get_categories():
                 {"name": "Health", "count": 6},
                 {"name": "Lifestyle", "count": 5}
             ]
+        
+        # Cache the results for 3 minutes (180 seconds)
+        await set_cache(cache_key, categories_result, ttl=180)
+        print("🏷️ Redis Cache SET for categories")
         
         return {
             "success": True,
@@ -492,6 +533,14 @@ async def remove(article_id: str, current_user: dict = Depends(get_current_user)
 
 @articles.get("/author/{author_id}")
 async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20):
+    # Check Redis cache first
+    cache_key = f"articles:author:{author_id}:page_{page}_size_{page_size}"
+    cached_articles = await get_cache(cache_key)
+    if cached_articles:
+        print(f"✍️ Redis Cache HIT for author {author_id} articles")
+        return cached_articles
+    
+    print(f"✍️ Redis Cache MISS for author {author_id} articles - Loading from DB...")
     articles_list = await get_articles_by_author(author_id, page - 1, page_size)
     
     # Calculate total pages for this author
@@ -499,7 +548,7 @@ async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20)
     total_items = await get_total_articles_count_by_author(author_id)
     total_pages = (total_items + page_size - 1) // page_size
     
-    return {
+    result = {
         "success": True,
         "data": articles_list,
         "pagination": {
@@ -508,3 +557,9 @@ async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20)
             "total": total_pages  # Changed to total pages
         }
     }
+    
+    # Cache the results for 3 minutes (180 seconds)
+    await set_cache(cache_key, result, ttl=180)
+    print(f"✍️ Redis Cache SET for author {author_id} articles")
+    
+    return result
