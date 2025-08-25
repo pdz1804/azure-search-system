@@ -56,6 +56,12 @@ app.include_router(users)
 app.include_router(search)
 app.include_router(cache)
 
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Docker and load balancers."""
+    return {"status": "healthy", "message": "Backend is running"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(

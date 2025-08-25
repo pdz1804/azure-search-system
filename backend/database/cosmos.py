@@ -5,11 +5,14 @@ from azure.cosmos.aio import CosmosClient
 
 load_dotenv()
 
-ENDPOINT = os.getenv("ENDPOINT")
-KEY = os.getenv("KEY")
-DATABASE_NAME = os.getenv("DATABASE_NAME")
-ARTICLES_CONTAINER = os.getenv("ARTICLES_CONTAINER")
-USERS_CONTAINER = os.getenv("USERS_CONTAINER")
+ENDPOINT = os.getenv("COSMOS_ENDPOINT")
+KEY = os.getenv("COSMOS_KEY")
+DATABASE_NAME = os.getenv("COSMOS_DB")
+ARTICLES_CONTAINER = os.getenv("COSMOS_ARTICLES")
+USERS_CONTAINER = os.getenv("COSMOS_USERS")
+
+# Debug: Print environment variables (remove in production)
+print(f"🔍 Cosmos Config: ENDPOINT={ENDPOINT}, DB={DATABASE_NAME}, ARTICLES={ARTICLES_CONTAINER}, USERS={USERS_CONTAINER}")
 
 # Cosmos client and container references are kept in module-level globals
 # so they can be lazily initialized and reused across requests. These are
@@ -27,6 +30,16 @@ async def connect_cosmos():
     create the database and containers if they do not exist.
     """
     global client, database, articles, users
+
+    # Validate required environment variables
+    if not all([ENDPOINT, KEY, DATABASE_NAME, ARTICLES_CONTAINER, USERS_CONTAINER]):
+        missing = []
+        if not ENDPOINT: missing.append("COSMOS_ENDPOINT")
+        if not KEY: missing.append("COSMOS_KEY") 
+        if not DATABASE_NAME: missing.append("COSMOS_DB")
+        if not ARTICLES_CONTAINER: missing.append("COSMOS_ARTICLES")
+        if not USERS_CONTAINER: missing.append("COSMOS_USERS")
+        raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
 
     if client is None:
         client = CosmosClient(ENDPOINT, credential=KEY)

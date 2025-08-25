@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: article-backend
+    ports:
+      - "8001:8001"
+    environment:
+      - COSMOS_ENDPOINT=${COSMOS_ENDPOINT}
+      - COSMOS_KEY=${COSMOS_KEY}
+      - COSMOS_DB=${COSMOS_DB}
+      - COSMOS_ARTICLES=${COSMOS_ARTICLES}
+      - COSMOS_USERS=${COSMOS_USERS}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=${ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
+      - AZURE_STORAGE_CONTAINER_NAME=${AZURE_STORAGE_CONTAINER_NAME:-files}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      - BASE_URL=${BASE_URL}
+      - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
+      - AZURE_SEARCH_KEY=${AZURE_SEARCH_KEY}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION}
+      - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT}
+      - AZURE_OPENAI_MODELNAME=${AZURE_OPENAI_MODELNAME}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_API_VERSION=${OPENAI_API_VERSION}
+      - AZURE_STORAGE_ACCOUNT_NAME=${AZURE_STORAGE_ACCOUNT_NAME}
+      - AZURE_STORAGE_ACCOUNT_KEY=${AZURE_STORAGE_ACCOUNT_KEY}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=${REDIS_DB}
+      - IDENTITY=${IDENTITY}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER}
+      - HF_MODEL_NAME=${HF_MODEL_NAME}
+      - EMBEDDING_DIM=${EMBEDDING_DIM}
+      - WEIGHT_SEMANTIC=${WEIGHT_SEMANTIC}
+      - WEIGHT_BM25=${WEIGHT_BM25}
+      - WEIGHT_VECTOR=${WEIGHT_VECTOR}
+      - WEIGHT_BUSINESS=${WEIGHT_BUSINESS}
+      - AUTHORS_WEIGHT_SEMANTIC=${AUTHORS_WEIGHT_SEMANTIC}
+      - AUTHORS_WEIGHT_BM25=${AUTHORS_WEIGHT_BM25}
+      - AUTHORS_WEIGHT_VECTOR=${AUTHORS_WEIGHT_VECTOR}
+      - AUTHORS_WEIGHT_BUSINESS=${AUTHORS_WEIGHT_BUSINESS}
+      - FRESHNESS_HALFLIFE_DAYS=${FRESHNESS_HALFLIFE_DAYS}
+      - FRESHNESS_WINDOW_DAYS=${FRESHNESS_WINDOW_DAYS}
+      - ENABLE_EMBEDDINGS=${ENABLE_EMBEDDINGS}
+      - AZURE_STORAGE_ACCOUNT=${AZURE_STORAGE_ACCOUNT}
+      - ENABLE_INDEXER_CACHE=${ENABLE_INDEXER_CACHE}
+      - SCORE_THRESHOLD=${SCORE_THRESHOLD}
+      - ENABLE_SCORE_FILTERING=${ENABLE_SCORE_FILTERING}
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - article-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: article-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - article-network
+
+networks:
+  article-network:
+    driver: bridge
+
+volumes:
+  logs:
+    driver: local

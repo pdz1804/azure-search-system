@@ -9,10 +9,13 @@ requests
 pillow
 pandas
 azure-cosmos
+azure-search-documents
 aiohttp
 azure-storage-blob
 redis[hiredis]
 python-jose
 pydantic[email]
 httpx
-
+azure-functions
+openai
+numpy

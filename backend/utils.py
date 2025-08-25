@@ -15,7 +15,7 @@ from typing import Optional
 import uuid
 from dotenv import load_dotenv
 from passlib.context import CryptContext
-from fastapi import File, HTTPException, Depends, UploadFile
+from fastapi import HTTPException, Depends, UploadFile
 from fastapi.security import APIKeyHeader
 from jose import JWTError, jwt
 
