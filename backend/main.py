@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import asynccontextmanager
-from regex import F
+
 
 from backend.database.cosmos import close_cosmos, connect_cosmos
 from backend.config.redis_config import get_redis, close_redis
