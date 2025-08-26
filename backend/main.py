@@ -10,9 +10,13 @@ Requests come in to FastAPI -> matched to a router -> handler in
 `backend.repositories.*` that operate on the database containers.
 """
 
+from json import load
+import os
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import asynccontextmanager
+from regex import F
 
 from backend.database.cosmos import close_cosmos, connect_cosmos
 from backend.config.redis_config import get_redis, close_redis
@@ -39,10 +43,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Article CMS - modular", lifespan=lifespan)
 
+load_dotenv()
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+
+
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Frontend URLs
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", FRONTEND_URL],  # Frontend URLs
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
