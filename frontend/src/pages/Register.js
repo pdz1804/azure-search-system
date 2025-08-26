@@ -103,45 +103,45 @@ const Register = () => {
 
           <Form.Item
             name="password"
-            label="Mật khẩu"
+            label="Password"
             rules={[
-              { required: true, message: 'Vui lòng nhập mật khẩu!' },
-              { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự!' }
+              { required: true, message: 'Please enter your password!' },
+              { min: 6, message: 'Password must be at least 6 characters!' }
             ]}
           >
             <Input.Password 
               prefix={<LockOutlined />} 
-              placeholder="Nhập mật khẩu của bạn"
+              placeholder="Enter your password"
             />
           </Form.Item>
 
           <Form.Item
             name="confirmPassword"
-            label="Xác nhận mật khẩu"
+            label="Confirm Password"
             dependencies={['password']}
             rules={[
-              { required: true, message: 'Vui lòng xác nhận mật khẩu!' },
+              { required: true, message: 'Please confirm your password!' },
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (!value || getFieldValue('password') === value) {
                     return Promise.resolve();
                   }
-                  return Promise.reject(new Error('Mật khẩu xác nhận không khớp!'));
+                  return Promise.reject(new Error('Passwords do not match!'));
                 },
               }),
             ]}
           >
             <Input.Password 
               prefix={<LockOutlined />} 
-              placeholder="Nhập lại mật khẩu"
+              placeholder="Re-enter your password"
             />
           </Form.Item>
 
           <Form.Item
-            label="Ảnh đại diện (tùy chọn)"
+            label="Avatar (optional)"
           >
             <Upload {...uploadProps}>
-              <Button icon={<UploadOutlined />}>Chọn ảnh</Button>
+              <Button icon={<UploadOutlined />}>Choose image</Button>
             </Upload>
           </Form.Item>
 
@@ -152,14 +152,14 @@ const Register = () => {
               loading={loading}
               block
             >
-              Đăng ký
+              Sign Up
             </Button>
           </Form.Item>
 
           <div style={{ textAlign: 'center' }}>
             <Space direction="vertical">
               <Text type="secondary">
-                Đã có tài khoản? <Link to="/login">Đăng nhập ngay</Link>
+                Already have an account? <Link to="/login">Log in</Link>
               </Text>
             </Space>
           </div>

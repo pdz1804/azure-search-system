@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
 	DocumentTextIcon, 
 	UserIcon, 
@@ -43,6 +43,19 @@ const Blogs = () => {
 	const [articlePage, setArticlePage] = useState(qPage);
 	const [authorPage, setAuthorPage] = useState(qAuthorPage);
 	const authorPageSize = 10;
+
+	// Refs for search inputs
+	const articleSearchRef = useRef(null);
+	const authorSearchRef = useRef(null);
+
+	// Helper to normalize followers count regardless of API shape
+	const getFollowersCount = (author) => {
+		if (!author) return 0;
+		const f = author.followers ?? author.followers_count ?? 0;
+		if (Array.isArray(f)) return f.length;
+		const n = Number(f);
+		return Number.isFinite(n) ? n : 0;
+	};
 
 	// Sync URL on changes - but avoid triggering unnecessary navigation
 	useEffect(() => {
@@ -114,32 +127,50 @@ const Blogs = () => {
 	const handleTabChange = (key) => { setActiveTab(key); };
 
 	const renderAuthorCard = (author) => (
-		<div key={author.id} className="mb-6 bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer p-6" onClick={() => navigate(`/profile/${author.id}`)}>
-			<div className="flex items-center space-x-6">
-				<div className="relative">
+		<div key={author.id} className="group mb-6 bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer p-4 sm:p-6 border border-white/50 hover:border-indigo-200" onClick={() => navigate(`/profile/${author.id}`)}>
+			<div className="flex flex-col sm:flex-row items-center sm:items-center space-y-4 sm:space-y-0 sm:space-x-6">
+				<div className="relative flex-shrink-0">
 					{author.avatar_url ? (
 						<img 
 							src={author.avatar_url} 
 							alt={author.full_name || 'Author'} 
-							className="w-20 h-20 rounded-full border-4 border-indigo-100 shadow-md object-cover" 
+							className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-indigo-100 shadow-lg object-cover group-hover:border-indigo-200 transition-all duration-300" 
 						/>
 					) : (
-						<div className="w-20 h-20 rounded-full border-4 border-indigo-100 shadow-md bg-indigo-100 flex items-center justify-center">
-							<UserIcon className="w-8 h-8 text-indigo-600" />
+						<div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-indigo-100 shadow-lg bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center group-hover:border-indigo-200 transition-all duration-300">
+							<UserIcon className="w-7 h-7 sm:w-8 sm:h-8 text-indigo-600" />
 						</div>
 					)}
+					<div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
 				</div>
-				<div className="flex-1">
-					<h3 className="text-xl font-semibold text-gray-900 mb-2 cursor-pointer hover:text-indigo-600 transition-colors">{author.full_name || 'Unknown Author'}</h3>
-					<p className="text-gray-600 text-base">{author.email}</p>
+				<div className="flex-1 text-center sm:text-left min-w-0">
+					<h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors duration-300 truncate">
+						{author.full_name || 'Unknown Author'}
+					</h3>
+					<p className="text-gray-600 text-sm sm:text-base mb-2 truncate">{author.email}</p>
+					<div className="flex flex-wrap justify-center sm:justify-start gap-3 text-xs sm:text-sm text-gray-500">
+						<span className="flex items-center gap-1">
+							<DocumentTextIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+							{author.articles_count || 0} articles
+						</span>
+						<span className="flex items-center gap-1">
+							<EyeIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+							{formatNumber(author.total_views || 0)} views
+						</span>
+						<span className="flex items-center gap-1">
+							<HeartIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+							{getFollowersCount(author)} followers
+						</span>
+					</div>
 				</div>
-				<div>
+				<div className="flex-shrink-0">
 					<button 
 						type="button" 
-						className="bg-indigo-600 text-white px-8 py-3 rounded-full text-base font-medium shadow-lg hover:shadow-xl hover:bg-indigo-700 transition-all duration-300" 
+						className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-full text-sm sm:text-base font-semibold shadow-lg hover:shadow-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 group-hover:scale-110" 
 						onClick={(e) => { e.stopPropagation(); navigate(`/profile/${author.id}`); }}
 					>
-						View Profile
+						<span className="hidden sm:inline">View Profile</span>
+						<span className="sm:hidden">Profile</span>
 					</button>
 				</div>
 			</div>
@@ -163,30 +194,30 @@ const Blogs = () => {
 
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 				{/* Tab Navigation */}
-				<div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-6 md:p-8 mb-8 border border-white/50">
-					<div className="flex flex-col sm:flex-row sm:space-x-8 border-b border-gray-200 mb-6">
+				<div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-4 sm:p-6 md:p-8 mb-8 border border-white/50">
+					<div className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:space-x-4 lg:space-x-8 border-b border-gray-200 mb-6">
 						<button
 							type="button"
-							className={`pb-4 px-3 text-base md:text-lg font-semibold transition-all duration-300 border-b-3 mb-2 sm:mb-0 ${
+							className={`flex items-center justify-center sm:justify-start pb-3 sm:pb-4 px-4 sm:px-3 text-sm sm:text-base md:text-lg font-semibold transition-all duration-300 border-b-3 rounded-lg sm:rounded-t-lg sm:rounded-b-none ${
 								activeTab === 'articles' 
-									? 'text-indigo-600 border-indigo-600 bg-indigo-50 rounded-t-lg' 
-									: 'text-gray-600 border-transparent hover:text-indigo-500 hover:bg-gray-50 rounded-lg'
+									? 'text-indigo-600 border-indigo-600 bg-indigo-50 shadow-sm' 
+									: 'text-gray-600 border-transparent hover:text-indigo-500 hover:bg-gray-50'
 							}`}
 							onClick={() => handleTabChange('articles')}
 						>
-							<DocumentTextIcon className="w-5 h-5 inline-block mr-2" />
+							<DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5 inline-block mr-2" />
 							News Articles
 						</button>
 						<button
 							type="button"
-							className={`pb-4 px-3 text-base md:text-lg font-semibold transition-all duration-300 border-b-3 ${
+							className={`flex items-center justify-center sm:justify-start pb-3 sm:pb-4 px-4 sm:px-3 text-sm sm:text-base md:text-lg font-semibold transition-all duration-300 border-b-3 rounded-lg sm:rounded-t-lg sm:rounded-b-none ${
 								activeTab === 'authors' 
-									? 'text-indigo-600 border-indigo-600 bg-indigo-50 rounded-t-lg' 
-									: 'text-gray-600 border-transparent hover:text-indigo-500 hover:bg-gray-50 rounded-lg'
+									? 'text-indigo-600 border-indigo-600 bg-indigo-50 shadow-sm' 
+									: 'text-gray-600 border-transparent hover:text-indigo-500 hover:bg-gray-50'
 							}`}
 							onClick={() => handleTabChange('authors')}
 						>
-							<UserIcon className="w-5 h-5 inline-block mr-2" />
+							<UserIcon className="w-4 h-4 sm:w-5 sm:h-5 inline-block mr-2" />
 							Hot Authors
 						</button>
 					</div>
@@ -200,6 +231,7 @@ const Blogs = () => {
 								<div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-4">
 									<div className="relative flex-1 max-w-md">
 										<input
+											ref={articleSearchRef}
 											type="text"
 											placeholder="Search articles..."
 											defaultValue={articleSearch}
@@ -211,7 +243,18 @@ const Blogs = () => {
 											}}
 											className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none bg-white shadow-sm text-sm"
 										/>
-										<MagnifyingGlassIcon className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+										<button
+											type="button"
+											onClick={() => {
+												if (articleSearchRef.current) {
+													setArticleSearch(articleSearchRef.current.value);
+													setArticlePage(1);
+												}
+											}}
+											className="absolute left-3 top-1/2 transform -translate-y-1/2 hover:text-indigo-600 transition-colors duration-200"
+										>
+											<MagnifyingGlassIcon className="w-4 h-4 text-gray-400 hover:text-indigo-600" />
+										</button>
 									</div>
 									<select
 										value={articleSortBy}
@@ -259,6 +302,7 @@ const Blogs = () => {
 							<div className="mb-6 flex justify-center sm:justify-end">
 								<div className="relative max-w-xs w-full sm:w-auto min-w-[280px]">
 									<input
+										ref={authorSearchRef}
 										type="text"
 										placeholder="Search authors..."
 										onKeyDown={async (e) => {
@@ -278,7 +322,27 @@ const Blogs = () => {
 										}}
 										className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none bg-white/90 backdrop-blur-sm shadow-sm"
 									/>
-									<MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+									<button
+										type="button"
+										onClick={async () => {
+											if (authorSearchRef.current) {
+												const val = authorSearchRef.current.value;
+												if (!val) {
+													loadAuthors();
+													return;
+												}
+												try {
+													const res = await userApi.searchUsersAI({ q: val, limit: 100, page: 1 });
+													const list = res.results || res.data || [];
+													setAuthors(list);
+													setAuthorPage(1);
+												} catch {}
+											}
+										}}
+										className="absolute left-3 top-1/2 transform -translate-y-1/2 hover:text-indigo-600 transition-colors duration-200"
+									>
+										<MagnifyingGlassIcon className="w-5 h-5 text-gray-400 hover:text-indigo-600" />
+									</button>
 								</div>
 							</div>
 							{authorsLoading ? (
@@ -294,15 +358,15 @@ const Blogs = () => {
 										.map(renderAuthorCard)}
 									<div className="mt-8 flex justify-center">
 										{/* Enhanced numbered pagination */}
-										<div className="flex flex-wrap items-center justify-center gap-2">
+										<div className="flex flex-wrap items-center justify-center gap-2 p-4 bg-white/50 backdrop-blur-sm rounded-2xl border border-white/60">
 											{Array.from({ length: Math.ceil(authors.length / authorPageSize) }, (_, i) => i + 1).map(page => (
 												<button
 													key={page}
 													type="button"
-													className={`w-10 h-10 rounded-xl font-semibold transition-all duration-200 ${
+													className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl font-bold text-sm sm:text-base transition-all duration-200 ${
 														authorPage === page
-															? 'bg-indigo-600 text-white shadow-lg scale-110'
-															: 'bg-white/70 text-gray-700 hover:bg-white hover:text-indigo-600 hover:shadow-md hover:scale-105 border border-gray-200'
+															? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-110 border-2 border-indigo-200'
+															: 'bg-white/80 text-gray-700 hover:bg-white hover:text-indigo-600 hover:shadow-md hover:scale-105 border border-gray-200 hover:border-indigo-300'
 													}`}
 													onClick={() => setAuthorPage(page)}
 												>
@@ -314,9 +378,13 @@ const Blogs = () => {
 								</div>
 							) : (
 								<div className="text-center py-16">
-									<UserIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-									<h3 className="text-xl font-semibold text-gray-600 mb-2">No Authors Found</h3>
-									<p className="text-gray-500">We're working on bringing you amazing authors soon!</p>
+									<div className="bg-white/80 backdrop-blur-sm rounded-3xl p-12 border border-white/60 shadow-lg max-w-md mx-auto">
+										<div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+											<UserIcon className="w-10 h-10 text-gray-400" />
+										</div>
+										<h3 className="text-2xl font-bold text-gray-700 mb-3">No Authors Found</h3>
+										<p className="text-gray-500 leading-relaxed">We're working on bringing you amazing authors soon! Check back later for talented creators from our community.</p>
+									</div>
 								</div>
 							)}
 						</div>

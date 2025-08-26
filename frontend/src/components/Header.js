@@ -139,10 +139,10 @@ const Header = () => {
           </nav>
 
           {/* Search Bar */}
-          <div className="hidden md:flex flex-1 max-w-md mx-8">
+          <div className="hidden md:flex flex-1 max-w-sm lg:max-w-md mx-4 lg:mx-8">
             <form onSubmit={handleSearch} className="relative w-full">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                <MagnifyingGlassIcon className="h-4 w-4 lg:h-5 lg:w-5 text-gray-400" />
               </div>
               <input
                 type="text"
@@ -150,13 +150,14 @@ const Header = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={handleSearchKeyPress}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                className="block w-full pl-9 lg:pl-10 pr-10 lg:pr-12 py-1.5 lg:py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               />
               <button
                 type="submit"
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                onClick={handleSearch}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-indigo-50 rounded-r-lg transition-colors duration-200"
               >
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 hover:text-indigo-600 transition-colors duration-200" />
+                <MagnifyingGlassIcon className="h-4 w-4 lg:h-5 lg:w-5 text-gray-400 hover:text-indigo-600 transition-colors duration-200" />
               </button>
             </form>
           </div>
@@ -169,10 +170,11 @@ const Header = () => {
             {isAuthenticated() && (user?.role === 'admin' || user?.role === 'writer') && (
               <button
                 onClick={() => navigate('/write')}
-                className="hidden sm:flex items-center space-x-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                className="hidden sm:flex items-center space-x-1 lg:space-x-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg text-sm lg:text-base"
               >
-                <PlusIcon className="w-4 h-4" />
-                <span>Write</span>
+                <PlusIcon className="w-3 h-3 lg:w-4 lg:h-4" />
+                <span className="hidden lg:inline">Write</span>
+                <span className="lg:hidden">+</span>
               </button>
             )}
 
@@ -187,14 +189,14 @@ const Header = () => {
                     <img
                       src={user.avatar_url}
                       alt={user?.full_name || 'User avatar'}
-                      className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                      className="w-7 h-7 lg:w-8 lg:h-8 rounded-full object-cover border border-gray-200"
                     />
                   ) : (
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                    <div className="w-7 h-7 lg:w-8 lg:h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-medium text-xs lg:text-sm">
                       {user?.full_name?.[0] || user?.email?.[0] || 'U'}
                     </div>
                   )}
-                    <span className="hidden sm:block text-sm font-medium text-gray-700">
+                    <span className="hidden md:block text-sm font-medium text-gray-700 max-w-24 lg:max-w-none truncate">
                     {user?.full_name || user?.email || 'User'}
                   </span>
                 </button>
@@ -253,16 +255,16 @@ const Header = () => {
                 )}
               </div>
             ) : (
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 lg:space-x-3">
                 <Link
                   to="/login"
-                  className="text-gray-600 hover:text-indigo-600 font-medium transition-colors duration-200"
+                  className="text-gray-600 hover:text-indigo-600 font-medium transition-colors duration-200 text-sm lg:text-base"
                 >
                   Login
                 </Link>
                 <Link
                   to="/register"
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg text-sm lg:text-base"
                 >
                   Sign Up
                 </Link>
@@ -318,11 +320,12 @@ const Header = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={handleSearchKeyPress}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="block w-full pl-10 pr-12 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
                 <button
                   type="submit"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={handleSearch}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-indigo-50 rounded-r-lg transition-colors duration-200"
                 >
                   <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 hover:text-indigo-600 transition-colors duration-200" />
                 </button>

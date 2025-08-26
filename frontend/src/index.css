@@ -343,6 +343,21 @@ code {
     padding: 0.75rem 1rem;
     margin: 1rem 0;
   }
+  
+  /* Homepage responsive improvements */
+  .hero-section {
+    padding: 3rem 1rem;
+  }
+  
+  .hero-title {
+    font-size: 2rem !important;
+    line-height: 1.2;
+  }
+  
+  .hero-subtitle {
+    font-size: 1rem !important;
+    line-height: 1.5;
+  }
 }
 
 /* Responsive design */
@@ -353,6 +368,16 @@ code {
   
   .ant-layout-content {
     padding: 12px !important;
+  }
+  
+  /* Additional mobile optimizations */
+  .site-header {
+    padding: 0 8px;
+  }
+  
+  .site-header .max-w-7xl {
+    padding-left: 8px;
+    padding-right: 8px;
   }
 }
 

@@ -52,7 +52,7 @@ const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryCh
 			<div className="absolute -bottom-32 -left-32 w-[500px] h-[500px] bg-gradient-to-br from-blue-200/30 to-cyan-200/30 rounded-full blur-3xl animate-pulse delay-1000" />
 			<div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-purple-100/20 to-pink-100/20 rounded-full blur-3xl animate-pulse delay-500" />
 
-			<div className="relative mx-auto max-w-7xl px-6 py-20 lg:flex lg:items-center lg:gap-16 lg:py-32">
+			<div className="relative mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-20 lg:flex lg:items-center lg:gap-16 lg:py-32">
 				<motion.div
 					className="flex-1"
 					variants={{
@@ -74,7 +74,7 @@ const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryCh
 					</motion.p>
 
 					<motion.h1
-						className="mt-6 text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl"
+						className="mt-6 text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl"
 						initial={{ scale: 0 }}
 						animate={{ scale: 1 }}
 						transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
@@ -84,7 +84,7 @@ const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryCh
 					</motion.h1>
 
 					<motion.p
-						className="mt-6 max-w-3xl text-xl leading-8 text-gray-600"
+						className="mt-6 max-w-3xl text-lg sm:text-xl leading-7 sm:leading-8 text-gray-600"
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ delay: 0.35, duration: 0.8 }}
@@ -93,14 +93,14 @@ const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryCh
 					</motion.p>
 
 					<motion.div
-						className="mt-10 flex flex-col items-start gap-4 sm:flex-row"
+						className="mt-10 flex flex-col items-center sm:items-start gap-4 sm:flex-row w-full"
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ delay: 0.5, duration: 0.8 }}
 					>
 						<button
 							onClick={onPrimaryClick}
-							className="group relative inline-flex items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300"
+							className="group relative inline-flex items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300 w-full sm:w-auto"
 						>
 							<span className="relative z-10">Start Writing</span>
 							<div className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-700 to-purple-700 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
@@ -108,7 +108,7 @@ const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryCh
 
 						<button
 							onClick={onSecondaryClick}
-							className="inline-flex items-center justify-center rounded-full px-8 py-4 text-lg font-semibold ring-2 ring-inset transition-all duration-300 hover:scale-105 shadow-md"
+							className="inline-flex items-center justify-center rounded-full px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold ring-2 ring-inset transition-all duration-300 hover:scale-105 shadow-md w-full sm:w-auto"
 							style={{ background: 'var(--card-bg)', color: 'var(--text)', borderColor: 'rgba(255,255,255,0.04)' }}
 						>
 							Explore Articles
@@ -140,7 +140,7 @@ const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryCh
 
 			{/* Category Chips Section */}
 			<motion.div 
-				className="relative mx-auto max-w-7xl px-6 pb-16"
+				className="relative mx-auto max-w-7xl px-4 sm:px-6 pb-12 sm:pb-16"
 				variants={{
 					hidden: { opacity: 0, y: 30 },
 					visible: { opacity: 1, y: 0 }
@@ -149,11 +149,11 @@ const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryCh
 				animate={categoryControls}
 				transition={{ duration: 0.8, delay: 0.6 }}
 			>
-				<div className="text-center mb-8">
-					<h2 className="text-2xl font-bold text-gray-900 mb-2">Explore by Category</h2>
-					<p className="text-gray-600">Discover content that matches your interests</p>
+				<div className="text-center mb-6 sm:mb-8">
+					<h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Explore by Category</h2>
+					<p className="text-gray-600 text-sm sm:text-base">Discover content that matches your interests</p>
 				</div>
-				<div className="flex flex-wrap justify-center gap-4">
+				<div className="flex flex-wrap justify-center gap-3 sm:gap-4">
 					{loading ? (
 						// Show loading skeleton for categories
 						Array.from({ length: 6 }).map((_, index) => (
@@ -167,9 +167,9 @@ const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryCh
 							<motion.button
 							key={category.name}
 							onClick={() => onCategoryChange?.(category.name)}
-							className={`group relative overflow-hidden rounded-2xl px-6 py-4 text-sm font-semibold text-white shadow-2xl transition-all duration-300 hover:scale-110 hover:shadow-3xl border border-white/20 ${
+							className={`group relative overflow-hidden rounded-xl sm:rounded-2xl px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-white shadow-2xl transition-all duration-300 hover:scale-105 sm:hover:scale-110 hover:shadow-3xl border border-white/20 ${
 								selectedCategory === category.name 
-									? 'ring-4 ring-white ring-opacity-50 scale-105' 
+									? 'ring-2 sm:ring-4 ring-white ring-opacity-50 scale-105' 
 									: ''
 							}`}
 							style={{
@@ -199,7 +199,7 @@ const Hero = ({ onPrimaryClick, onSecondaryClick, selectedCategory, onCategoryCh
 							)}
 							
 							{/* Main text */}
-							<span className="relative z-10 text-base font-bold tracking-wide text-white drop-shadow-lg" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+							<span className="relative z-10 text-sm sm:text-base font-bold tracking-wide text-white drop-shadow-lg" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
 								{category.name}
 							</span>
 							

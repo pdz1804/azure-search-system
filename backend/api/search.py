@@ -60,9 +60,10 @@ async def search_general(
     try:
         cache_key = f"search:general:{q}:{k}:{page_index}:{page_size}"
         cached = await get_cache(cache_key)
-        # if cached is not None:
-        #     print(f"🔍 Redis Cache HIT for general search: {q}")
-        #     return cached
+
+        if cached is not None:
+            print(f"🔍 Redis Cache HIT for general search: {q}")
+            return cached
         
         print(f"🔍 Redis Cache MISS for general search: {q} - Loading from search service...")
 
@@ -160,6 +161,7 @@ async def search_articles(
     try:
         cache_key = f"search:articles:{q}:{k}:{page_index}:{page_size}"
         cached = await get_cache(cache_key)
+        
         if cached is not None:
             print(f"🔍 Redis Cache HIT for articles search: {q}")
             return cached

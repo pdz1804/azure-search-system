@@ -124,40 +124,40 @@ const Home = () => {
 				
 				{/* Featured Authors Section */}
 				{featuredAuthors.length > 0 && (
-					<section className="mx-auto my-16 max-w-7xl px-6">
-						<div className="text-center mb-12">
-							<Title level={2} className="text-3xl font-bold text-gray-900 mb-3">
+					<section className="mx-auto my-12 sm:my-16 max-w-7xl px-4 sm:px-6">
+						<div className="text-center mb-8 sm:mb-12">
+							<Title level={2} className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
 								Featured Authors
 							</Title>
-							<Paragraph className="text-lg text-gray-600">
+							<Paragraph className="text-base sm:text-lg text-gray-600">
 								Meet talented authors from our community
 							</Paragraph>
 						</div>
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
 							{featuredAuthors.slice(0, 6).map((author) => (
 								<Card 
 									key={author.id} 
 									className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
-									bodyStyle={{ padding: '24px' }}
+									bodyStyle={{ padding: '16px sm:24px' }}
 									onClick={() => navigate(`/profile/${author.id}`)}
 								>
 									<div className="text-center">
 										<Avatar 
-											size={80} 
+											size={{ xs: 64, sm: 80 }} 
 											src={author.avatar_url} 
-											className="border-4 border-indigo-100 shadow-md mb-4"
+											className="border-4 border-indigo-100 shadow-md mb-3 sm:mb-4"
 										>
 											{author.full_name?.[0] || <UserOutlined />}
 										</Avatar>
-										<Title level={4} className="mb-2 text-gray-900">
+										<Title level={4} className="mb-2 text-gray-900 text-base sm:text-lg">
 											{author.full_name || 'Unknown Author'}
 										</Title>
 										{author.bio && (
-											<Paragraph className="text-gray-600 text-sm mb-3 line-clamp-2">
+											<Paragraph className="text-gray-600 text-xs sm:text-sm mb-3 line-clamp-2">
 												{author.bio}
 											</Paragraph>
 										)}
-										<div className="flex justify-center gap-4 text-sm text-gray-500">
+										<div className="flex justify-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500">
 											<span><FileTextOutlined className="mr-1" />{(author.articles_count || 0).toLocaleString()}</span>
 											<span><EyeOutlined className="mr-1" />{(author.total_views || 0).toLocaleString()}</span>
 										</div>
@@ -169,18 +169,18 @@ const Home = () => {
 				)}
 				
 				{/* Enhanced CTA Section */}
-				<section className="relative mx-auto my-16 max-w-7xl overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-8 py-16 text-white">
+				<section className="relative mx-auto my-12 sm:my-16 max-w-7xl overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-4 sm:px-8 py-12 sm:py-16 text-white">
 					<div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
 					<div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
 					<div className="relative text-center">
-						<h2 className="text-4xl font-bold mb-4">Ready to explore amazing content?</h2>
-						<p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+						<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">Ready to explore amazing content?</h2>
+						<p className="text-base sm:text-lg lg:text-xl text-white/90 mb-6 sm:mb-8 max-w-2xl mx-auto px-2">
 							Visit our blogs section to discover featured articles, browse all content, and meet talented authors from our community.
 						</p>
-						<div className="flex flex-col sm:flex-row gap-4 justify-center">
+						<div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
 							<Button 
 								size="large"
-								className="bg-white text-indigo-700 border-0 px-8 py-3 h-12 text-lg font-semibold rounded-full hover:bg-gray-50 hover:scale-105 transition-all duration-300 shadow-lg"
+								className="bg-white text-indigo-700 border-0 px-6 sm:px-8 py-2 sm:py-3 h-10 sm:h-12 text-base sm:text-lg font-semibold rounded-full hover:bg-gray-50 hover:scale-105 transition-all duration-300 shadow-lg w-full sm:w-auto"
 								onClick={handleExploreBlogs}
 							>
 								<FileTextOutlined className="mr-2" />
@@ -191,7 +191,7 @@ const Home = () => {
 								<Button 
 									type="default"
 									size="large"
-									className="bg-transparent text-white border-2 border-white px-8 py-3 h-12 text-lg font-semibold rounded-full hover:bg-white hover:text-indigo-700 transition-all duration-300"
+									className="bg-transparent text-white border-2 border-white px-6 sm:px-8 py-2 sm:py-3 h-10 sm:h-12 text-base sm:text-lg font-semibold rounded-full hover:bg-white hover:text-indigo-700 transition-all duration-300 w-full sm:w-auto"
 									onClick={() => navigate('/write')}
 								>
 									<EditOutlined className="mr-2" />
