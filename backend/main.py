@@ -68,6 +68,10 @@ app.include_router(cache)
 async def health_check():
     """Health check endpoint for Docker and load balancers."""
     return {"status": "healthy", "message": "Backend is running"}
+@app.get("/all-environment")
+async def all_environment():
+    """Get all environment variables."""
+    return {"success": True, "data": dict(os.environ)}
 
 if __name__ == "__main__":
     import uvicorn
