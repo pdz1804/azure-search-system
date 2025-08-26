@@ -10,7 +10,6 @@ Requests come in to FastAPI -> matched to a router -> handler in
 `backend.repositories.*` that operate on the database containers.
 """
 
-from json import load
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
