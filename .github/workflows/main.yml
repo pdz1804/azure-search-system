@@ -2,13 +2,14 @@ name: Deploy with Source Code
 
 on:
   push:
-    branches: [ main, develop ]
-  pull_request:
     branches: [ main ]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [ main ]
+  workflow_dispatch:
 
 env:
   AZURE_WEBAPP_BACKEND: article-backend-code
-  AZURE_WEBAPP_FRONTEND: article-frontend-code
   NODE_VERSION: '18'
   PYTHON_VERSION: '3.11'
 
@@ -85,37 +86,67 @@ jobs:
         path: frontend/build/
         retention-days: 1
 
-  # Job 3: Deploy Backend to Azure App Service
-  deploy-backend:
+  # Job 3: Build Backend
+  build-backend:
     needs: test-backend
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    permissions:
+      contents: read
     
     steps:
     - name: 🔄 Checkout code
       uses: actions/checkout@v4
 
     - name: 🐍 Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: 📦 Install dependencies
+    - name: � Create and start virtual environment
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        python -m venv venv
+        source venv/bin/activate
+
+    - name: � Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: 📦 Upload backend artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-app
+        path: |
+          .
+          !venv/
+
+  # Job 4: Deploy Backend to Azure App Service
+  deploy-backend:
+    needs: build-backend
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: 📦 Download backend artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: python-app
 
     - name: 🔑 Login to Azure
-      uses: azure/login@v1
+      uses: azure/login@v2
       with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_4ADBC5994F49435D8B891B67BA9147F7 }}
+        tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_64C01BCE9DF0412790C1606AAD5B3E66 }}
+        subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_29C9957EFCA047AEB20C816B8C524E10 }}
 
-    - name: 🚀 Deploy backend to Azure App Service
-      uses: azure/webapps-deploy@v2
+    - name: 🚀 Deploy to Azure Web App
+      uses: azure/webapps-deploy@v3
+      id: deploy-to-webapp
       with:
         app-name: ${{ env.AZURE_WEBAPP_BACKEND }}
-        package: .
-        startup-file: 'python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000'
+        slot-name: 'Production'
 
     - name: ⚙️ Configure backend app settings
       uses: azure/appservice-settings@v1
@@ -135,8 +166,6 @@ jobs:
             { "name": "ACCESS_TOKEN_EXPIRE_MINUTES", "value": "${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}", "slotSetting": false },
             { "name": "AZURE_STORAGE_CONNECTION_STRING", "value": "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}", "slotSetting": false },
             { "name": "AZURE_STORAGE_CONTAINER_NAME", "value": "${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}", "slotSetting": false },
-            { "name": "CORS_ORIGINS", "value": "https://${{ env.AZURE_WEBAPP_FRONTEND }}.azurewebsites.net", "slotSetting": false },
-            { "name": "BASE_URL", "value": "https://${{ env.AZURE_WEBAPP_BACKEND }}.azurewebsites.net", "slotSetting": false },
             { "name": "AZURE_SEARCH_ENDPOINT", "value": "${{ secrets.AZURE_SEARCH_ENDPOINT }}", "slotSetting": false },
             { "name": "AZURE_SEARCH_KEY", "value": "${{ secrets.AZURE_SEARCH_KEY }}", "slotSetting": false },
             { "name": "AZURE_OPENAI_API_KEY", "value": "${{ secrets.AZURE_OPENAI_API_KEY }}", "slotSetting": false },
@@ -174,54 +203,68 @@ jobs:
             { "name": "ENABLE_SCORE_FILTERING", "value": "${{ secrets.ENABLE_SCORE_FILTERING }}", "slotSetting": false },
             { "name": "ENVIRONMENT", "value": "production", "slotSetting": false },
             { "name": "DEBUG", "value": "false", "slotSetting": false },
-            { "name": "PYTHONPATH", "value": "/home/site/wwwroot", "slotSetting": false }
+            { "name": "PYTHONPATH", "value": "/home/site/wwwroot", "slotSetting": false },
+            { "name": "CORS_ORIGINS", "value": "https://ashy-sky-0c5016d0f.5.azurestaticapps.net", "slotSetting": false },
+            { "name": "BASE_URL", "value": "https://${{ env.AZURE_WEBAPP_BACKEND }}.azurewebsites.net", "slotSetting": false }
           ]
 
-  # Job 4: Deploy Frontend to Azure Static Web Apps
-  deploy-frontend:
+  # Job 5: Build and Deploy Frontend to Azure Static Web Apps
+  build_and_deploy_frontend:
     needs: test-frontend
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    name: Build and Deploy Frontend
+    permissions:
+       id-token: write
+       contents: read
     steps:
-    - name: 🔄 Checkout code
-      uses: actions/checkout@v4
+      - name: � Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+          lfs: false
 
-    - name: 📱 Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
+      - name: 📦 Install OIDC Client from Core Package
+        run: npm install @actions/core@1.6.0 @actions/http-client
 
-    - name: 📦 Install dependencies
-      working-directory: ./frontend
-      run: npm ci
+      - name: 🔑 Get Id Token
+        uses: actions/github-script@v6
+        id: idtoken
+        with:
+           script: |
+               const coredemo = require('@actions/core')
+               return await coredemo.getIDToken()
+           result-encoding: string
 
-    - name: 🏗️ Build frontend for production
-      working-directory: ./frontend
-      run: |
-        REACT_APP_API_BASE_URL=https://${{ env.AZURE_WEBAPP_BACKEND }}.azurewebsites.net npm run build
+      - name: 🏗️ Build And Deploy to Static Web Apps
+        id: builddeploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_ASHY_SKY_0C5016D0F }}
+          action: "upload"
+          app_location: "./frontend"
+          api_location: ""
+          output_location: "build"
+          github_id_token: ${{ steps.idtoken.outputs.result }}
+        env:
+          REACT_APP_API_BASE_URL: https://${{ env.AZURE_WEBAPP_BACKEND }}.azurewebsites.net
 
-    - name: 🔑 Login to Azure
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+  # Job 6: Close Pull Request Frontend
+  close_pull_request_frontend:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close Pull Request Frontend
+    steps:
+      - name: ❌ Close Pull Request
+        id: closepullrequest
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_ASHY_SKY_0C5016D0F }}
+          action: "close"
 
-    - name: 🚀 Deploy to Azure Static Web Apps
-      uses: Azure/static-web-apps-deploy@v1
-      with:
-        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        action: "upload"
-        app_location: "/frontend"
-        api_location: ""
-        output_location: "build"
-        skip_app_build: true
-
-  # Job 5: Integration Tests
+  # Job 7: Integration Tests
   integration-tests:
-    needs: [deploy-backend, deploy-frontend]
+    needs: [deploy-backend, build_and_deploy_frontend]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     
@@ -244,27 +287,15 @@ jobs:
           sleep 30
         done
 
-    - name: 🔍 Test frontend application
-      run: |
-        echo "Testing frontend application..."
-        for i in {1..10}; do
-          if curl -f "https://${{ env.AZURE_WEBAPP_FRONTEND }}.azurewebsites.net/"; then
-            echo "✅ Frontend is accessible"
-            break
-          fi
-          echo "⏳ Waiting for frontend... (attempt $i/10)"
-          sleep 30
-        done
-
     - name: 🧪 Run E2E tests
       run: |
         # npm install -g playwright
         # npx playwright test --config=e2e.config.js
         echo "End-to-end tests passed"
 
-  # Job 6: Notify
+  # Job 8: Notify
   notify:
-    needs: [deploy-backend, deploy-frontend, integration-tests]
+    needs: [deploy-backend, build_and_deploy_frontend, integration-tests]
     runs-on: ubuntu-latest
     if: always() && github.ref == 'refs/heads/main'
     
@@ -279,42 +310,7 @@ jobs:
           📂 Branch: ${{ github.ref_name }}
           📝 Commit: ${{ github.sha }}
           👤 Author: ${{ github.actor }}
-          📱 Frontend: https://${{ env.AZURE_WEBAPP_FRONTEND }}.azurewebsites.net
           🔧 Backend: https://${{ env.AZURE_WEBAPP_BACKEND }}.azurewebsites.net
           🎯 Deployment Type: Direct Source Code
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-  # Job 7: Rollback (if needed)
-  rollback:
-    needs: [deploy-backend, deploy-frontend, integration-tests]
-    runs-on: ubuntu-latest
-    if: failure() && github.ref == 'refs/heads/main'
-    
-    steps:
-    - name: 🔑 Login to Azure
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-    - name: ⏪ Rollback backend deployment
-      run: |
-        echo "Rolling back backend deployment..."
-        # az webapp deployment slot swap --name ${{ env.AZURE_WEBAPP_BACKEND }} --resource-group your-resource-group --slot staging --target-slot production
-
-    - name: ⏪ Rollback frontend deployment
-      run: |
-        echo "Rolling back frontend deployment..."
-        # Implement rollback logic for static web app if needed
-
-    - name: 📢 Notify rollback
-      uses: 8398a7/action-slack@v3
-      with:
-        status: 'warning'
-        text: |
-          ⏪ Deployment rolled back due to failures
-          📂 Branch: ${{ github.ref_name }}
-          📝 Commit: ${{ github.sha }}
-          👤 Author: ${{ github.actor }}
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
