@@ -18,7 +18,7 @@ jobs:
        id-token: write
        contents: read
     env: 
-       REACT_APP_API_URL: ahttps://article-backend-code-abd7d2fbcac4e7b5.canadacentral-01.azurewebsites.net/api
+       REACT_APP_API_URL: https://article-backend-code-abd7d2fbcac4e7b5.canadacentral-01.azurewebsites.net/api
     steps:
       - uses: actions/checkout@v3
         with:
@@ -58,4 +58,5 @@ jobs:
         uses: Azure/static-web-apps-deploy@v1
         with:
           action: "close"
+
 
