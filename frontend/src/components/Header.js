@@ -21,7 +21,7 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, hasRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const profileDropdownRef = useRef(null);
@@ -165,8 +165,8 @@ const Header = () => {
             <div className="flex items-center space-x-4">
               {/* theme toggle removed */}
 
-            {/* Write Button */}
-            {isAuthenticated() && (
+            {/* Write Button - Only for admin and writer */}
+            {isAuthenticated() && (user?.role === 'admin' || user?.role === 'writer') && (
               <button
                 onClick={() => navigate('/write')}
                 className="hidden sm:flex items-center space-x-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
@@ -210,14 +210,16 @@ const Header = () => {
                       <UserIcon className="w-4 h-4 inline mr-2" />
                       Profile
                     </Link>
-                    <Link
-                      to="/my-articles"
-                      onClick={closeProfileDropdown}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
-                    >
-                      <DocumentTextIcon className="w-4 h-4 inline mr-2" />
-                      My Articles
-                    </Link>
+                    {(user?.role === 'admin' || user?.role === 'writer') && (
+                      <Link
+                        to="/my-articles"
+                        onClick={closeProfileDropdown}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
+                      >
+                        <DocumentTextIcon className="w-4 h-4 inline mr-2" />
+                        My Articles
+                      </Link>
+                    )}
                     <Link
                       to="/bookmarks"
                       onClick={closeProfileDropdown}
@@ -226,14 +228,16 @@ const Header = () => {
                       <BookmarkIcon className="w-4 h-4 inline mr-2" />
                       Bookmarks
                     </Link>
-                    <Link
-                      to="/dashboard"
-                      onClick={closeProfileDropdown}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
-                    >
-                      <CogIcon className="w-4 h-4 inline mr-2" />
-                      Dashboard
-                    </Link>
+                    {user?.role === 'admin' && (
+                      <Link
+                        to="/dashboard"
+                        onClick={closeProfileDropdown}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
+                      >
+                        <CogIcon className="w-4 h-4 inline mr-2" />
+                        Admin Dashboard
+                      </Link>
+                    )}
                     <hr className="my-1 border-gray-100" />
                     <button
                       onClick={() => {
@@ -326,7 +330,7 @@ const Header = () => {
             </div>
 
             {/* Mobile User Actions */}
-            {isAuthenticated() && (
+            {isAuthenticated() && (user?.role === 'admin' || user?.role === 'writer') && (
               <div className="mt-4 space-y-2">
                 <button
                   onClick={() => {

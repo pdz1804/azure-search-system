@@ -1,4 +1,5 @@
 import { apiClient, apiClientFormData, createFormData } from './config';
+import { invalidateAuthorStats } from '../hooks/useAuthorStats';
 
 export const articleApi = {
   // Get all articles (supports both (page, limit, status) and (paramsObject))
@@ -101,6 +102,13 @@ export const articleApi = {
         console.error('[DEBUG] Failed to log FormData entries', e);
       }
     const response = await apiClientFormData.post('/articles/', form);
+      
+      // Invalidate author stats cache for the article's author
+      const userId = localStorage.getItem('user_id');
+      if (userId) {
+        invalidateAuthorStats(userId);
+      }
+      
       // If backend returns wrapper { success: true, data: {...} }, return the inner data
       if (response.data && response.data.success && response.data.data) return response.data.data;
       return response.data;
@@ -116,6 +124,13 @@ export const articleApi = {
       // send as multipart/form-data so backend Form(...) parameters are populated
       const form = createFormData(articleData);
       const response = await apiClientFormData.put(`/articles/${id}`, form);
+      
+      // Invalidate author stats cache for the article's author
+      const userId = localStorage.getItem('user_id');
+      if (userId) {
+        invalidateAuthorStats(userId);
+      }
+      
       if (response.data && response.data.success && response.data.data) return response.data.data;
       return response.data;
     } catch (error) {
@@ -128,6 +143,13 @@ export const articleApi = {
   deleteArticle: async (id) => {
     try {
       const response = await apiClient.delete(`/articles/${id}`);
+      
+      // Invalidate author stats cache for the article's author
+      const userId = localStorage.getItem('user_id');
+      if (userId) {
+        invalidateAuthorStats(userId);
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Delete article error:', error);

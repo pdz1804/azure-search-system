@@ -203,5 +203,32 @@ export const userApi = {
       console.error('Get all users error:', error);
       return { success: false, data: [], error: 'Failed to fetch users' };
     }
+  },
+
+  // Admin-only: Get all users with full details
+  getAllUsersAdmin: async (page = 1, limit = 20) => {
+    try {
+      const response = await apiClient.get('/users/admin/all', {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get all users admin error:', error);
+      return { success: false, data: [], error: 'Failed to fetch users' };
+    }
+  },
+
+  // Admin-only: Update user role and status
+  updateUser: async (userId, updateData) => {
+    try {
+      const response = await apiClient.put(`/users/${userId}`, updateData);
+      return response.data;
+    } catch (error) {
+      console.error('Update user error:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.detail || 'Failed to update user' 
+      };
+    }
   }
 };

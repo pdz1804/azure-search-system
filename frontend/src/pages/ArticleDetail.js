@@ -62,11 +62,47 @@ const ArticleDetail = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [reactionType, setReactionType] = useState('none');
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [recommendations, setRecommendations] = useState([]);
+  const [showMoreRecommendations, setShowMoreRecommendations] = useState(false);
+  const [top5Recommendations, setTop5Recommendations] = useState([]);
+  const [more5Recommendations, setMore5Recommendations] = useState([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [recommendationsUpdatedAt, setRecommendationsUpdatedAt] = useState(null);
+  const [refreshCountdown, setRefreshCountdown] = useState(0);
   const [recommendedAuthors, setRecommendedAuthors] = useState([]);
-  const [fullRecommendationCandidates, setFullRecommendationCandidates] = useState([]);
-  const [showMoreModalVisible, setShowMoreModalVisible] = useState(false);
+  const [recommendationCountdown, setRecommendationCountdown] = useState(null);
+
+  // Extract recommendations from article data - backend now provides detailed recommendations
+  const recommendations = article?.recommendations || {};
+  const top5Recs = recommendations.top5 || [];
+  const more5Recs = recommendations.more5 || [];
+  const totalRecommendations = recommendations.total || 0;
+  const wasRefreshed = recommendations.was_refreshed || false;
+  const lastUpdated = recommendations.last_updated;
+
+  // Format countdown display
+  const formatCountdown = (seconds) => {
+    if (seconds <= 0) return 'Refreshing...';
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  // Format display date for recommendations
+  const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return 'Unknown';
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Invalid date';
+    }
+  };
 
   // per-recommendation follow button removed; keep global follow handling via handleFollow
 
@@ -105,6 +141,44 @@ const ArticleDetail = () => {
     }
   }, [user, id]); // Load reaction status when user data becomes available
 
+  useEffect(() => {
+    if (top5Recs.length > 0) {
+      setTop5Recommendations(top5Recs);
+      setMore5Recommendations(more5Recs);
+      if (lastUpdated) {
+        setRecommendationsUpdatedAt(lastUpdated);
+        // Set initial countdown (60 minutes = 3600 seconds)
+        const updateTime = new Date(lastUpdated);
+        const now = new Date();
+        const elapsed = Math.floor((now - updateTime) / 1000);
+        const remaining = Math.max(0, 3600 - elapsed); // 60 minutes
+        setRefreshCountdown(remaining);
+      }
+    }
+  }, [top5Recs, more5Recs, lastUpdated]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (refreshCountdown > 0) {
+      const timer = setTimeout(() => {
+        setRefreshCountdown(refreshCountdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (refreshCountdown === 0 && recommendationsUpdatedAt) {
+      // Auto-refresh recommendations when countdown reaches 0
+      fetchRecommendations();
+    }
+  }, [refreshCountdown, recommendationsUpdatedAt]);
+
+  // Refresh just the article/recommendations by reusing fetchArticle
+  const fetchRecommendations = async () => {
+    try {
+      await fetchArticle();
+    } catch (e) {
+      console.error('Failed to refresh recommendations:', e);
+    }
+  };
+
   const fetchArticle = async () => {
     try {
       setLoading(true);
@@ -137,6 +211,16 @@ const ArticleDetail = () => {
 
       if (response && response.success) {
         const data = response.data;
+        
+        // Recommendations are now included directly in the article data
+        if (data.recommendations) {
+          if (data.recommendations.was_refreshed) {
+            console.log('📋 Recommendations were refreshed from backend');
+          } else {
+            console.log('💾 Using cached recommendations from backend');
+          }
+        }
+        
         // Check follow status if user is logged in and not the author
         if (isAuthenticated() && data?.author_id !== user?.id) {
           checkFollowStatus(data.author_id);
@@ -155,52 +239,8 @@ const ArticleDetail = () => {
     }
   };
 
-  // Trigger recommendations when article content becomes available
-  useEffect(() => {
-    if (article?.content) {
-      fetchRecommendations();
-    }
-  }, [article?.content]);
-
-  const fetchRecommendations = async () => {
-    try {
-      setRecommendationsLoading(true);
-
-      // Use article content to search similar articles. Fetch a larger candidate set then pick top 5 non-self.
-      if (article?.content) {
-        const contentQuery = (article.content || '').slice(0, 4000);
-        // Fetch top 60 candidates
-        const resp = await articleApi.searchArticles(contentQuery, 60, 1, 60);
-        const candidates = resp?.results || resp?.data || resp || [];
-
-        const picked = [];
-        const seen = new Set();
-        for (const r of (Array.isArray(candidates) ? candidates : [])) {
-          if (!r || !r.id) continue;
-          if (r.id === id) continue; // ignore current article
-          if (seen.has(r.id)) continue;
-          seen.add(r.id);
-          picked.push(r);
-          if (picked.length === 5) break;
-        }
-
-        setRecommendations(picked);
-        // Store full candidates in state for "Show more"
-        setFullRecommendationCandidates(Array.isArray(candidates) ? candidates : []);
-      } else {
-        const response = await articleApi.getPopularArticles(20);
-        if (response.success && response.data) {
-          const filtered = response.data.filter(rec => rec.id !== id).slice(0, 5);
-          setRecommendations(filtered);
-          setFullRecommendationCandidates(response.data || []);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching recommendations:', error);
-    } finally {
-      setRecommendationsLoading(false);
-    }
-  };
+  // Recommendations are now loaded directly from the backend via the article API
+  // No separate fetching needed - they come with the article data
 
   useEffect(() => {
     // Load recommended authors: top 5 from the authors that this article's author follows
@@ -776,9 +816,36 @@ const ArticleDetail = () => {
               <div style={{ position: 'sticky', top: 100 }}>
                 <Card 
                   title={
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <BookOutlined style={{ color: '#1890ff' }} />
-                      <span>Recommended Articles</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <BookOutlined style={{ color: '#1890ff' }} />
+                        <span>Recommended Articles</span>
+                        {totalRecommendations > 0 && (
+                          <Tag color="blue" style={{ marginLeft: 4 }}>
+                            {totalRecommendations}
+                          </Tag>
+                        )}
+                      </div>
+                      {wasRefreshed && (
+                        <Tag color="green" size="small">
+                          ✨ Fresh
+                        </Tag>
+                      )}
+                    </div>
+                  }
+                  extra={
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                      {lastUpdated && (
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          <ClockCircleOutlined style={{ marginRight: 4 }} />
+                          {formatDisplayDate(lastUpdated)}
+                        </Text>
+                      )}
+                      {refreshCountdown > 0 && (
+                        <Text type="secondary" style={{ fontSize: 11, color: '#52c41a' }}>
+                          Refresh in {formatCountdown(refreshCountdown)}
+                        </Text>
+                      )}
                     </div>
                   }
                   style={{ 
@@ -791,13 +858,9 @@ const ArticleDetail = () => {
                     <div style={{ textAlign: 'center', padding: '20px' }}>
                       <Spin />
                     </div>
-                  ) : recommendations.length > 0 ? (
+                  ) : top5Recommendations.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {recommendations.map((rec) => {
-                        // Prefer the most common score fields; hide badge when score is missing or zero
-                        const recScore = rec?.score_final ?? rec?._final ?? rec?.score ?? null;
-                        const showScore = typeof recScore === 'number' && recScore > 0;
-
+                      {top5Recommendations.map((rec) => {
                         return (
                           <Card key={rec.id} size="small" hoverable style={{ borderRadius: 8 }}>
                             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -810,14 +873,9 @@ const ArticleDetail = () => {
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                                   <Text strong style={{ fontSize: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{rec.title}</Text>
-                                  {showScore && (
-                                    <Tag color={recScore > 0.7 ? 'green' : 'blue'} style={{ marginLeft: 8 }}>{recScore.toFixed(2)}</Tag>
-                                  )}
                                 </div>
-                                <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
-                                  <Text type="secondary" style={{ fontSize: 12 }}><UserOutlined /> {rec.author_name}</Text>
-                                  <Text type="secondary" style={{ fontSize: 12 }}>|</Text>
-                                  <Text type="secondary" style={{ fontSize: 12 }}><ClockCircleOutlined /> {formatDate(rec.created_at)}</Text>
+                                <div style={{ marginTop: 6 }}>
+                                  <Text type="secondary" style={{ fontSize: 12 }}><UserOutlined /> {rec.author}</Text>
                                 </div>
                                 <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
                                   <Button type="primary" size="small" onClick={() => navigate(`/articles/${rec.id}`)}>Read</Button>
@@ -831,9 +889,11 @@ const ArticleDetail = () => {
                         );
                       })}
 
-                      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
-                        <Button type="link" onClick={() => setShowMoreModalVisible(true)}>Show more</Button>
-                      </div>
+                      {more5Recommendations.length > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+                          <Button type="link" onClick={() => setShowMoreRecommendations(true)}>Show more ({more5Recommendations.length})</Button>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
@@ -843,34 +903,42 @@ const ArticleDetail = () => {
                   )}
                 </Card>
 
-                {/* Show More Modal for full recommendation candidates */}
+                {/* Show More Modal for additional recommendations */}
                 <Modal
-                  title="More like this"
-                  visible={showMoreModalVisible}
-                  onCancel={() => setShowMoreModalVisible(false)}
+                  title="More Recommendations"
+                  open={showMoreRecommendations}
+                  onCancel={() => setShowMoreRecommendations(false)}
                   footer={null}
                   width={720}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {fullRecommendationCandidates && fullRecommendationCandidates.length > 0 ? (
-                      fullRecommendationCandidates.filter(c => c && c.id && c.id !== id).map(c => (
-                        <Card key={c.id} size="small" hoverable style={{ borderRadius: 8 }} bodyStyle={{ padding: 12 }}>
+                    {more5Recommendations && more5Recommendations.length > 0 ? (
+                      more5Recommendations.map(rec => (
+                        <Card key={rec.id} size="small" hoverable style={{ borderRadius: 8 }} bodyStyle={{ padding: 12 }}>
                           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                            {c.image ? <Image src={c.image} width={72} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} /> : <div style={{ width: 72, height: 56, background: '#f0f0f0' }} />}
+                            {rec.image ? (
+                              <Image src={rec.image} alt={rec.title} width={72} height={56} style={{ objectFit: 'cover', borderRadius: 6 }} />
+                            ) : (
+                              <div style={{ width: 72, height: 56, background: '#f0f0f0', borderRadius: 6 }} />
+                            )}
                             <div style={{ flex: 1 }}>
-                              <Text strong>{c.title}</Text>
+                              <Text strong style={{ fontSize: 14 }}>{rec.title}</Text>
                               <div style={{ marginTop: 6 }}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>{c.author_name} • {formatDate(c.created_at)}</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                  <UserOutlined /> {rec.author || 'Unknown Author'}
+                                </Text>
                               </div>
-                            </div>
-                            <div>
-                              <Button onClick={() => navigate(`/articles/${c.id}`)}>Open</Button>
+                              <div style={{ marginTop: 8 }}>
+                                <Button type="primary" size="small" onClick={() => navigate(`/articles/${rec.id}`)}>
+                                  Read
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </Card>
                       ))
                     ) : (
-                      <div style={{ textAlign: 'center', padding: 24 }}>No more results</div>
+                      <div style={{ textAlign: 'center', padding: 24 }}>No additional recommendations</div>
                     )}
                   </div>
                 </Modal>

@@ -43,15 +43,12 @@ export const authApi = {
   // Register new user with optional avatar
   register: async (userData) => {
     try {
-      const formData = new FormData();
-      formData.append('full_name', userData.full_name);
-      formData.append('email', userData.email);
-      formData.append('password', userData.password);
-      if (userData.role) {
-        formData.append('role', userData.role);
-      }
+      const formData = createFormData(userData);
+      
+      // Ensure avatar file is properly attached if it exists
       if (userData.avatar) {
-        formData.append('avatar', userData.avatar);
+        const avatarFile = userData.avatar.originFileObj ? userData.avatar.originFileObj : userData.avatar;
+        formData.set('avatar', avatarFile); // use set to replace any existing avatar entry
       }
       
       const response = await apiClientFormData.post('/auth/register', formData, {
@@ -69,7 +66,8 @@ export const authApi = {
       
       // Fetch full user profile
       const userResponse = await apiClient.get(`/users/${user_id}`);
-      localStorage.setItem('user', JSON.stringify(userResponse.data?.data || userResponse.data));
+      const userObj = userResponse.data?.data || userResponse.data;
+      localStorage.setItem('user', JSON.stringify(userObj));
       
       return {
         success: true,
@@ -77,7 +75,7 @@ export const authApi = {
           access_token,
           user_id,
           role,
-          user: userResponse.data
+          user: userObj
         }
       };
     } catch (error) {

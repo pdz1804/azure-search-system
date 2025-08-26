@@ -52,10 +52,15 @@ async def register(
         "role": role,
     }
 
-    if avatar:
-        # upload_image returns a URL to the blob storage
-        image_url = upload_image(avatar.file)
-        user_data["avatar_url"] = image_url
+    if avatar and hasattr(avatar, 'filename') and avatar.filename:
+        try:
+            # upload_image returns a URL to the blob storage  
+            image_url = upload_image(avatar.file)
+            user_data["avatar_url"] = image_url
+            print(f"Avatar uploaded successfully for user: {user_data['email']}")
+        except Exception as e:
+            print(f"Failed uploading avatar: {e}")
+            # Continue without avatar rather than failing registration
 
     user = await create_user(user_data)
     if not user:

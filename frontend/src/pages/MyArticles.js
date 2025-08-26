@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { message } from 'antd';
+import React, { useState } from 'react';
 import { 
   PlusOutlined, 
   FileTextOutlined,
@@ -9,57 +8,39 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import ArticleList from '../components/ArticleList';
-import { articleApi } from '../api/articleApi';
 import { useAuth } from '../context/AuthContext';
+import { useAuthorStats, invalidateAuthorStats } from '../hooks/useAuthorStats';
 import { formatNumber } from '../utils/helpers';
 
 const MyArticles = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('all');
-  const [stats, setStats] = useState({
-    total: 0,
-    published: 0,
-    drafts: 0,
-    totalViews: 0,
-    totalLikes: 0
+  
+  // Use shared hook for author stats to prevent duplicate API calls
+  const { stats: authorStats, loading: statsLoading } = useAuthorStats(user?.id, { 
+    enabled: !!user?.id,
+    limit: 1000 
   });
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchStats();
-    }
-  }, [user]);
-
-  const fetchStats = async () => {
-    try {
-      const response = await articleApi.getArticlesByAuthor(user.id, 1, 1000);
-      if (response.success) {
-        const articles = response.data?.items || (Array.isArray(response.data) ? response.data : []) || [];
-        
-        const published = articles.filter(a => a.status === 'published').length;
-        const drafts = articles.filter(a => a.status === 'draft').length;
-        const totalViews = articles.reduce((sum, a) => sum + (a.views || 0), 0);
-        const totalLikes = articles.reduce((sum, a) => sum + (a.likes || 0), 0);
-        
-        setStats({
-          total: articles.length,
-          published,
-          drafts,
-          totalViews,
-          totalLikes
-        });
-      } else {
-        throw new Error(response.error || 'Failed to fetch articles');
-      }
-    } catch (error) {
-      message.error('Failed to load article statistics');
-      console.error('Error fetching stats:', error);
-    }
+  // Transform author stats to match component expectations
+  const stats = {
+    total: authorStats.total_articles || 0,
+    published: authorStats.published_articles || 0,
+    drafts: authorStats.draft_articles || 0,
+    totalViews: authorStats.total_views || 0,
+    totalLikes: authorStats.total_likes || 0
   };
 
   const handleCreateArticle = () => {
     navigate('/write');
+  };
+
+  const handleRefresh = () => {
+    // Invalidate the cache to force a fresh fetch
+    if (user?.id) {
+      invalidateAuthorStats(user.id);
+    }
   };
 
   return (
@@ -165,7 +146,7 @@ const MyArticles = () => {
                 key="all-articles"
                 authorId={user?.id}
                 showAuthor={false}
-                onRefresh={fetchStats}
+                onRefresh={handleRefresh}
                 loadAll
               />
             )}
@@ -175,7 +156,7 @@ const MyArticles = () => {
                 authorId={user?.id}
                 status="published"
                 showAuthor={false}
-                onRefresh={fetchStats}
+                onRefresh={handleRefresh}
               />
             )}
             {activeTab === 'drafts' && (
@@ -185,7 +166,7 @@ const MyArticles = () => {
                   authorId={user?.id}
                   status="draft"
                   showAuthor={false}
-                  onRefresh={fetchStats}
+                  onRefresh={handleRefresh}
                 />
               ) : (
                 <div className="text-center py-16">

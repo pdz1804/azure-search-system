@@ -20,6 +20,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Blogs from './pages/Blogs';
 import ProtectedRoute from './components/ProtectedRoute';
+import RoleProtectedRoute from './components/RoleProtectedRoute';
 
 // Ant Design theme configuration
 const theme = {
@@ -58,25 +59,25 @@ function App() {
                 <Route 
                   path="/write" 
                   element={
-                    <ProtectedRoute>
+                    <RoleProtectedRoute allowedRoles={['admin', 'writer']}>
                       <WriteArticle />
-                    </ProtectedRoute>
+                    </RoleProtectedRoute>
                   } 
                 />
                 <Route 
                   path="/write/:id" 
                   element={
-                    <ProtectedRoute>
+                    <RoleProtectedRoute allowedRoles={['admin', 'writer']}>
                       <WriteArticle />
-                    </ProtectedRoute>
+                    </RoleProtectedRoute>
                   } 
                 />
                 <Route 
                   path="/my-articles" 
                   element={
-                    <ProtectedRoute>
+                    <RoleProtectedRoute allowedRoles={['admin', 'writer']}>
                       <MyArticles />
-                    </ProtectedRoute>
+                    </RoleProtectedRoute>
                   } 
                 />
                 <Route 
@@ -90,9 +91,9 @@ function App() {
                 <Route 
                   path="/dashboard" 
                   element={
-                    <ProtectedRoute>
+                    <RoleProtectedRoute allowedRoles={['admin']}>
                       <Dashboard />
-                    </ProtectedRoute>
+                    </RoleProtectedRoute>
                   } 
                 />
                 

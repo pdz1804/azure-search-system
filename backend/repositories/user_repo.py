@@ -70,6 +70,29 @@ async def insert(doc: dict):
     users = await get_users()
     return await users.create_item(body=doc)
 
+
+async def update_user(user_id: str, update_data: dict) -> Optional[dict]:
+    """Update user document in Cosmos DB"""
+    try:
+        users = await get_users()
+        
+        # Get the existing user document
+        existing_user = await get_user_by_id(user_id)
+        if not existing_user:
+            return None
+        
+        # Update the user document with new data
+        for key, value in update_data.items():
+            existing_user[key] = value
+        
+        # Use upsert to update the document
+        updated_user = await users.upsert_item(body=existing_user)
+        return updated_user
+        
+    except Exception as e:
+        print(f"Error updating user in repository: {e}")
+        raise
+
 async def follow_user(follower_id: str, followee_id: str) -> bool:
     users = await get_users()
     try:
@@ -212,6 +235,9 @@ async def get_users_by_ids(user_ids: list) -> list:
     results = []
     async for doc in users.query_items(query=query, parameters=parameters):
         results.append(doc)
+
+    order_map = {id_: idx for idx, id_ in enumerate(user_ids)}
+    results.sort(key=lambda x: order_map.get(x['id'], len(user_ids)))
 
     return results
     

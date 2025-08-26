@@ -174,15 +174,16 @@ const ArticleList = ({
           const paginationData = response.pagination || {};
           // API Pagination data received
 
-          // Backend returns "total" as number of pages. If missing, default to 5 pages.
+          // Backend returns "total" as number of pages and "total_results" as actual item count
           const totalPages = paginationData.total || 5;
           const respPageSize = paginationData.page_size || pagination.pageSize || pageSize || 12;
-          const totalItems = totalPages * respPageSize;
+          // Use actual result count from backend if available, otherwise calculate
+          const totalItems = paginationData.total_results || (totalPages * respPageSize);
 
           setPagination(prev => ({
             ...prev,
             current: paginationData.page || page,
-            // always report total as totalItems (pages * pageSize)
+            // use actual total_results from backend
             total: totalItems,
             pageSize: respPageSize
           }));
@@ -194,7 +195,7 @@ const ArticleList = ({
         }
   }
     } catch (error) {
-      message.error('Failed to load articles');
+      console.error('Failed to load articles');
       console.error('Error fetching articles:', error);
       setArticles([]);
     } finally {
@@ -352,22 +353,90 @@ const ArticleList = ({
               <div className="flex justify-center mt-8">
                 {((searchQuery && searchQuery.length > 0) || searchText) ? (
                   (() => {
+                    console.log('🔍 [SEARCH PAGINATION DEBUG] Pagination object:', pagination);
                     const respPageSize = pagination.pageSize || 12;
-                    const pagesFromBackend = Math.max(1, Math.ceil((pagination.total || (5 * respPageSize)) / respPageSize));
-                    const pagesToShow = Math.max(5, pagesFromBackend);
+                    // Calculate total pages from total items
+                    const totalPages = Math.ceil((pagination.total || 0) / respPageSize);
+                    console.log('🔍 [SEARCH PAGINATION DEBUG] Calculated values:', {
+                      respPageSize,
+                      'pagination.total (pages)': pagination.total,
+                      'pagination.total_results': pagination.total_results,
+                      'final totalPages': totalPages,
+                      'pagination.current': pagination.current
+                    });
+                    // Create "1...10" style pagination for search
                     const buttons = [];
-                    for (let i = 1; i <= pagesToShow; i++) {
+                    const currentPage = pagination.current;
+                    const maxVisible = 5;
+                    
+                    // Always show page 1
+                    buttons.push(
+                      <button
+                        key={1}
+                        onClick={() => handlePageChange(1)}
+                        className={`mx-1 px-3 py-2 rounded-lg font-medium transition-colors ${
+                          currentPage === 1
+                            ? 'bg-indigo-600 text-white border-2 border-indigo-600'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        1
+                      </button>
+                    );
+                    
+                    // Add ellipsis if needed
+                    if (currentPage > 4) {
+                      buttons.push(
+                        <span key="ellipsis-start" className="mx-1 px-2 py-2 text-gray-500">
+                          ...
+                        </span>
+                      );
+                    }
+                    
+                    // Show pages around current page
+                    const startPage = Math.max(2, currentPage - 1);
+                    const endPage = Math.min(totalPages - 1, currentPage + 1);
+                    
+                    for (let i = startPage; i <= endPage; i++) {
+                      if (i !== 1 && i !== totalPages) {
+                        buttons.push(
+                          <button
+                            key={i}
+                            onClick={() => handlePageChange(i)}
+                            className={`mx-1 px-3 py-2 rounded-lg font-medium transition-colors ${
+                              i === currentPage
+                                ? 'bg-indigo-600 text-white border-2 border-indigo-600'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            {i}
+                          </button>
+                        );
+                      }
+                    }
+                    
+                    // Add ellipsis if needed
+                    if (currentPage < totalPages - 3) {
+                      buttons.push(
+                        <span key="ellipsis-end" className="mx-1 px-2 py-2 text-gray-500">
+                          ...
+                        </span>
+                      );
+                    }
+                    
+                    // Always show last page if more than 1 page
+                    if (totalPages > 1) {
                       buttons.push(
                         <button
-                          key={i}
-                          onClick={() => handlePageChange(i)}
+                          key={totalPages}
+                          onClick={() => handlePageChange(totalPages)}
                           className={`mx-1 px-3 py-2 rounded-lg font-medium transition-colors ${
-                            i === pagination.current
+                            currentPage === totalPages
                               ? 'bg-indigo-600 text-white border-2 border-indigo-600'
                               : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                           }`}
                         >
-                          {i}
+                          {totalPages}
                         </button>
                       );
                     }
@@ -382,8 +451,8 @@ const ArticleList = ({
                         </button>
                         {buttons}
                         <button
-                          onClick={() => handlePageChange(Math.min(pagesToShow, pagination.current + 1))}
-                          disabled={pagination.current === pagesToShow}
+                          onClick={() => handlePageChange(Math.min(totalPages, pagination.current + 1))}
+                          disabled={pagination.current === totalPages}
                           className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           →
@@ -392,25 +461,125 @@ const ArticleList = ({
                     );
                   })()
                 ) : (
-                  <div className="flex items-center justify-center space-x-4">
-                    <button
-                      onClick={() => handlePageChange(Math.max(1, pagination.current - 1))}
-                      disabled={pagination.current === 1}
-                      className="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    <span className="text-sm text-gray-700">
-                      Page {pagination.current} of {Math.ceil(pagination.total / pagination.pageSize)}
-                    </span>
-                    <button
-                      onClick={() => handlePageChange(pagination.current + 1)}
-                      disabled={pagination.current >= Math.ceil(pagination.total / pagination.pageSize)}
-                      className="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
-                  </div>
+                  (() => {
+                    console.log('📄 [REGULAR PAGINATION DEBUG] Pagination object:', pagination);
+                    // Calculate total pages from total items and page size
+                    const totalPages = Math.ceil((pagination.total || 0) / (pagination.pageSize || 12));
+                    const currentPage = pagination.current;
+                    console.log('📄 [REGULAR PAGINATION DEBUG] Calculated values:', {
+                      'pagination.total (pages)': pagination.total,
+                      'pagination.total_results': pagination.total_results,
+                      'pagination.pageSize': pagination.pageSize,
+                      'final totalPages': totalPages,
+                      currentPage
+                    });
+                    
+                    const renderPageButtons = () => {
+                      const buttons = [];
+                      
+                      // Always show page 1
+                      buttons.push(
+                        <button
+                          key={1}
+                          onClick={() => handlePageChange(1)}
+                          className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                            currentPage === 1
+                              ? 'bg-indigo-600 text-white shadow-lg'
+                              : 'bg-white text-gray-700 border border-gray-300 hover:bg-indigo-50 hover:text-indigo-600'
+                          }`}
+                        >
+                          1
+                        </button>
+                      );
+                      
+                      // Add ellipsis if needed
+                      if (currentPage > 4) {
+                        buttons.push(
+                          <span key="ellipsis-start" className="px-2 py-2 text-gray-500">
+                            ...
+                          </span>
+                        );
+                      }
+                      
+                      // Show pages around current page
+                      const startPage = Math.max(2, currentPage - 1);
+                      const endPage = Math.min(totalPages - 1, currentPage + 1);
+                      
+                      for (let i = startPage; i <= endPage; i++) {
+                        if (i !== 1 && i !== totalPages) {
+                          buttons.push(
+                            <button
+                              key={i}
+                              onClick={() => handlePageChange(i)}
+                              className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                                i === currentPage
+                                  ? 'bg-indigo-600 text-white shadow-lg'
+                                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-indigo-50 hover:text-indigo-600'
+                              }`}
+                            >
+                              {i}
+                            </button>
+                          );
+                        }
+                      }
+                      
+                      // Add ellipsis if needed
+                      if (currentPage < totalPages - 3) {
+                        buttons.push(
+                          <span key="ellipsis-end" className="px-2 py-2 text-gray-500">
+                            ...
+                          </span>
+                        );
+                      }
+                      
+                      // Always show last page if there's more than 1 page
+                      if (totalPages > 1) {
+                        buttons.push(
+                          <button
+                            key={totalPages}
+                            onClick={() => handlePageChange(totalPages)}
+                            className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                              currentPage === totalPages
+                                ? 'bg-indigo-600 text-white shadow-lg'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-indigo-50 hover:text-indigo-600'
+                            }`}
+                          >
+                            {totalPages}
+                          </button>
+                        );
+                      }
+                      
+                      return buttons;
+                    };
+
+                    return (
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-2">
+                          <button
+                            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                            disabled={currentPage === 1}
+                            className="px-2 sm:px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                          >
+                            ←
+                          </button>
+                          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                            {renderPageButtons()}
+                          </div>
+                          <button
+                            onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                            disabled={currentPage === totalPages}
+                            className="px-2 sm:px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                          >
+                            →
+                          </button>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {/* Page {currentPage} of {totalPages} ({pagination.total} total articles) */}
+                          Page {currentPage} of {totalPages}
+                        </div>
+                      </div>
+                    );
+                  })()
                 )}
               </div>
             )}

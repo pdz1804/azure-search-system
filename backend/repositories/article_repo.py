@@ -43,12 +43,33 @@ async def get_article_by_id(article_id: str) -> Optional[dict]:
 async def update_article(article_id: str, update_doc: dict) -> dict:
     articles = await get_articles()
     try:
+        print(f"🔍 Repository: Reading existing article {article_id} from Cosmos DB")
         existing_article = await articles.read_item(item=article_id, partition_key=article_id)
+        
+        print(f"📋 Repository: Original article keys: {list(existing_article.keys())}")
+        print(f"📝 Repository: Applying update with keys: {list(update_doc.keys())}")
+        
+        # Apply the updates to the existing article
         existing_article.update(update_doc)
+        
+        print(f"🔄 Repository: About to upsert article to Cosmos DB")
+        print(f"✅ Repository: Article now has recommended field: {'recommended' in existing_article}")
+        print(f"📅 Repository: Article now has recommended_time field: {'recommended_time' in existing_article}")
+        
+        # Upsert the updated article back to Cosmos DB
         updated = await articles.upsert_item(body=existing_article)
+        
+        print(f"✅ Repository: Successfully upserted article to Cosmos DB")
+        print(f"🔍 Repository: Returned article has recommended: {'recommended' in updated}")
+        print(f"🔍 Repository: Returned article has recommended_time: {'recommended_time' in updated}")
+        
+        if 'recommended_time' in updated:
+            print(f"⏰ Repository: Final recommended_time value: {updated.get('recommended_time')}")
+        
         return updated
     except Exception as e:
-        print(f"Error updating article: {e}")
+        print(f"❌ Repository: Error updating article {article_id}: {e}")
+        print(f"❌ Repository: Exception type: {type(e).__name__}")
         raise 
 
 

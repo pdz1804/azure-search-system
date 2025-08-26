@@ -37,8 +37,10 @@ const Register = () => {
   };
 
   const handleAvatarChange = (info) => {
-    if (info.file.status === 'done' || info.file.originFileObj) {
-      setAvatarFile(info.file.originFileObj || info.file);
+    if (info.file) {
+      // Since beforeUpload returns false, we need to handle the file directly
+      const file = info.file.originFileObj || info.file;
+      setAvatarFile(file);
     }
   };
 

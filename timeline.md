@@ -52,20 +52,31 @@ Note:
 - ***hiện tại cache = backend redis cho homepage (call api for stats, categories and authors) + search results pages + blogs pages (có cái 3 mins cái thì 5 mins) ==> DONE***
 - ***những card của article đang hiển thị lệch và không bằng nhau --> nguyên nhân maybe do có thằng có hình có thằng không có hình và maybe do hình của tụi nó không bằng nhau nữa ==> DONE***
 - ***UI responsive for homepage + blog page + fix footer to correct redirect ==> DONE***
-- 
+
+---
+
+# 25/08
+
+- ***bug lúc register: khi register thành công, nó sẽ chưa login vô đc mà bị kẹt chỗ "User vô danh". nếu log out user vô danh thì login vô lại đc bình thường ==> DONE***
+- ***upload image when register not work ==> DONE***
+- ***return field of total for search và các thứ bên backend đang chưa đồng bộ = total phải là tổng trang tuy nhiên total bên search hiện lại đang là tổng số elements ==> DONE ==> phân trang của articles + search now work perfectly in backend -> frontend***
+- ***kiểm tra lại chức năng search ( search "phú hà mã" ) ==> for the unmeaningful query, currently by default we use article search***
+- ***recommended articles now use title + abstract ==> DONE***
+- ***should have auto tagging for each article ==> DONE***
+- ***should have auto updated the recommended field of each article ==> DONE***
+- ***fix bug when at the page of writing article, if we reload, we will be redirect to the login page ==> fix already in the `ProtectedRoute.js`***
+
+---
+
+# 26/08
+
+- **Chức năng cấp quyền / xóa quyền writer của ADMIN cho 1 USER nào đó + Chức năng deactivate account của user / writer nào đó ==> DONE**
 
 ---
 
 # TODO
 
-- kiểm tra lại chức năng search ( search "phú hà mã" ) ==> for the unmeaningful query, currently by default we use article search
 - recommended authors and articles are not working now ==> now recommend articles = search (work) + recommend users thì đang làm
-- return field of total for search và các thứ bên backend đang chưa đồng bộ = total phải là tổng trang tuy nhiên total bên search hiện lại đang là tổng số elements
 - trong quá trình return lại kết quả sau khi dùng DTO thì 2 thg kết quả search của articles và của authors đang bị chưa đúng thứ tự của score cao --> score thấp
-- should have auto tagging for each article
-- should have auto updated the recommended field of each article- should have auto tagging for each article
-- bug lúc register: khi register thành công, nó sẽ chưa login vô đc mà bị kẹt chỗ "User vô danh". nếu log out user vô danh thì login vô lại đc bình thường --> BUG
-- Chức năng cấp quyền / xóa quyền writer của ADMIN cho 1 USER nào đó + Chức năng deactivate account của user / writer nào đó
-- AUTO deploy 
+- DEPLOY
 - AUTO fit with new data or firms
-

@@ -28,12 +28,14 @@ async def create_article(doc: dict) -> dict:
     # prepare fields expected by repository/db
     now = datetime.utcnow().isoformat()
     doc["created_at"] = now
-    doc["updated_at"] = now
+    doc["updated_at"] = now  # For new articles, updated_at = created_at
     doc["id"] = uuid.uuid4().hex
     doc["is_active"] = True
     doc.setdefault("likes", 0)
     doc.setdefault("dislikes", 0)
     doc.setdefault("views", 0)
+    
+    print(f"📝 Creating new article with created_at = updated_at = {now}")
 
     # persist via repository layer
     inserted_id = await article_repo.insert_article(doc)
@@ -61,15 +63,25 @@ async def get_article_by_id(article_id: str) -> Optional[dict]:
     return article
 
 async def update_article(article_id: str, update_doc: dict) -> Optional[dict]:
-    update_doc["updated_at"] = datetime.utcnow().isoformat()
-    await article_repo.update_article(article_id, update_doc)
+    # Only add updated_at if it's not a recommendations-only update
+    if not (set(update_doc.keys()) <= {'recommended', 'recommended_time'}):
+        update_doc["updated_at"] = datetime.utcnow().isoformat()
     
+    print(f"📝 Article service updating article {article_id}")
+    print(f"🔑 Update fields: {list(update_doc.keys())}")
+    
+    updated_article = await article_repo.update_article(article_id, update_doc)
+    
+    # Clear caches to ensure fresh data
     cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
     await delete_cache_pattern(cache_key)
     await delete_cache_pattern("articles:home*")
     await delete_cache_pattern("articles:recent*")
     
-    return await get_article_by_id(article_id)
+    print(f"🗑️ Cleared caches for article {article_id}")
+    
+    # Return the updated article directly instead of refetching
+    return updated_article
 
 async def delete_article(article_id: str):
     await article_repo.delete_article(article_id)

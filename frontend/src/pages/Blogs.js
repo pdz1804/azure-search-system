@@ -147,172 +147,180 @@ const Blogs = () => {
 	);
 
 	return (
-		<div className="min-h-screen bg-gray-50">
-			<div className="py-8">
-				<div className="max-w-7xl mx-auto px-6">
-					<div className="text-center mb-12">
-						<h1 className="text-5xl font-extrabold text-gray-900 mb-4">
-							<span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">Blogs & Articles</span>
+		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+			{/* Hero Header */}
+			<div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white relative overflow-hidden">
+				<div className="absolute inset-0 bg-black/10"></div>
+				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+					<div className="text-center">
+						<h1 className="text-4xl md:text-6xl font-extrabold mb-4">
+							<span className="bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">Blogs & Articles</span>
 						</h1>
-						<p className="text-xl text-gray-600 max-w-3xl mx-auto">Discover amazing content from our community of writers and creators</p>
+						<p className="text-lg md:text-xl text-blue-100 max-w-3xl mx-auto leading-relaxed">Discover amazing content from our community of writers and creators</p>
+					</div>
+				</div>
+			</div>
+
+			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+				{/* Tab Navigation */}
+				<div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-6 md:p-8 mb-8 border border-white/50">
+					<div className="flex flex-col sm:flex-row sm:space-x-8 border-b border-gray-200 mb-6">
+						<button
+							type="button"
+							className={`pb-4 px-3 text-base md:text-lg font-semibold transition-all duration-300 border-b-3 mb-2 sm:mb-0 ${
+								activeTab === 'articles' 
+									? 'text-indigo-600 border-indigo-600 bg-indigo-50 rounded-t-lg' 
+									: 'text-gray-600 border-transparent hover:text-indigo-500 hover:bg-gray-50 rounded-lg'
+							}`}
+							onClick={() => handleTabChange('articles')}
+						>
+							<DocumentTextIcon className="w-5 h-5 inline-block mr-2" />
+							News Articles
+						</button>
+						<button
+							type="button"
+							className={`pb-4 px-3 text-base md:text-lg font-semibold transition-all duration-300 border-b-3 ${
+								activeTab === 'authors' 
+									? 'text-indigo-600 border-indigo-600 bg-indigo-50 rounded-t-lg' 
+									: 'text-gray-600 border-transparent hover:text-indigo-500 hover:bg-gray-50 rounded-lg'
+							}`}
+							onClick={() => handleTabChange('authors')}
+						>
+							<UserIcon className="w-5 h-5 inline-block mr-2" />
+							Hot Authors
+						</button>
 					</div>
 
-					{/* Tab Navigation */}
-					<div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
-						<div className="flex space-x-8 border-b border-gray-200 mb-6">
-							<button
-								type="button"
-								className={`pb-4 px-2 text-lg font-medium transition-colors duration-200 border-b-2 ${
-									activeTab === 'articles' 
-										? 'text-indigo-600 border-indigo-600' 
-										: 'text-gray-500 border-transparent hover:text-gray-700'
-								}`}
-								onClick={() => handleTabChange('articles')}
-							>
-								<DocumentTextIcon className="w-5 h-5 inline-block mr-2" />
-								News Articles
-							</button>
-							<button
-								type="button"
-								className={`pb-4 px-2 text-lg font-medium transition-colors duration-200 border-b-2 ${
-									activeTab === 'authors' 
-										? 'text-indigo-600 border-indigo-600' 
-										: 'text-gray-500 border-transparent hover:text-gray-700'
-								}`}
-								onClick={() => handleTabChange('authors')}
-							>
-								<UserIcon className="w-5 h-5 inline-block mr-2" />
-								Hot Authors
-							</button>
-						</div>
-
-						{/* Articles Tab Content */}
-						{activeTab === 'articles' && (
-							<div>
-								<div className="mb-6 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-									<div className="flex flex-wrap gap-3">
-										{categories.map((category) => (
-											<button
-												key={category.key}
-												type="button"
-												className={`rounded-full px-6 py-2 font-medium transition-all duration-300 ${
-													selectedCategory === category.key 
-														? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' 
-														: 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md'
-												}`}
-												onClick={() => { setSelectedCategory(category.key); setArticlePage(1); }}
-											>
-												{category.label}
-											</button>
-										))}
-									</div>
-									<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-										<select
-											value={articleSortBy}
-											onChange={(e) => { setArticleSortBy(e.target.value); setArticlePage(1); }}
-											className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none bg-white min-w-[180px]"
-										>
-											<option value="updated_at">Sort by: Updated</option>
-											<option value="created_at">Sort by: Created</option>
-										</select>
-										<div className="relative max-w-xs w-full">
-											<input
-												type="text"
-												placeholder="Search articles..."
-												defaultValue={articleSearch}
-												onKeyDown={(e) => {
-													if (e.key === 'Enter') {
-														setArticleSearch(e.target.value);
-														setArticlePage(1);
-													}
-												}}
-												className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-											/>
-											<MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-										</div>
-									</div>
-								</div>
-								<ArticleList 
-									showFilters={false} 
-									category={selectedCategory} 
-									sortBy={articleSortBy} 
-									searchQuery={articleSearch} 
-									currentPage={articlePage} 
-									onPageChange={setArticlePage} 
-									showTopPager 
-								/>
-							</div>
-						)}
-
-						{/* Authors Tab Content */}
-						{activeTab === 'authors' && (
-							<div>
-								<div className="mb-6 flex justify-end">
-									<div className="relative max-w-xs w-full">
+					{/* Articles Tab Content */}
+					{activeTab === 'articles' && (
+						<div>
+							{/* Controls Section */}
+							<div className="mb-6 bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-gray-100">
+								{/* Top Row - Search and Sort */}
+								<div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-4">
+									<div className="relative flex-1 max-w-md">
 										<input
 											type="text"
-											placeholder="Search authors..."
-											onKeyDown={async (e) => {
+											placeholder="Search articles..."
+											defaultValue={articleSearch}
+											onKeyDown={(e) => {
 												if (e.key === 'Enter') {
-													const val = e.target.value;
-													if (!val) {
-														loadAuthors();
-														return;
-													}
-													try {
-														const res = await userApi.searchUsersAI({ q: val, limit: 100, page: 1 });
-														const list = res.results || res.data || [];
-														setAuthors(list);
-														setAuthorPage(1);
-													} catch {}
+													setArticleSearch(e.target.value);
+													setArticlePage(1);
 												}
 											}}
-											className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+											className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none bg-white shadow-sm text-sm"
 										/>
-										<MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+										<MagnifyingGlassIcon className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
 									</div>
+									<select
+										value={articleSortBy}
+										onChange={(e) => { setArticleSortBy(e.target.value); setArticlePage(1); }}
+										className="px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none bg-white shadow-sm text-sm min-w-[140px]"
+									>
+										<option value="updated_at">Latest</option>
+										<option value="created_at">Newest</option>
+									</select>
 								</div>
-								{authorsLoading ? (
-									<div className="text-center py-16">
-										<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-									</div>
-								) : authors.length > 0 ? (
-									<div>
-										{authors
-											.slice()
-											.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||''))
-											.slice((authorPage - 1) * authorPageSize, authorPage * authorPageSize)
-											.map(renderAuthorCard)}
-										<div className="mt-6 flex justify-center">
-											{/* Simple pagination */}
-											<div className="flex space-x-2">
-												{Array.from({ length: Math.ceil(authors.length / authorPageSize) }, (_, i) => i + 1).map(page => (
-													<button
-														key={page}
-														type="button"
-														className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-															authorPage === page
-																? 'bg-indigo-600 text-white'
-																: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-														}`}
-														onClick={() => setAuthorPage(page)}
-													>
-														{page}
-													</button>
-												))}
-											</div>
+								
+								{/* Categories Row */}
+								<div className="flex flex-wrap gap-2">
+									{categories.map((category) => (
+										<button
+											key={category.key}
+											type="button"
+											className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-200 ${
+												selectedCategory === category.key 
+													? 'bg-indigo-600 text-white shadow-md' 
+													: 'bg-gray-100 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 border border-gray-200'
+											}`}
+											onClick={() => { setSelectedCategory(category.key); setArticlePage(1); }}
+										>
+											{category.label}
+										</button>
+									))}
+								</div>
+							</div>
+							<ArticleList 
+								showFilters={false} 
+								category={selectedCategory} 
+								sortBy={articleSortBy} 
+								searchQuery={articleSearch} 
+								currentPage={articlePage} 
+								onPageChange={setArticlePage} 
+								showTopPager 
+							/>
+						</div>
+					)}
+
+					{/* Authors Tab Content */}
+					{activeTab === 'authors' && (
+						<div>
+							<div className="mb-6 flex justify-center sm:justify-end">
+								<div className="relative max-w-xs w-full sm:w-auto min-w-[280px]">
+									<input
+										type="text"
+										placeholder="Search authors..."
+										onKeyDown={async (e) => {
+											if (e.key === 'Enter') {
+												const val = e.target.value;
+												if (!val) {
+													loadAuthors();
+													return;
+												}
+												try {
+													const res = await userApi.searchUsersAI({ q: val, limit: 100, page: 1 });
+													const list = res.results || res.data || [];
+													setAuthors(list);
+													setAuthorPage(1);
+												} catch {}
+											}
+										}}
+										className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none bg-white/90 backdrop-blur-sm shadow-sm"
+									/>
+									<MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+								</div>
+							</div>
+							{authorsLoading ? (
+								<div className="text-center py-16">
+									<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+								</div>
+							) : authors.length > 0 ? (
+								<div>
+									{authors
+										.slice()
+										.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||''))
+										.slice((authorPage - 1) * authorPageSize, authorPage * authorPageSize)
+										.map(renderAuthorCard)}
+									<div className="mt-8 flex justify-center">
+										{/* Enhanced numbered pagination */}
+										<div className="flex flex-wrap items-center justify-center gap-2">
+											{Array.from({ length: Math.ceil(authors.length / authorPageSize) }, (_, i) => i + 1).map(page => (
+												<button
+													key={page}
+													type="button"
+													className={`w-10 h-10 rounded-xl font-semibold transition-all duration-200 ${
+														authorPage === page
+															? 'bg-indigo-600 text-white shadow-lg scale-110'
+															: 'bg-white/70 text-gray-700 hover:bg-white hover:text-indigo-600 hover:shadow-md hover:scale-105 border border-gray-200'
+													}`}
+													onClick={() => setAuthorPage(page)}
+												>
+													{page}
+												</button>
+											))}
 										</div>
 									</div>
-								) : (
-									<div className="text-center py-16">
-										<UserIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-										<h3 className="text-xl font-semibold text-gray-600 mb-2">No Authors Found</h3>
-										<p className="text-gray-500">We're working on bringing you amazing authors soon!</p>
-									</div>
-								)}
-							</div>
-						)}
-					</div>
+								</div>
+							) : (
+								<div className="text-center py-16">
+									<UserIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+									<h3 className="text-xl font-semibold text-gray-600 mb-2">No Authors Found</h3>
+									<p className="text-gray-500">We're working on bringing you amazing authors soon!</p>
+								</div>
+							)}
+						</div>
+					)}
 				</div>
 			</div>
 		</div>

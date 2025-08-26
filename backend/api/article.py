@@ -8,12 +8,19 @@ from backend.services.azure_blob_service import upload_image
 from backend.enum.roles import Role
 from backend.utils import get_current_user, require_owner_or_role, require_role
 from backend.services.article_service import (
-    create_article, delete_article, get_article_by_id, increment_article_views, 
-    list_articles, update_article, 
-    get_articles_by_author, get_popular_articles
+    get_article_by_id,
+    create_article,
+    list_articles,
+    update_article,
+    delete_article,
+    get_popular_articles,
+    get_articles_by_author,
+    increment_article_views
 )
+from backend.services.tag_service import tag_service
 from backend.services.cache_service import get_cache, set_cache, CACHE_TTL
 from backend.services.search_service import search_service
+from backend.services.recommendation_service import get_recommendation_service
 from backend.database.cosmos import get_articles_container
 
 load_dotenv()
@@ -97,6 +104,7 @@ async def get_articles(
     """Get articles with pagination and filtering."""
     # Check Redis cache first
     cache_key = f"articles:list:page_{page or 1}_size_{page_size or limit or 20}_status_{status or 'published'}_sort_{sort_by or 'created_at'}"
+    # Temporarily disable cache to serve fresh pagination data
     cached_articles = await get_cache(cache_key)
     if cached_articles:
         print("📚 Redis Cache HIT for articles list")
@@ -110,6 +118,9 @@ async def get_articles(
         current_status = status or "published"
         
         # Get articles from service
+        # from backend.services.article_service import get_articles_paginated
+        # articles_data = await get_articles_paginated(page=current_page, page_size=current_page_size)
+        
         articles_data = await list_articles(page=current_page, page_size=current_page_size)
         
         # Calculate total pages - get total count from database
@@ -124,9 +135,13 @@ async def get_articles(
             "pagination": {
                 "page": current_page,
                 "page_size": current_page_size,
-                "total": total_pages  # Changed to total pages
+                "total": total_pages,  # total pages
+                "total_results": total_items  # total result count
             }
         }
+        
+        print(f"📄 [ARTICLES API DEBUG] Returning pagination: {result['pagination']}")
+        print(f"📄 [ARTICLES API DEBUG] total_items={total_items}, total_pages={total_pages}, page_size={current_page_size}")
         
         # Cache the results for 3 minutes (180 seconds)
         await set_cache(cache_key, result, ttl=180)
@@ -155,12 +170,51 @@ async def home_popular_articles(page: int = 1, page_size: int = 10):
             "pagination": {
                 "page": page,
                 "page_size": page_size,
-                "total": total_pages  # Changed to total pages
+                "total": total_pages,  # total pages
+                "total_results": total_items  # total result count
             }
         }
     except Exception as e:
         print(f"Error fetching popular articles: {e}")
-        return {"success": False, "data": {"error": "Failed to fetch popular articles"}}
+        return {"success": False, "data": {"error": "Failed to fetch statistics"}}
+
+@articles.post("/generate-tags")
+async def generate_article_tags(
+    title: str = Form(""),
+    abstract: str = Form(""),
+    content: str = Form(""),
+    user_tags: List[str] = Form([])
+):
+    """
+    Generate article tags using LLM with KeyBERT fallback.
+    User provides 0-2 tags, system generates up to 4 total tags.
+    """
+    try:
+        print(f"🏷️ Generating tags for article: '{title[:50]}...'")
+        print(f"🏷️ User provided {len(user_tags)} tags: {user_tags}")
+        
+        # Generate tags using the tag service
+        result = await tag_service.generate_article_tags(
+            title=title,
+            abstract=abstract,
+            content=content,
+            user_tags=user_tags
+        )
+        
+        print(f"🏷️ Tag generation complete: {len(result['tags'])} tags using {result['method_used']}")
+        return result
+        
+    except Exception as e:
+        print(f"❌ Tag generation failed: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": str(e),
+                "tags": user_tags[:4],  # Fallback to user tags
+                "method_used": "error_fallback"
+            }
+        )
 
 @articles.get("/stats")
 async def get_statistics():
@@ -420,7 +474,8 @@ async def get_articles_by_category(
             "pagination": {
                 "page": page,
                 "limit": limit,
-                "total": total_pages  # Changed to total pages
+                "total": total_pages,  # total pages
+                "total_results": total_items  # total result count
             }
         }
     except Exception as e:
@@ -471,10 +526,34 @@ async def get_one(article_id: str):
         art = await get_article_by_id(article_id)
         if not art:
             return JSONResponse(status_code=404, content={"success": False, "data": None})
+        
         await increment_article_views(article_id)
+        
+        # Get recommendations using the recommendation service
+        recommendation_service = get_recommendation_service()
+        recommendations, was_refreshed = await recommendation_service.get_article_recommendations(article_id)
+        
+        # Fetch detailed article information for recommendations
+        detailed_recommendations = await recommendation_service.fetch_article_details_for_recommendations(recommendations)
+        
+        # Format recommendations for display (top 5 + more 5)
+        formatted_recommendations = recommendation_service.format_recommendations_for_display(detailed_recommendations)
+        
+        # Add recommendations to the response
+        response_data = {
+            **art,
+            "recommendations": {
+                "top5": formatted_recommendations["top5"],
+                "more5": formatted_recommendations["more5"],
+                "total": len(recommendations),
+                "was_refreshed": was_refreshed,
+                "last_updated": art.get("recommended_time")
+            }
+        }
+        
         return {
             "success": True,
-            "data": art
+            "data": response_data
         }
     except Exception as e:
         print(f"Error fetching article {article_id}: {e}")
@@ -554,7 +633,8 @@ async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20)
         "pagination": {
             "page": page,
             "page_size": page_size,
-            "total": total_pages  # Changed to total pages
+            "total": total_pages,  # total pages
+            "total_results": total_items  # total result count
         }
     }
     

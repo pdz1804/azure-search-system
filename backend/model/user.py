@@ -9,3 +9,4 @@ class User(BaseModel):
     password: str
     avatar_url: Optional[str] = None
     role: Optional[str] = "user"
+    is_active: Optional[bool] = True

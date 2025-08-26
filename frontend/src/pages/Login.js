@@ -98,7 +98,7 @@ const Login = () => {
           <div style={{ textAlign: 'center' }}>
             <Space direction="vertical">
               <Text type="secondary">
-                Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
+                Do not have an account? <Link to="/register">Register now</Link>
               </Text>
             </Space>
           </div>

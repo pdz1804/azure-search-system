@@ -15,6 +15,8 @@ import { userApi } from '../api/userApi';
 import { articleApi } from '../api/articleApi';
 import { useAuth } from '../context/AuthContext';
 import ArticleList from '../components/ArticleList';
+import DashboardStats from '../components/DashboardStats';
+import { useAuthorStats } from '../hooks/useAuthorStats';
 import { formatNumber } from '../utils/helpers';
 
 const Profile = () => {
@@ -39,9 +41,16 @@ const Profile = () => {
   const [followersModalVisible, setFollowersModalVisible] = useState(false);
   const [followersList, setFollowersList] = useState([]);
   const [followersLoading, setFollowersLoading] = useState(false);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
 
   const isOwnProfile = (!!currentUser && (!id || id === currentUser.id));
   const targetUserId = id || currentUser?.id;
+
+  // Use the shared hook for author stats to prevent duplicate API calls
+  const { stats: authorStats } = useAuthorStats(targetUserId, { 
+    enabled: !!targetUserId,
+    limit: 50 // Lighter load for profile view
+  });
 
   useEffect(() => {
     if (!targetUserId) return;
@@ -52,10 +61,8 @@ const Profile = () => {
         // Fetch user data first (needed by fetchUserStats)
         const fetched = await fetchUserData();
         
-        // Run stats and follow status in parallel (independent operations)
-        const promises = [
-          fetchUserStats(fetched)
-        ];
+        // Run follow status check if needed
+        const promises = [];
         
         if (isAuthenticated() && !isOwnProfile) {
           promises.push(checkFollowStatus());
@@ -70,7 +77,14 @@ const Profile = () => {
     };
 
     run();
-  }, [targetUserId, currentUser]); // Add currentUser as dependency to re-run when auth loads
+  }, [targetUserId, currentUser?.id]); // Only depend on user ID to prevent infinite re-renders
+
+  // Update stats when author stats change
+  useEffect(() => {
+    if (user && authorStats) {
+      fetchUserStats(user);
+    }
+  }, [authorStats, user]);
 
   const fetchUserData = async () => {
     try {
@@ -191,42 +205,36 @@ const Profile = () => {
     try {
       if (!targetUserId) return;
       
-      // Only fetch first page (10-20 articles) for performance - most users don't have 1000s of articles
-      const articlesResponse = await articleApi.getArticlesByAuthor(targetUserId, 1, 50);
-      if (articlesResponse.success) {
-        const articles = (articlesResponse.data?.items) || (Array.isArray(articlesResponse.data) ? articlesResponse.data : []) || [];
-        
-        // Use pagination info if available for accurate article count
-        const totalArticleCount = articlesResponse.data?.total || articlesResponse.data?.totalCount || articles.length;
+      const u = userObj || user || {};
 
-        const totalViews = articles.reduce((sum, article) => sum + (article.views || 0), 0);
-        const totalLikes = articles.reduce((sum, article) => sum + (article.likes || 0), 0);
+      // Normalize followers/following to numeric counts
+      const followersCount = (typeof u.num_followers === 'number')
+        ? u.num_followers
+        : Array.isArray(u.followers)
+          ? u.followers.length
+          : Number(u.followers) || 0;
 
-        const u = userObj || user || {};
+      const followingCount = (typeof u.num_following === 'number')
+        ? u.num_following
+        : Array.isArray(u.following)
+          ? u.following.length
+          : Number(u.following) || 0;
 
-        // Normalize followers/following to numeric counts
-        const followersCount = (typeof u.num_followers === 'number')
-          ? u.num_followers
-          : Array.isArray(u.followers)
-            ? u.followers.length
-            : Number(u.followers) || 0;
+      // Use cached author stats from the hook
+      setStats({
+        totalArticles: authorStats.total_articles || 0,
+        totalViews: authorStats.total_views || 0,
+        totalLikes: authorStats.total_likes || 0,
+        followers: followersCount,
+        following: followingCount
+      });
 
-        const followingCount = (typeof u.num_following === 'number')
-          ? u.num_following
-          : Array.isArray(u.following)
-            ? u.following.length
-            : Number(u.following) || 0;
-
-        setStats({
-          totalArticles: totalArticleCount,
-          totalViews,
-          totalLikes,
-          followers: followersCount,
-          following: followingCount
-        });
-
-        console.log('User stats updated (optimized):', { totalViews, totalLikes, articleCount: totalArticleCount, followersCount });
-      }
+      console.log('User stats updated (optimized):', { 
+        totalViews: authorStats.total_views, 
+        totalLikes: authorStats.total_likes, 
+        articleCount: authorStats.total_articles, 
+        followersCount 
+      });
     } catch (error) {
       console.error('Error fetching user stats:', error);
     }
@@ -315,7 +323,10 @@ const Profile = () => {
           <div className="flex flex-col lg:flex-row items-center gap-8">
             {/* Avatar */}
             <div className="relative">
-              <div className="w-40 h-40 rounded-full overflow-hidden ring-4 ring-white/20 shadow-2xl">
+              <div 
+                className="w-40 h-40 rounded-full overflow-hidden ring-4 ring-white/20 shadow-2xl cursor-pointer hover:ring-white/40 transition-all duration-200"
+                onClick={() => user?.avatar_url && setImageViewerOpen(true)}
+              >
                 {user?.avatar_url ? (
                   <img 
                     src={user.avatar_url} 
@@ -409,6 +420,11 @@ const Profile = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Personal Dashboard Stats - Only show for own profile */}
+        {isOwnProfile && (
+          <DashboardStats userId={targetUserId} className="mb-16" />
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
           <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-200 text-center hover:shadow-2xl transition-shadow duration-300">
@@ -561,6 +577,29 @@ const Profile = () => {
           )}
         />
       </Modal>
+
+      {/* Image Viewer Modal */}
+      {imageViewerOpen && (
+        <div 
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setImageViewerOpen(false)}
+        >
+          <div className="relative max-w-4xl max-h-full">
+            <img 
+              src={user?.avatar_url}
+              alt={user?.name || 'User Avatar'}
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              onClick={() => setImageViewerOpen(false)}
+              className="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

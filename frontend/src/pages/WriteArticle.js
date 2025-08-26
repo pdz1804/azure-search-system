@@ -154,11 +154,11 @@ const WriteArticle = () => {
                   icon={<ArrowLeftOutlined />} 
                   onClick={handleBack}
                 >
-                  Quay lại
+                  Back
                 </Button>
                 <Title level={2} style={{ margin: 0 }}>
                   <FileAddOutlined style={{ marginRight: 8 }} />
-                  {isEditMode ? 'Chỉnh sửa bài viết' : 'Viết bài mới'}
+                  {isEditMode ? 'Modify the Article' : 'Write an Article'}
                 </Title>
               </Space>
             </div>

@@ -60,6 +60,26 @@ async def get_user_by_id(user_id: str) -> Optional[dict]:
     user = await user_repo.get_user_by_id(user_id)
     return map_to_user_dto(user) if user else None
 
+
+async def update_user(user_id: str, update_data: dict) -> Optional[dict]:
+    """Update user information (role, status, etc.)"""
+    try:
+        # Get existing user
+        existing_user = await user_repo.get_user_by_id(user_id)
+        if not existing_user:
+            return None
+        
+        # Update user data
+        updated_user = await user_repo.update_user(user_id, update_data)
+        
+        # Clear any related caches
+        await delete_cache_pattern("authors:*")
+        
+        return updated_user
+    except Exception as e:
+        print(f"Error in update_user service: {e}")
+        raise
+
 async def follow_user(follower_id: str, followee_id: str):
     return await user_repo.follow_user(follower_id, followee_id)
 

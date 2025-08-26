@@ -60,9 +60,9 @@ async def search_general(
     try:
         cache_key = f"search:general:{q}:{k}:{page_index}:{page_size}"
         cached = await get_cache(cache_key)
-        if cached is not None:
-            print(f"🔍 Redis Cache HIT for general search: {q}")
-            return cached
+        # if cached is not None:
+        #     print(f"🔍 Redis Cache HIT for general search: {q}")
+        #     return cached
         
         print(f"🔍 Redis Cache MISS for general search: {q} - Loading from search service...")
 
@@ -130,6 +130,9 @@ async def search_general(
             "normalized_query": result.get("normalized_query", q),
             "search_type": search_type
         }
+        
+        print(f"🔍 [SEARCH API DEBUG] Returning pagination: {response['pagination']}")
+        print(f"🔍 [SEARCH API DEBUG] total_results={total_results}, total_pages={total_pages}, page_size={page_size}")
 
         # Cache the page so subsequent clicks for the same page are fast
         await set_cache(cache_key, response, ttl=300)
@@ -170,6 +173,7 @@ async def search_articles(
         if not result or not result.get("results"):
             return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Search failed - no results returned"}})
         docs = await search_response_articles(result)
+        
         # Transform results to ArticleHit format for API response
         # articles = [
         #     ArticleHit(

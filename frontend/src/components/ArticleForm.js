@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Upload, Select, message, Card, Switch } from 'antd';
-import { UploadOutlined, SaveOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Upload, Select, message, Card, Switch, Tag, Space, Tooltip } from 'antd';
+import { UploadOutlined, SaveOutlined, BulbOutlined, LoadingOutlined } from '@ant-design/icons';
 import ReactQuill from 'react-quill';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -9,7 +9,7 @@ import 'react-quill/dist/quill.snow.css';
 import { articleApi } from '../api/articleApi';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { apiClientFormData, createFormData } from '../api/config';
+import { apiClientFormData, createFormData, apiClient } from '../api/config';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -21,6 +21,8 @@ const ArticleForm = () => {
   const [imageFile, setImageFile] = useState(null);
   const [useMarkdown, setUseMarkdown] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
+  const [suggestedTags, setSuggestedTags] = useState([]);
+  const [generatingTags, setGeneratingTags] = useState(false);
   const navigate = useNavigate();
   const { id } = useParams();
 
@@ -46,6 +48,43 @@ const ArticleForm = () => {
       message.error('Failed to load article information');
       navigate('/');
     }
+  };
+
+  const generateTags = async () => {
+    const title = form.getFieldValue('title');
+    const abstract = form.getFieldValue('abstract');
+    
+    if (!title || !abstract) {
+      message.warning('Please enter both title and abstract before generating tags');
+      return;
+    }
+
+    setGeneratingTags(true);
+    try {
+      const response = await apiClient.post('/articles/generate-tags', {
+        title,
+        abstract,
+        content: content || ''
+      });
+      
+      const tags = response.data?.tags || [];
+      setSuggestedTags(tags);
+      message.success(`Generated ${tags.length} suggested tags`);
+    } catch (error) {
+      console.error('Tag generation error:', error);
+      message.error('Failed to generate tags. Please try again.');
+    } finally {
+      setGeneratingTags(false);
+    }
+  };
+
+  const addSuggestedTag = (tag) => {
+    const currentTags = form.getFieldValue('tags') || [];
+    if (!currentTags.includes(tag)) {
+      form.setFieldsValue({ tags: [...currentTags, tag] });
+    }
+    // Remove from suggested tags after adding
+    setSuggestedTags(prev => prev.filter(t => t !== tag));
   };
 
   const handleSubmit = async (values) => {
@@ -268,7 +307,28 @@ const ArticleForm = () => {
 
           <Form.Item
             name="tags"
-            label="Tags"
+            label={
+              <Space>
+                Tags
+                <Tooltip title="Generate AI-powered tags based on your title and abstract">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={generatingTags ? <LoadingOutlined /> : <BulbOutlined />}
+                    onClick={generateTags}
+                    loading={generatingTags}
+                    style={{ 
+                      color: '#1890ff',
+                      padding: '0 4px',
+                      height: 'auto',
+                      fontSize: 12
+                    }}
+                  >
+                    Generate Tags
+                  </Button>
+                </Tooltip>
+              </Space>
+            }
           >
             <Select
               mode="tags"
@@ -277,6 +337,37 @@ const ArticleForm = () => {
               tokenSeparators={[',']}
             />
           </Form.Item>
+
+          {suggestedTags.length > 0 && (
+            <Card 
+              size="small" 
+              title="Suggested Tags" 
+              style={{ 
+                marginBottom: 16,
+                borderColor: '#1890ff',
+                backgroundColor: '#f0f8ff'
+              }}
+            >
+              <Space size={[8, 8]} wrap>
+                {suggestedTags.map((tag, index) => (
+                  <Tag
+                    key={index}
+                    color="blue"
+                    style={{ 
+                      cursor: 'pointer',
+                      borderStyle: 'dashed'
+                    }}
+                    onClick={() => addSuggestedTag(tag)}
+                  >
+                    + {tag}
+                  </Tag>
+                ))}
+              </Space>
+              <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
+                Click on a tag to add it to your article
+              </div>
+            </Card>
+          )}
 
           <Form.Item
             name="status"

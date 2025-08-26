@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from typing import List, Optional
+from pydantic import BaseModel
 
 from backend.enum.status import Status
+from backend.enum.roles import Role
 from backend.services import user_service
 from backend.repositories import user_repo as user_repository
 from backend.repositories import article_repo
@@ -10,6 +12,22 @@ from backend.utils import get_current_user
 from backend.services.cache_service import get_cache, set_cache
 
 users = APIRouter(prefix="/api/users", tags=["users"])
+
+
+class UpdateUserRequest(BaseModel):
+    """Request model for updating user information"""
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+def require_admin(current_user: dict = Depends(get_current_user)):
+    """Middleware to ensure only admin users can access certain endpoints"""
+    if current_user.get("role") != Role.ADMIN:
+        raise HTTPException(
+            status_code=403, 
+            detail="Admin access required"
+        )
+    return current_user
 
 @users.get("/")
 async def list_users():
@@ -122,6 +140,86 @@ async def get_bookmarked_articles(current_user: dict = Depends(get_current_user)
         print(f"Error fetching bookmarks: {e}")
         return {"success": False, "data": {"error": "Failed to fetch bookmarks"}}
 
+@users.put("/{user_id}")
+async def update_user(
+    user_id: str, 
+    update_data: UpdateUserRequest,
+    admin_user: dict = Depends(require_admin)
+):
+    """Update user role and status (admin only)"""
+    try:
+        # Validate role if provided
+        if update_data.role and update_data.role not in [Role.ADMIN, Role.WRITER, Role.USER]:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid role. Must be one of: {Role.ADMIN}, {Role.WRITER}, {Role.USER}"
+            )
+        
+        # Prevent admin from deactivating themselves
+        if user_id == admin_user["id"] and update_data.is_active is False:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot deactivate your own account"
+            )
+        
+        # Update user
+        updated_user = await user_service.update_user(user_id, update_data.dict(exclude_unset=True))
+        if not updated_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return {"success": True, "data": updated_user, "message": "User updated successfully"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating user: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update user")
+
+
+@users.get("/admin/all")
+async def get_all_users_admin(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=10000),  # Allow up to 10,000 users for admin dashboard
+    admin_user: dict = Depends(require_admin)
+):
+    """Get all users for admin dashboard with full details"""
+    try:
+        users_data = await user_service.list_users()
+        
+        if not users_data:
+            return {
+                "success": True,
+                "data": [],
+                "pagination": {
+                    "page": page,
+                    "limit": limit,
+                    "total": 0,
+                    "total_results": 0
+                }
+            }
+        
+        # Apply pagination
+        total_items = len(users_data)
+        total_pages = (total_items + limit - 1) // limit
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        paginated_users = users_data[start_idx:end_idx]
+        
+        return {
+            "success": True,
+            "data": paginated_users,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total_pages,
+                "total_results": total_items
+            }
+        }
+    except Exception as e:
+        print(f"Error fetching users for admin: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch users")
+
+
 @users.get("/")
 async def get_all_users(
     page: int = Query(1, ge=1),
@@ -130,11 +228,12 @@ async def get_all_users(
 ):
     """Get all users with pagination and optional featured filter."""
     # Check Redis cache first
-    cache_key = f"homepage:authors:page_{page}_limit_{limit}_featured_{featured}"
-    cached_users = await get_cache(cache_key)
-    if cached_users:
+    cache_key = f"authors:page_{page}_limit_{limit}_featured_{featured}"
+    # Temporarily disable cache to serve fresh pagination data
+    cached_authors = await get_cache(cache_key)
+    if cached_authors:
         print("👥 Redis Cache HIT for authors")
-        return cached_users
+        return cached_authors
     
     print("👥 Redis Cache MISS for authors - Loading from DB...")
     try:
@@ -147,7 +246,8 @@ async def get_all_users(
                 "pagination": {
                     "page": page,
                     "limit": limit,
-                    "total": 0
+                    "total": 0,  # total pages
+                    "total_results": 0  # total result count
                 }
             }
         
@@ -158,7 +258,8 @@ async def get_all_users(
             users_data = [u for u in users_data if u.get("article_count", 0) > 0]
         
         # Apply pagination
-        total = len(users_data)
+        total_items = len(users_data)
+        total_pages = (total_items + limit - 1) // limit  # Ceiling division
         start_idx = (page - 1) * limit
         end_idx = start_idx + limit
         paginated_users = users_data[start_idx:end_idx]
@@ -169,9 +270,13 @@ async def get_all_users(
             "pagination": {
                 "page": page,
                 "limit": limit,
-                "total": total
+                "total": total_pages,  # total pages
+                "total_results": total_items  # total result count
             }
         }
+        
+        print(f"👥 [USERS API DEBUG] Returning pagination: {result['pagination']}")
+        print(f"👥 [USERS API DEBUG] total_items={total_items}, total_pages={total_pages}, limit={limit}")
         
         # Cache the results for 3 minutes (180 seconds)
         await set_cache(cache_key, result, ttl=180)
