@@ -23,7 +23,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: 🐍 Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
@@ -80,7 +80,7 @@ jobs:
       run: npm run build
 
     - name: 📦 Upload frontend build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: frontend-build
         path: frontend/build/
@@ -149,64 +149,63 @@ jobs:
         slot-name: 'Production'
 
     - name: ⚙️ Configure backend app settings
-      uses: azure/appservice-settings@v1
-      with:
-        app-name: ${{ env.AZURE_WEBAPP_BACKEND }}
-        app-settings-json: |
-          [
-            { "name": "SCM_DO_BUILD_DURING_DEPLOYMENT", "value": "true", "slotSetting": false },
-            { "name": "ENABLE_ORYX_BUILD", "value": "true", "slotSetting": false },
-            { "name": "COSMOS_ENDPOINT", "value": "${{ secrets.COSMOS_ENDPOINT }}", "slotSetting": false },
-            { "name": "COSMOS_KEY", "value": "${{ secrets.COSMOS_KEY }}", "slotSetting": false },
-            { "name": "COSMOS_DB", "value": "${{ secrets.COSMOS_DB }}", "slotSetting": false },
-            { "name": "COSMOS_ARTICLES", "value": "${{ secrets.COSMOS_ARTICLES }}", "slotSetting": false },
-            { "name": "COSMOS_USERS", "value": "${{ secrets.COSMOS_USERS }}", "slotSetting": false },
-            { "name": "SECRET_KEY", "value": "${{ secrets.SECRET_KEY }}", "slotSetting": false },
-            { "name": "ALGORITHM", "value": "${{ secrets.ALGORITHM }}", "slotSetting": false },
-            { "name": "ACCESS_TOKEN_EXPIRE_MINUTES", "value": "${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}", "slotSetting": false },
-            { "name": "AZURE_STORAGE_CONNECTION_STRING", "value": "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}", "slotSetting": false },
-            { "name": "AZURE_STORAGE_CONTAINER_NAME", "value": "${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}", "slotSetting": false },
-            { "name": "AZURE_SEARCH_ENDPOINT", "value": "${{ secrets.AZURE_SEARCH_ENDPOINT }}", "slotSetting": false },
-            { "name": "AZURE_SEARCH_KEY", "value": "${{ secrets.AZURE_SEARCH_KEY }}", "slotSetting": false },
-            { "name": "AZURE_OPENAI_API_KEY", "value": "${{ secrets.AZURE_OPENAI_API_KEY }}", "slotSetting": false },
-            { "name": "AZURE_OPENAI_ENDPOINT", "value": "${{ secrets.AZURE_OPENAI_ENDPOINT }}", "slotSetting": false },
-            { "name": "AZURE_OPENAI_API_VERSION", "value": "${{ secrets.AZURE_OPENAI_API_VERSION }}", "slotSetting": false },
-            { "name": "AZURE_OPENAI_DEPLOYMENT", "value": "${{ secrets.AZURE_OPENAI_DEPLOYMENT }}", "slotSetting": false },
-            { "name": "AZURE_OPENAI_MODELNAME", "value": "${{ secrets.AZURE_OPENAI_MODELNAME }}", "slotSetting": false },
-            { "name": "EMBEDDING_MODEL", "value": "${{ secrets.EMBEDDING_MODEL }}", "slotSetting": false },
-            { "name": "OPENAI_API_KEY", "value": "${{ secrets.OPENAI_API_KEY }}", "slotSetting": false },
-            { "name": "OPENAI_BASE_URL", "value": "${{ secrets.OPENAI_BASE_URL }}", "slotSetting": false },
-            { "name": "OPENAI_API_VERSION", "value": "${{ secrets.OPENAI_API_VERSION }}", "slotSetting": false },
-            { "name": "AZURE_STORAGE_ACCOUNT_NAME", "value": "${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}", "slotSetting": false },
-            { "name": "AZURE_STORAGE_ACCOUNT_KEY", "value": "${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}", "slotSetting": false },
-            { "name": "REDIS_URL", "value": "${{ secrets.REDIS_URL }}", "slotSetting": false },
-            { "name": "REDIS_PASSWORD", "value": "${{ secrets.REDIS_PASSWORD }}", "slotSetting": false },
-            { "name": "REDIS_DB", "value": "${{ secrets.REDIS_DB }}", "slotSetting": false },
-            { "name": "IDENTITY", "value": "${{ secrets.IDENTITY }}", "slotSetting": false },
-            { "name": "EMBEDDING_PROVIDER", "value": "${{ secrets.EMBEDDING_PROVIDER }}", "slotSetting": false },
-            { "name": "HF_MODEL_NAME", "value": "${{ secrets.HF_MODEL_NAME }}", "slotSetting": false },
-            { "name": "EMBEDDING_DIM", "value": "${{ secrets.EMBEDDING_DIM }}", "slotSetting": false },
-            { "name": "WEIGHT_SEMANTIC", "value": "${{ secrets.WEIGHT_SEMANTIC }}", "slotSetting": false },
-            { "name": "WEIGHT_BM25", "value": "${{ secrets.WEIGHT_BM25 }}", "slotSetting": false },
-            { "name": "WEIGHT_VECTOR", "value": "${{ secrets.WEIGHT_VECTOR }}", "slotSetting": false },
-            { "name": "WEIGHT_BUSINESS", "value": "${{ secrets.WEIGHT_BUSINESS }}", "slotSetting": false },
-            { "name": "AUTHORS_WEIGHT_SEMANTIC", "value": "${{ secrets.AUTHORS_WEIGHT_SEMANTIC }}", "slotSetting": false },
-            { "name": "AUTHORS_WEIGHT_BM25", "value": "${{ secrets.AUTHORS_WEIGHT_BM25 }}", "slotSetting": false },
-            { "name": "AUTHORS_WEIGHT_VECTOR", "value": "${{ secrets.AUTHORS_WEIGHT_VECTOR }}", "slotSetting": false },
-            { "name": "AUTHORS_WEIGHT_BUSINESS", "value": "${{ secrets.AUTHORS_WEIGHT_BUSINESS }}", "slotSetting": false },
-            { "name": "FRESHNESS_HALFLIFE_DAYS", "value": "${{ secrets.FRESHNESS_HALFLIFE_DAYS }}", "slotSetting": false },
-            { "name": "FRESHNESS_WINDOW_DAYS", "value": "${{ secrets.FRESHNESS_WINDOW_DAYS }}", "slotSetting": false },
-            { "name": "ENABLE_EMBEDDINGS", "value": "${{ secrets.ENABLE_EMBEDDINGS }}", "slotSetting": false },
-            { "name": "AZURE_STORAGE_ACCOUNT", "value": "${{ secrets.AZURE_STORAGE_ACCOUNT }}", "slotSetting": false },
-            { "name": "ENABLE_INDEXER_CACHE", "value": "${{ secrets.ENABLE_INDEXER_CACHE }}", "slotSetting": false },
-            { "name": "SCORE_THRESHOLD", "value": "${{ secrets.SCORE_THRESHOLD }}", "slotSetting": false },
-            { "name": "ENABLE_SCORE_FILTERING", "value": "${{ secrets.ENABLE_SCORE_FILTERING }}", "slotSetting": false },
-            { "name": "ENVIRONMENT", "value": "production", "slotSetting": false },
-            { "name": "DEBUG", "value": "false", "slotSetting": false },
-            { "name": "PYTHONPATH", "value": "/home/site/wwwroot", "slotSetting": false },
-            { "name": "CORS_ORIGINS", "value": "https://ashy-sky-0c5016d0f.5.azurestaticapps.net", "slotSetting": false },
-            { "name": "BASE_URL", "value": "https://${{ env.AZURE_WEBAPP_BACKEND }}.azurewebsites.net", "slotSetting": false }
-          ]
+      run: |
+        az webapp config appsettings set \
+          --name ${{ env.AZURE_WEBAPP_BACKEND }} \
+          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+          --settings \
+            SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+            ENABLE_ORYX_BUILD=true \
+            COSMOS_ENDPOINT="${{ secrets.COSMOS_ENDPOINT }}" \
+            COSMOS_KEY="${{ secrets.COSMOS_KEY }}" \
+            COSMOS_DB="${{ secrets.COSMOS_DB }}" \
+            COSMOS_ARTICLES="${{ secrets.COSMOS_ARTICLES }}" \
+            COSMOS_USERS="${{ secrets.COSMOS_USERS }}" \
+            SECRET_KEY="${{ secrets.SECRET_KEY }}" \
+            ALGORITHM="${{ secrets.ALGORITHM }}" \
+            ACCESS_TOKEN_EXPIRE_MINUTES="${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}" \
+            AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+            AZURE_STORAGE_CONTAINER_NAME="${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
+            AZURE_SEARCH_ENDPOINT="${{ secrets.AZURE_SEARCH_ENDPOINT }}" \
+            AZURE_SEARCH_KEY="${{ secrets.AZURE_SEARCH_KEY }}" \
+            AZURE_OPENAI_API_KEY="${{ secrets.AZURE_OPENAI_API_KEY }}" \
+            AZURE_OPENAI_ENDPOINT="${{ secrets.AZURE_OPENAI_ENDPOINT }}" \
+            AZURE_OPENAI_API_VERSION="${{ secrets.AZURE_OPENAI_API_VERSION }}" \
+            AZURE_OPENAI_DEPLOYMENT="${{ secrets.AZURE_OPENAI_DEPLOYMENT }}" \
+            AZURE_OPENAI_MODELNAME="${{ secrets.AZURE_OPENAI_MODELNAME }}" \
+            EMBEDDING_MODEL="${{ secrets.EMBEDDING_MODEL }}" \
+            OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            OPENAI_BASE_URL="${{ secrets.OPENAI_BASE_URL }}" \
+            OPENAI_API_VERSION="${{ secrets.OPENAI_API_VERSION }}" \
+            AZURE_STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
+            AZURE_STORAGE_ACCOUNT_KEY="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}" \
+            REDIS_URL="${{ secrets.REDIS_URL }}" \
+            REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}" \
+            REDIS_DB="${{ secrets.REDIS_DB }}" \
+            IDENTITY="${{ secrets.IDENTITY }}" \
+            EMBEDDING_PROVIDER="${{ secrets.EMBEDDING_PROVIDER }}" \
+            HF_MODEL_NAME="${{ secrets.HF_MODEL_NAME }}" \
+            EMBEDDING_DIM="${{ secrets.EMBEDDING_DIM }}" \
+            WEIGHT_SEMANTIC="${{ secrets.WEIGHT_SEMANTIC }}" \
+            WEIGHT_BM25="${{ secrets.WEIGHT_BM25 }}" \
+            WEIGHT_VECTOR="${{ secrets.WEIGHT_VECTOR }}" \
+            WEIGHT_BUSINESS="${{ secrets.WEIGHT_BUSINESS }}" \
+            AUTHORS_WEIGHT_SEMANTIC="${{ secrets.AUTHORS_WEIGHT_SEMANTIC }}" \
+            AUTHORS_WEIGHT_BM25="${{ secrets.AUTHORS_WEIGHT_BM25 }}" \
+            AUTHORS_WEIGHT_VECTOR="${{ secrets.AUTHORS_WEIGHT_VECTOR }}" \
+            AUTHORS_WEIGHT_BUSINESS="${{ secrets.AUTHORS_WEIGHT_BUSINESS }}" \
+            FRESHNESS_HALFLIFE_DAYS="${{ secrets.FRESHNESS_HALFLIFE_DAYS }}" \
+            FRESHNESS_WINDOW_DAYS="${{ secrets.FRESHNESS_WINDOW_DAYS }}" \
+            ENABLE_EMBEDDINGS="${{ secrets.ENABLE_EMBEDDINGS }}" \
+            AZURE_STORAGE_ACCOUNT="${{ secrets.AZURE_STORAGE_ACCOUNT }}" \
+            ENABLE_INDEXER_CACHE="${{ secrets.ENABLE_INDEXER_CACHE }}" \
+            SCORE_THRESHOLD="${{ secrets.SCORE_THRESHOLD }}" \
+            ENABLE_SCORE_FILTERING="${{ secrets.ENABLE_SCORE_FILTERING }}" \
+            ENVIRONMENT=production \
+            DEBUG=false \
+            PYTHONPATH=/home/site/wwwroot \
+            CORS_ORIGINS=https://ashy-sky-0c5016d0f.5.azurestaticapps.net \
+            BASE_URL=https://${{ env.AZURE_WEBAPP_BACKEND }}.azurewebsites.net
 
   # Job 5: Build and Deploy Frontend to Azure Static Web Apps
   build_and_deploy_frontend:
@@ -228,7 +227,7 @@ jobs:
         run: npm install @actions/core@1.6.0 @actions/http-client
 
       - name: 🔑 Get Id Token
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         id: idtoken
         with:
            script: |
