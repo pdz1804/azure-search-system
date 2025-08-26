@@ -80,3 +80,4 @@ Note:
 - trong quá trình return lại kết quả sau khi dùng DTO thì 2 thg kết quả search của articles và của authors đang bị chưa đúng thứ tự của score cao --> score thấp
 - DEPLOY
 - AUTO fit with new data or firms
+

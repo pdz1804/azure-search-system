@@ -1,7 +1,23 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api';
+// Ensure HTTPS for production, fallback to localhost for development
+const getApiBaseUrl = () => {
+  // Check if we have environment variable
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  
+  // Check if we're in production (Azure Static Web Apps)
+  if (window.location.hostname.includes('azurestaticapps.net')) {
+    return 'https://article-backend-code-abd7d2fbcac4e7b5.canadacentral-01.azurewebsites.net/api';
+  }
+  
+  // Development fallback
+  return 'http://localhost:8001/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Tạo axios instance
 const apiClient = axios.create({

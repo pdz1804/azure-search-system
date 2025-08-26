@@ -18,4 +18,4 @@ class Article(BaseModel):
     dislikes: int
     views: int
     created_at: datetime
-    updated_at: datetime
+    updated_at: datetime    
