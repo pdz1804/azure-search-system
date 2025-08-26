@@ -9,7 +9,7 @@ This platform provides a complete article management ecosystem with advanced AI-
 - **Hybrid Search Engine** - BM25 + Vector + Semantic + Business scoring
 - **Full-Stack Web Application** - Modern React frontend with FastAPI backend
 - **Azure Integration** - Cosmos DB, AI Search, Blob Storage, and OpenAI services
-- **Advanced Features** - Fuzzy matching, freshness scoring, role-based access control
+- **Advanced Features** - Fuzzy matching, freshness scoring, role-based access control 
 
 ## 🏗️ Architecture
 
