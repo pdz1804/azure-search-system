@@ -39,8 +39,8 @@ jobs:
         with:
           name: python-app
           path: |
-            backend/
-            requirements.txt
+            .
+            !venv/
   deploy:
     runs-on: ubuntu-latest
     needs: build
@@ -66,7 +66,4 @@ jobs:
         id: deploy-to-webapp
         with:
           app-name: 'article-backend-code'
-          slot-name: 'Production' 
-          restart-app: true
-
-
+          slot-name: 'Production'
