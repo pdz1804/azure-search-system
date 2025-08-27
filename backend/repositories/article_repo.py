@@ -9,7 +9,6 @@ from calendar import c
 import math
 import re
 from typing import Dict, Optional, List
-from backend.api import article
 from backend.database.cosmos import get_articles_container
 from backend.model.request import response_ai
 # from backend.database.mongo import get_db

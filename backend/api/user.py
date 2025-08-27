@@ -36,27 +36,15 @@ async def list_users():
 
 @users.get("/{id}")
 async def get_user_by_id(id: str):
-    # Try to return a sanitized raw user document (includes created_at and following lists)
+    # Use service layer to get user detail with statistics
     try:
-        raw = await user_repository.get_user_by_id(id)
-        if not raw:
-            return JSONResponse(status_code=404, content={"success": False, "data": None})
-
-        # Remove sensitive fields
-        raw.pop('password', None)
-        raw.pop('_etag', None)
-        raw.pop('_rid', None)
-        raw.pop('_self', None)
-        raw.pop('_ts', None)
-
-        # Keep created_at, followers, following as-is so frontend can present them
-        return {"success": True, "data": raw}
-    except Exception:
-        # Fallback to previous DTO response if anything fails
         user = await user_service.get_user_by_id(id)
         if not user:
             return JSONResponse(status_code=404, content={"success": False, "data": None})
         return {"success": True, "data": user}
+    except Exception as e:
+        print(f"Error getting user by id: {e}")
+        return JSONResponse(status_code=500, content={"success": False, "data": {"error": str(e)}})
 
 @users.post("/{user_id}/follow")
 async def follow_user(user_id: str, current_user: dict = Depends(get_current_user)):

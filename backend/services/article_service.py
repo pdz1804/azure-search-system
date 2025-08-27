@@ -14,15 +14,126 @@ No direct DB access happens here; use the repository layer.
 
 from datetime import datetime
 from typing import Dict, List, Optional
-from uuid import uuid4
 import uuid
-from backend.model.request.response_ai import ResponseFromAI
+from backend.model.dto.article_dto import AuthorDTO
 from backend.repositories import article_repo
 from backend.services import user_service
 from backend.services.cache_service import (
     get_cache, set_cache, delete_cache_pattern, 
     CACHE_KEYS, CACHE_TTL, generate_cache_key
 )
+
+async def _convert_to_author_dto(article: dict) -> AuthorDTO:
+    """Convert article author data to AuthorDTO"""
+    author_id = article.get("author_id", "")
+    author_name = article.get("author_name", "")
+    
+    # For now, just return basic info without avatar to avoid performance issues
+    # In production, you might want to batch fetch avatars or cache them
+    return AuthorDTO(
+        id=author_id,
+        name=author_name,
+        avatar_url=None  # Will be optimized later
+    )
+
+async def _convert_to_author_dto_with_avatar(article: dict) -> AuthorDTO:
+    """Convert article author data to AuthorDTO with avatar lookup"""
+    author_id = article.get("author_id", "")
+    author_name = article.get("author_name", "")
+    
+    # Try to get avatar from user service for detail view
+    author_avatar = None
+    try:
+        from backend.services.user_service import get_user_by_id
+        user_info = await get_user_by_id(author_id)
+        if user_info and hasattr(user_info, 'avatar_url'):
+            author_avatar = user_info.avatar_url
+    except Exception:
+        # If we can't get user info, just use None
+        pass
+    
+    return AuthorDTO(
+        id=author_id,
+        name=author_name,
+        avatar_url=author_avatar
+    )
+
+async def _convert_to_article_dto(article: dict) -> dict:
+    """Convert article data to dict following ArticleDTO structure"""
+    author_dto = await _convert_to_author_dto(article)
+    
+    return {
+        "article_id": article.get("id", ""),
+        "title": article.get("title", ""),
+        "abstract": article.get("abstract"),
+        "image": article.get("image"),
+        "tags": article.get("tags", []),
+        "author": author_dto.model_dump(),  # Convert to dict
+        "created_date": article.get("created_at"),
+        "total_like": article.get("likes", 0),
+        "total_view": article.get("views", 0)
+    }
+
+async def _convert_to_article_detail_dto(article: dict) -> dict:
+    """Convert article data to dict following ArticleDetailDTO structure"""
+    author_dto = await _convert_to_author_dto_with_avatar(article)
+    
+    # Get recommended article IDs from database
+    recommended_ids = []
+    recommended_dtos = []
+    
+    # If no recommendations exist, generate them
+    try:
+        from backend.services.recommendation_service import get_recommendation_service
+                    
+        article_id = article.get("id", "")
+        recommendation_service = get_recommendation_service()
+                    
+        print(f"🔄 No recommendations found for article {article_id}, generating new ones...")
+                    
+        # Get recommendations using recommendation service
+        recommendations, was_refreshed = await recommendation_service.get_article_recommendations(article_id)
+                    
+        if recommendations and was_refreshed:
+            # Extract just the article IDs from recommendations
+            recommended_ids = [rec.get("article_id") for rec in recommendations if rec.get("article_id")]
+            print(f"✅ Generated {len(recommended_ids)} recommendations for article {article_id}")
+        else:
+            recommended_ids = []
+                    
+    except Exception as e:
+        print(f"⚠️ Failed to generate recommendations for article {article.get('id', '')}: {e}")
+        # Continue without recommendations rather than failing
+        recommended_ids = []
+    
+    # Convert recommended article IDs to ArticleDTO objects
+    if recommended_ids:
+        try:
+            for rec_id in recommended_ids:
+                rec_article = await article_repo.get_article_by_id(rec_id)
+                if rec_article:
+                    rec_dto = await _convert_to_article_dto(rec_article)
+                    recommended_dtos.append(rec_dto)  # rec_dto is already a dict now
+        except Exception as e:
+            print(f"⚠️ Failed to fetch recommended articles: {e}")
+            recommended_dtos = []
+    
+    return {
+        "id": article.get("id", ""),
+        "title": article.get("title", ""),
+        "content": article.get("content", ""),
+        "abstract": article.get("abstract"),
+        "status": article.get("status", ""),
+        "tags": article.get("tags", []),
+        "image": article.get("image"),
+        "author": author_dto.model_dump(),  # Convert to dict
+        "created_date": article.get("created_at"),
+        "updated_date": article.get("updated_at"),
+        "total_like": article.get("likes", 0),
+        "total_view": article.get("views", 0),
+        "total_dislike": article.get("dislikes", 0),
+        "recommended": recommended_dtos if recommended_dtos else None
+    }
 
 async def create_article(doc: dict) -> dict:
     # prepare fields expected by repository/db
@@ -46,21 +157,39 @@ async def create_article(doc: dict) -> dict:
     await delete_cache_pattern("articles:home*")
     await delete_cache_pattern("articles:recent*")
     
-    return art
+    # Convert to dict before returning
+    return await _convert_to_article_detail_dto(art)
 
 async def get_article_by_id(article_id: str) -> Optional[dict]:
-    # Try to get from cache first
+    """
+    Get article by ID with optional automatic recommendations generation.
+    
+    Args:
+        article_id: The article ID to fetch
+    
+    Returns:
+        Dict following ArticleDetailDTO structure with recommended field (list of article data)
+    """
+    # Try to get from cache first (without recommendations for now)
     cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
     cached_article = await get_cache(cache_key)
     
+    article = None
     if cached_article:
         return cached_article
+    else:
+        # Get fresh article data
+        article = await article_repo.get_article_by_id(article_id)
     
-    article = await article_repo.get_article_by_id(article_id)
     if article:
-        await set_cache(cache_key, article, CACHE_TTL["detail"])
+        article_dict = await _convert_to_article_detail_dto(article)
+        
+        # Cache the dict data
+        await set_cache(cache_key, article_dict, CACHE_TTL["detail"])
+        
+        return article_dict
     
-    return article
+    return None
 
 async def update_article(article_id: str, update_doc: dict) -> Optional[dict]:
     # Only add updated_at if it's not a recommendations-only update
@@ -80,8 +209,10 @@ async def update_article(article_id: str, update_doc: dict) -> Optional[dict]:
     
     print(f"🗑️ Cleared caches for article {article_id}")
     
-    # Return the updated article directly instead of refetching
-    return updated_article
+    # Convert to dict before returning
+    if updated_article:
+        return await _convert_to_article_detail_dto(updated_article)
+    return None
 
 async def delete_article(article_id: str):
     await article_repo.delete_article(article_id)
@@ -97,6 +228,7 @@ async def list_articles(page: int, page_size: int) -> List[dict]:
     cached_articles = await get_cache(cache_key)
     if cached_articles:
         print(f"📋 Cache HIT for home articles page {page}")
+        # Return cached dict data directly
         return cached_articles
     
     print(f"💾 Cache MISS for home articles page {page}")
@@ -106,10 +238,13 @@ async def list_articles(page: int, page_size: int) -> List[dict]:
     articles = result.get("items", []) if isinstance(result, dict) else result
     
     if articles:
-        # Cache the result
-        await set_cache(cache_key, articles, CACHE_TTL["home"])
+        # Convert to dicts
+        article_dicts = [await _convert_to_article_dto(article) for article in articles]
+        # Cache the dicts
+        await set_cache(cache_key, article_dicts, CACHE_TTL["home"])
+        return article_dicts
     
-    return articles
+    return []
     
 async def increment_article_views(article_id: str):
     await article_repo.increment_article_views(article_id)
@@ -188,20 +323,26 @@ async def get_articles_by_author(author_id: str, page: int = 1, page_size: int =
     
     cached_articles = await get_cache(cache_key)
     if cached_articles:
+        # Return cached dict data directly
         return cached_articles
     
     articles = await article_repo.get_article_by_author(author_id, page, page_size)
     
     if articles:
-        await set_cache(cache_key, articles, CACHE_TTL["user_articles"])
+        # Convert to dicts
+        article_dicts = [await _convert_to_article_dto(article) for article in articles]
+        # Cache the dicts
+        await set_cache(cache_key, article_dicts, CACHE_TTL["user_articles"])
+        return article_dicts
     
-    return articles
+    return []
 
 async def get_popular_articles(page: int = 1, page_size: int = 10) -> List[dict]:
     cache_key = generate_cache_key(CACHE_KEYS["articles_popular"], page=page, page_size=page_size)
     
     cached_articles = await get_cache(cache_key)
     if cached_articles:
+        # Return cached dict data directly
         return cached_articles
     
     try:
@@ -273,10 +414,13 @@ async def get_popular_articles(page: int = 1, page_size: int = 10) -> List[dict]
         for article in result:
             article.pop("popularity_score", None)
         
-        # Cache the result
-        await set_cache(cache_key, result, CACHE_TTL["popular"])
+        # Convert to dicts
+        article_dicts = [await _convert_to_article_dto(article) for article in result]
         
-        return result
+        # Cache the dicts
+        await set_cache(cache_key, article_dicts, CACHE_TTL["popular"])
+        
+        return article_dicts
         
     except Exception as e:
         print(f"❌ Error in get_popular_articles: {e}")
@@ -284,7 +428,9 @@ async def get_popular_articles(page: int = 1, page_size: int = 10) -> List[dict]
 
 async def search_response_articles(data: Dict) -> List[dict]:
     article_ids = [article["id"] for article in data.get("results", [])]
-    return await article_repo.get_articles_by_ids(article_ids)
+    articles = await article_repo.get_articles_by_ids(article_ids)
+    # Convert to dicts
+    return [await _convert_to_article_dto(article) for article in articles]
 
 
 async def get_summary() -> Dict:

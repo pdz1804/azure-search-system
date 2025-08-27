@@ -90,6 +90,7 @@ async def create(
         else:
             print("[DEBUG] No image provided in create request")
     art = await create_article(doc)
+    # Convert DTO to dict for JSON response
     return {"success": True, "data": art}
 
 @articles.get("/")
@@ -117,11 +118,11 @@ async def get_articles(
         current_page_size = page_size or limit or 20
         current_status = status or "published"
         
-        # Get articles from service
-        # from backend.services.article_service import get_articles_paginated
-        # articles_data = await get_articles_paginated(page=current_page, page_size=current_page_size)
-        
+        # Get articles from service (returns List[dict])
         articles_data = await list_articles(page=current_page, page_size=current_page_size)
+        
+        # articles_data is already list of dicts
+        articles_dict = articles_data
         
         # Calculate total pages - get total count from database
         from backend.services.article_service import get_total_articles_count
@@ -131,7 +132,7 @@ async def get_articles(
         # Return in expected format
         result = {
             "success": True,
-            "data": articles_data,
+            "data": articles_dict,
             "pagination": {
                 "page": current_page,
                 "page_size": current_page_size,
@@ -158,7 +159,11 @@ async def get_articles(
 @articles.get("/popular")
 async def home_popular_articles(page: int = 1, page_size: int = 10):
     try:
+        # Get popular articles (returns List[dict])
         popular = await get_popular_articles(page, page_size)
+        # popular is already list of dicts
+        popular_dict = popular
+        
         # Calculate total pages for popular articles
         from backend.services.article_service import get_total_articles_count
         total_items = await get_total_articles_count()
@@ -166,7 +171,7 @@ async def home_popular_articles(page: int = 1, page_size: int = 10):
         
         return {
             "success": True,
-            "data": popular,
+            "data": popular_dict,
             "pagination": {
                 "page": page,
                 "page_size": page_size,
@@ -523,37 +528,17 @@ async def get_articles_by_category(
 @articles.get("/{article_id}")
 async def get_one(article_id: str):
     try:
+        # Get article detail with auto-generation of recommendations if needed
         art = await get_article_by_id(article_id)
         if not art:
             return JSONResponse(status_code=404, content={"success": False, "data": None})
         
         await increment_article_views(article_id)
         
-        # Get recommendations using the recommendation service
-        recommendation_service = get_recommendation_service()
-        recommendations, was_refreshed = await recommendation_service.get_article_recommendations(article_id)
-        
-        # Fetch detailed article information for recommendations
-        detailed_recommendations = await recommendation_service.fetch_article_details_for_recommendations(recommendations)
-        
-        # Format recommendations for display (top 5 + more 5)
-        formatted_recommendations = recommendation_service.format_recommendations_for_display(detailed_recommendations)
-        
-        # Add recommendations to the response
-        response_data = {
-            **art,
-            "recommendations": {
-                "top5": formatted_recommendations["top5"],
-                "more5": formatted_recommendations["more5"],
-                "total": len(recommendations),
-                "was_refreshed": was_refreshed,
-                "last_updated": art.get("recommended_time")
-            }
-        }
-        
+        # art is already a dict
         return {
             "success": True,
-            "data": response_data
+            "data": art
         }
     except Exception as e:
         print(f"Error fetching article {article_id}: {e}")
@@ -598,6 +583,7 @@ async def update(
     updated = await update_article(article_id, update_data)
     if not updated:
         return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Update failed"}})
+    # Convert DTO to dict for JSON response
     return {"success": True, "data": updated}
 
 @articles.delete("/{article_id}")
@@ -620,7 +606,10 @@ async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20)
         return cached_articles
     
     print(f"✍️ Redis Cache MISS for author {author_id} articles - Loading from DB...")
+    # Get articles by author (returns List[dict])
     articles_list = await get_articles_by_author(author_id, page - 1, page_size)
+    # articles_list is already list of dicts
+    articles_dict = articles_list
     
     # Calculate total pages for this author
     from backend.services.article_service import get_total_articles_count_by_author
@@ -629,7 +618,7 @@ async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20)
     
     result = {
         "success": True,
-        "data": articles_list,
+        "data": articles_dict,
         "pagination": {
             "page": page,
             "page_size": page_size,
