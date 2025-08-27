@@ -495,13 +495,13 @@ async def search_response_articles(data: Dict, app_id: Optional[str] = None) -> 
     return [await _convert_to_article_dto(article) for article in articles]
 
 
-async def get_summary() -> Dict:
+async def get_summary(app_id: Optional[str] = None) -> Dict:
     """Aggregate basic articles summary for dashboards.
 
     Note: For simplicity we fetch up to 1000 most recent articles.
     """
     try:
-        data = await article_repo.list_articles(page=1, page_size=1000)
+        data = await article_repo.list_articles(page=1, page_size=1000, app_id=app_id)
         items = data.get("items", []) if isinstance(data, dict) else data
         total = len(items)
         published = len([a for a in items if a.get("status") == "published"])
