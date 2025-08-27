@@ -79,21 +79,38 @@ async def delete_article(article_id: str):
     await articles.replace_item(item=article_id, body=doc)
 
 
-async def list_articles(page: int = 1, page_size: int = 20) -> Dict:
+async def list_articles(page: int = 1, page_size: int = 20, app_id: Optional[str] = None) -> Dict:
     articles = await get_articles()
-    count_query = "SELECT VALUE COUNT(1) FROM c  WHERE c.is_active = true"
+    
+    # Build count query with app_id filter if provided
+    if app_id:
+        count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.is_active = true AND c.app_id = @app_id"
+        count_parameters = [{"name": "@app_id", "value": app_id}]
+    else:
+        count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.is_active = true"
+        count_parameters = []
+        
     count_result = [item async for item in articles.query_items(
-        query=count_query
+        query=count_query,
+        parameters=count_parameters
     )]
     total_items = count_result[0] if count_result else 0
     total_pages = math.ceil(total_items / page_size) if total_items > 0 else 1
 
     skip = (page - 1) * page_size
-    data_query = f"SELECT * FROM c  WHERE c.is_active = true ORDER BY c.created_at DESC OFFSET {skip} LIMIT {page_size}"
+    
+    # Build data query with app_id filter if provided
+    if app_id:
+        data_query = f"SELECT * FROM c WHERE c.is_active = true AND c.app_id = @app_id ORDER BY c.created_at DESC OFFSET {skip} LIMIT {page_size}"
+        data_parameters = [{"name": "@app_id", "value": app_id}]
+    else:
+        data_query = f"SELECT * FROM c WHERE c.is_active = true ORDER BY c.created_at DESC OFFSET {skip} LIMIT {page_size}"
+        data_parameters = []
 
     results = []
     async for doc in articles.query_items(
-        query=data_query
+        query=data_query,
+        parameters=data_parameters
     ):
         results.append(doc)
 
@@ -188,12 +205,18 @@ async def decrement_article_dislikes(article_id: str):
 #         "reaction_type": reaction_type
 #     })
 
-async def get_article_by_author(author_id: str, page: int = 1, page_size: int = 20) -> Dict:
+async def get_article_by_author(author_id: str, page: int = 1, page_size: int = 20, app_id: Optional[str] = None) -> Dict:
     articles = await get_articles()  
 
-    count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.author_id = @author_id"
-    parameters = [{"name": "@author_id", "value": author_id}]
-    count_result = [item async for item in articles.query_items(query=count_query, parameters=parameters)]
+    # Build count query with app_id filter if provided
+    if app_id:
+        count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.author_id = @author_id AND c.app_id = @app_id"
+        count_parameters = [{"name": "@author_id", "value": author_id}, {"name": "@app_id", "value": app_id}]
+    else:
+        count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.author_id = @author_id"
+        count_parameters = [{"name": "@author_id", "value": author_id}]
+        
+    count_result = [item async for item in articles.query_items(query=count_query, parameters=count_parameters)]
     total_items = count_result[0] if count_result else 0
     total_pages = math.ceil(total_items / page_size) if total_items > 0 else 1
 
@@ -202,8 +225,15 @@ async def get_article_by_author(author_id: str, page: int = 1, page_size: int = 
     take = page_size
     index = 0
 
-    data_query = "SELECT * FROM c WHERE c.author_id = @author_id"
-    async for doc in articles.query_items(query=data_query, parameters=parameters):
+    # Build data query with app_id filter if provided
+    if app_id:
+        data_query = "SELECT * FROM c WHERE c.author_id = @author_id AND c.app_id = @app_id"
+        data_parameters = [{"name": "@author_id", "value": author_id}, {"name": "@app_id", "value": app_id}]
+    else:
+        data_query = "SELECT * FROM c WHERE c.author_id = @author_id"
+        data_parameters = [{"name": "@author_id", "value": author_id}]
+        
+    async for doc in articles.query_items(query=data_query, parameters=data_parameters):
         if index >= skip and len(results) < take:
             results.append(doc)
         index += 1
@@ -217,15 +247,21 @@ async def get_article_by_author(author_id: str, page: int = 1, page_size: int = 
     }
 
 
-async def get_author_stats(author_id: str) -> Dict:
+async def get_author_stats(author_id: str, app_id: Optional[str] = None) -> Dict:
     """Return simple stats for an author by scanning their articles and summing fields in code.
 
     We avoid server-side aggregation to support partitioned Cosmos containers where some aggregate
     queries may be restricted. This reads the author's active articles and computes counts locally.
     """
     articles = await get_articles()
-    data_query = "SELECT * FROM c WHERE c.author_id = @author_id AND c.is_active = true"
-    parameters = [{"name": "@author_id", "value": author_id}]
+    
+    # Build query with app_id filter if provided
+    if app_id:
+        data_query = "SELECT * FROM c WHERE c.author_id = @author_id AND c.is_active = true AND c.app_id = @app_id"
+        parameters = [{"name": "@author_id", "value": author_id}, {"name": "@app_id", "value": app_id}]
+    else:
+        data_query = "SELECT * FROM c WHERE c.author_id = @author_id AND c.is_active = true"
+        parameters = [{"name": "@author_id", "value": author_id}]
 
     total_items = 0
     total_views = 0

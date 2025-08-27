@@ -36,6 +36,7 @@ async def create(
     content: str = Form(...),
     tags: Optional[str] = Form(None),
     image: UploadFile = File(None),
+    app_id: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user)
 ):
     require_role(current_user, [Role.WRITER, Role.ADMIN])
@@ -46,7 +47,8 @@ async def create(
         "status": "published",
         "author_id": current_user["id"],
         "author_name": current_user.get("full_name"),
-        "abstract": abstract
+        "abstract": abstract,
+        "app_id": app_id
     }
     # Log incoming form keys and file presence
     form = None
@@ -100,11 +102,12 @@ async def get_articles(
     q: Optional[str] = Query(None, alias="page[q]"),
     status: Optional[str] = Query(None, alias="page[status]"),
     sort_by: Optional[str] = Query(None, alias="page[sort_by]"),
-    limit: Optional[int] = Query(10)
+    limit: Optional[int] = Query(10),
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results")
 ):
     """Get articles with pagination and filtering."""
     # Check Redis cache first
-    cache_key = f"articles:list:page_{page or 1}_size_{page_size or limit or 20}_status_{status or 'published'}_sort_{sort_by or 'created_at'}"
+    cache_key = f"articles:list:page_{page or 1}_size_{page_size or limit or 20}_status_{status or 'published'}_sort_{sort_by or 'created_at'}_app_{app_id or 'none'}"
     # Temporarily disable cache to serve fresh pagination data
     cached_articles = await get_cache(cache_key)
     if cached_articles:
@@ -119,14 +122,14 @@ async def get_articles(
         current_status = status or "published"
         
         # Get articles from service (returns List[dict])
-        articles_data = await list_articles(page=current_page, page_size=current_page_size)
+        articles_data = await list_articles(page=current_page, page_size=current_page_size, app_id=app_id)
         
         # articles_data is already list of dicts
         articles_dict = articles_data
         
         # Calculate total pages - get total count from database
         from backend.services.article_service import get_total_articles_count
-        total_items = await get_total_articles_count()
+        total_items = await get_total_articles_count(app_id=app_id)
         total_pages = (total_items + current_page_size - 1) // current_page_size  # Ceiling division
         
         # Return in expected format
@@ -157,16 +160,16 @@ async def get_articles(
         })
 
 @articles.get("/popular")
-async def home_popular_articles(page: int = 1, page_size: int = 10):
+async def home_popular_articles(page: int = 1, page_size: int = 10, app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
     try:
         # Get popular articles (returns List[dict])
-        popular = await get_popular_articles(page, page_size)
+        popular = await get_popular_articles(page, page_size, app_id=app_id)
         # popular is already list of dicts
         popular_dict = popular
         
         # Calculate total pages for popular articles
         from backend.services.article_service import get_total_articles_count
-        total_items = await get_total_articles_count()
+        total_items = await get_total_articles_count(app_id=app_id)
         total_pages = (total_items + page_size - 1) // page_size
         
         return {
@@ -318,10 +321,10 @@ async def get_statistics():
         }
 
 @articles.get("/categories")
-async def get_categories():
+async def get_categories(app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
     """Get all available categories and their article counts."""
     # Check Redis cache first
-    cache_key = "homepage:categories"
+    cache_key = f"homepage:categories:app_{app_id or 'none'}"
     cached_categories = await get_cache(cache_key)
     if cached_categories:
         print("🏷️ Redis Cache HIT for categories")
@@ -344,6 +347,9 @@ async def get_categories():
             async for item in articles_container.read_all_items():
                 try:
                     if not item or not item.get('is_active'):
+                        continue
+                    # Filter by app_id if provided
+                    if app_id and item.get('app_id') != app_id:
                         continue
                     tags = item.get('tags') or []
                     for t in tags:
@@ -373,6 +379,9 @@ async def get_categories():
                 # Count tags from sample data
                 all_tags = []
                 for article in sample_articles:
+                    # Filter by app_id if provided
+                    if app_id and article.get('app_id') != app_id:
+                        continue
                     if article.get('tags'):
                         all_tags.extend(article['tags'])
                 
@@ -430,20 +439,31 @@ async def get_categories():
 async def get_articles_by_category(
     category_name: str,
     page: int = Query(1, ge=1),
-    limit: int = Query(10, ge=1, le=100)
+    limit: int = Query(10, ge=1, le=100),
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results")
 ):
     """Get articles by category."""
     try:
         articles_container = await get_articles_container()
         
         # Query articles that have the specified category in their tags
-        query = """
-        SELECT * FROM c 
-        WHERE c.is_active = true 
-        AND ARRAY_CONTAINS(c.tags, @category)
-        ORDER BY c.created_at DESC
-        OFFSET @skip LIMIT @limit
-        """
+        if app_id:
+            query = """
+            SELECT * FROM c 
+            WHERE c.is_active = true 
+            AND ARRAY_CONTAINS(c.tags, @category)
+            AND c.app_id = @app_id
+            ORDER BY c.created_at DESC
+            OFFSET @skip LIMIT @limit
+            """
+        else:
+            query = """
+            SELECT * FROM c 
+            WHERE c.is_active = true 
+            AND ARRAY_CONTAINS(c.tags, @category)
+            ORDER BY c.created_at DESC
+            OFFSET @skip LIMIT @limit
+            """
         
         skip = (page - 1) * limit
         parameters = [
@@ -451,6 +471,8 @@ async def get_articles_by_category(
             {"name": "@skip", "value": skip},
             {"name": "@limit", "value": limit}
         ]
+        if app_id:
+            parameters.append({"name": "@app_id", "value": app_id})
         
         results = []
         async for doc in articles_container.query_items(query=query, parameters=parameters):
@@ -461,10 +483,14 @@ async def get_articles_by_category(
         count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published'"
         if category_name != "all":
             count_query += " AND ARRAY_CONTAINS(c.tags, @category)"
+        if app_id:
+            count_query += " AND c.app_id = @app_id"
         
         count_parameters = []
         if category_name != "all":
             count_parameters.append({"name": "@category", "value": category_name})
+        if app_id:
+            count_parameters.append({"name": "@app_id", "value": app_id})
         
         total_items = 0
         async for count in articles_container.query_items(query=count_query, parameters=count_parameters):
@@ -597,9 +623,9 @@ async def remove(article_id: str, current_user: dict = Depends(get_current_user)
     return {"success": True, "data": {"message": "deleted"}}
 
 @articles.get("/author/{author_id}")
-async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20):
+async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20, app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
     # Check Redis cache first
-    cache_key = f"articles:author:{author_id}:page_{page}_size_{page_size}"
+    cache_key = f"articles:author:{author_id}:page_{page}_size_{page_size}:app_{app_id or 'none'}"
     cached_articles = await get_cache(cache_key)
     if cached_articles:
         print(f"✍️ Redis Cache HIT for author {author_id} articles")
@@ -607,13 +633,13 @@ async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20)
     
     print(f"✍️ Redis Cache MISS for author {author_id} articles - Loading from DB...")
     # Get articles by author (returns List[dict])
-    articles_list = await get_articles_by_author(author_id, page - 1, page_size)
+    articles_list = await get_articles_by_author(author_id, page - 1, page_size, app_id=app_id)
     # articles_list is already list of dicts
     articles_dict = articles_list
     
     # Calculate total pages for this author
     from backend.services.article_service import get_total_articles_count_by_author
-    total_items = await get_total_articles_count_by_author(author_id)
+    total_items = await get_total_articles_count_by_author(author_id, app_id=app_id)
     total_pages = (total_items + page_size - 1) // page_size
     
     result = {

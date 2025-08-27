@@ -11,8 +11,12 @@ from backend.database.cosmos import get_users_container
 async def get_users():
     return await get_users_container()
 
-async def get_list_user():
+async def get_list_user(app_id: Optional[str] = None):
     users = await get_users()
+    
+    # Note: Users don't have app_id directly, but we can filter users who have articles in the specified app
+    # For now, we'll return all users since users are shared across apps, but in the service layer
+    # we'll filter their stats by app_id
     query = "SELECT * FROM c"
     parameters = []
     results = []

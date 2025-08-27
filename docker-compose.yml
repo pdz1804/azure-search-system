@@ -56,7 +56,6 @@ services:
       - ENABLE_INDEXER_CACHE=${ENABLE_INDEXER_CACHE}
       - SCORE_THRESHOLD=${SCORE_THRESHOLD}
       - ENABLE_SCORE_FILTERING=${ENABLE_SCORE_FILTERING}
-      - APP_ID=${APP_ID}
     volumes:
       - ./logs:/app/logs
     restart: unless-stopped

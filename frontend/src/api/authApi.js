@@ -1,4 +1,5 @@
 import { apiClient, apiClientFormData, createFormData, setAuthToken, removeAuthToken } from './config';
+import { APP_ID } from '../config/appConfig';
 
 export const authApi = {
   // Login with email and password
@@ -17,7 +18,9 @@ export const authApi = {
       localStorage.setItem('role', role);
       
       // Fetch full user profile
-      const userResponse = await apiClient.get(`/users/${user_id}`);
+      const userResponse = await apiClient.get(`/users/${user_id}`, {
+        params: { app_id: APP_ID }
+      });
       const userObj = userResponse.data?.data || userResponse.data;
       // persist normalized user object
       localStorage.setItem('user', JSON.stringify(userObj));
@@ -65,7 +68,9 @@ export const authApi = {
       localStorage.setItem('role', role);
       
       // Fetch full user profile
-      const userResponse = await apiClient.get(`/users/${user_id}`);
+      const userResponse = await apiClient.get(`/users/${user_id}`, {
+        params: { app_id: APP_ID }
+      });
       const userObj = userResponse.data?.data || userResponse.data;
       localStorage.setItem('user', JSON.stringify(userObj));
       
@@ -104,7 +109,9 @@ export const authApi = {
         throw new Error('No user ID found');
       }
       
-      const response = await apiClient.get(`/users/${userId}`);
+      const response = await apiClient.get(`/users/${userId}`, {
+        params: { app_id: APP_ID }
+      });
       localStorage.setItem('user', JSON.stringify(response.data?.data || response.data));
       
       return {
@@ -128,7 +135,9 @@ export const authApi = {
         throw new Error('No user ID found');
       }
       
-      const response = await apiClient.get(`/users/${userId}`);
+      const response = await apiClient.get(`/users/${userId}`, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -148,7 +157,9 @@ export const authApi = {
       }
       if (!userId) throw new Error('No user ID found');
 
-      const response = await apiClient.get(`/users/${userId}`);
+      const response = await apiClient.get(`/users/${userId}`, {
+        params: { app_id: APP_ID }
+      });
       return {
         success: true,
         data: response.data?.data || response.data

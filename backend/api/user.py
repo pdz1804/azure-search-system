@@ -30,15 +30,15 @@ def require_admin(current_user: dict = Depends(get_current_user)):
     return current_user
 
 @users.get("/")
-async def list_users():
-    users_list = await user_service.list_users()
+async def list_users(app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
+    users_list = await user_service.list_users(app_id=app_id)
     return {"success": True, "data": users_list}
 
 @users.get("/{id}")
-async def get_user_by_id(id: str):
+async def get_user_by_id(id: str, app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
     # Use service layer to get user detail with statistics
     try:
-        user = await user_service.get_user_by_id(id)
+        user = await user_service.get_user_by_id(id, app_id=app_id)
         if not user:
             return JSONResponse(status_code=404, content={"success": False, "data": None})
         return {"success": True, "data": user}
@@ -168,11 +168,12 @@ async def update_user(
 async def get_all_users_admin(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=10000),  # Allow up to 10,000 users for admin dashboard
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results"),
     admin_user: dict = Depends(require_admin)
 ):
     """Get all users for admin dashboard with full details"""
     try:
-        users_data = await user_service.list_users()
+        users_data = await user_service.list_users(app_id=app_id)
         
         if not users_data:
             return {
@@ -212,11 +213,12 @@ async def get_all_users_admin(
 async def get_all_users(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
-    featured: bool = Query(False, description="Get only featured users")
+    featured: bool = Query(False, description="Get only featured users"),
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results")
 ):
     """Get all users with pagination and optional featured filter."""
     # Check Redis cache first
-    cache_key = f"authors:page_{page}_limit_{limit}_featured_{featured}"
+    cache_key = f"authors:page_{page}_limit_{limit}_featured_{featured}_app_{app_id or 'none'}"
     # Temporarily disable cache to serve fresh pagination data
     cached_authors = await get_cache(cache_key)
     if cached_authors:
@@ -225,7 +227,7 @@ async def get_all_users(
     
     print("👥 Redis Cache MISS for authors - Loading from DB...")
     try:
-        users_data = await user_service.list_users()
+        users_data = await user_service.list_users(app_id=app_id)
         
         if not users_data:
             return {

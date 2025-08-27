@@ -60,17 +60,18 @@ def search_articles(
     q: str = Query(..., min_length=1, description="Search query text"), 
     k: int = Query(10, ge=1, le=100, description="Number of results to return"),
     page_index: Optional[int] = Query(None, ge=0, description="Page index (0-based)"),
-    page_size: Optional[int] = Query(None, ge=1, le=100, description="Number of results per page")
+    page_size: Optional[int] = Query(None, ge=1, le=100, description="Number of results per page"),
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results")
 ):
     """Search articles with hybrid scoring and optional pagination.
     
     Returns a combination of semantic, keyword (BM25), vector, and business logic scores
     with configurable weights. Supports pagination with page_index and page_size parameters.
     """
-    print(f"🔍 Searching articles: query='{q}', k={k}, page_index={page_index}, page_size={page_size}")
+    print(f"🔍 Searching articles: query='{q}', k={k}, page_index={page_index}, page_size={page_size}, app_id={app_id}")
     try:
         # Get search results from service layer
-        result = get_search_service().search_articles(q, k, page_index, page_size)
+        result = get_search_service().search_articles(q, k, page_index, page_size, app_id)
         
         # Transform results to ArticleHit format for API response
         articles = [
@@ -109,7 +110,8 @@ def search_authors(
     q: str = Query(..., min_length=1, description="Search query text"), 
     k: int = Query(10, ge=1, le=100, description="Number of results to return"),
     page_index: Optional[int] = Query(None, ge=0, description="Page index (0-based)"),
-    page_size: Optional[int] = Query(None, ge=1, le=100, description="Number of results per page")
+    page_size: Optional[int] = Query(None, ge=1, le=100, description="Number of results per page"),
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results")
 ):
     """Search authors with hybrid scoring and optional pagination.
     
@@ -117,10 +119,10 @@ def search_authors(
     Vector and business scoring can be enabled via environment variables.
     Supports pagination with page_index and page_size parameters.
     """
-    print(f"🔍 Searching authors: query='{q}', k={k}, page_index={page_index}, page_size={page_size}")
+    print(f"🔍 Searching authors: query='{q}', k={k}, page_index={page_index}, page_size={page_size}, app_id={app_id}")
     try:
         # Get search results from service layer
-        result = get_search_service().search_authors(q, k, page_index, page_size)
+        result = get_search_service().search_authors(q, k, page_index, page_size, app_id)
         
         # Transform results to AuthorHit format for API response
         authors = [
@@ -156,7 +158,8 @@ def search_general(
     q: str = Query(..., min_length=1, description="Search query text"), 
     k: int = Query(10, ge=1, le=100, description="Number of results to return"),
     page_index: Optional[int] = Query(None, ge=0, description="Page index (0-based)"),
-    page_size: Optional[int] = Query(None, ge=1, le=100, description="Number of results per page")
+    page_size: Optional[int] = Query(None, ge=1, le=100, description="Number of results per page"),
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results")
 ):
     """General search endpoint with intelligent query classification and routing.
     
@@ -168,10 +171,10 @@ def search_general(
     
     Supports pagination with page_index and page_size parameters.
     """
-    print(f"🔍 General search: query='{q}', k={k}, page_index={page_index}, page_size={page_size}")
+    print(f"🔍 General search: query='{q}', k={k}, page_index={page_index}, page_size={page_size}, app_id={app_id}")
     try:
         # Get search results from service layer using general search
-        result = get_search_service().search(q, k, page_index, page_size)
+        result = get_search_service().search(q, k, page_index, page_size, app_id)
         
         # Transform results based on search type
         search_type = result.get("search_type", "articles")

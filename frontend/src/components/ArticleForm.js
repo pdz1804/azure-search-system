@@ -10,6 +10,7 @@ import { articleApi } from '../api/articleApi';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { apiClientFormData, createFormData, apiClient } from '../api/config';
+import { APP_ID } from '../config/appConfig';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -64,7 +65,8 @@ const ArticleForm = () => {
       const response = await apiClient.post('/articles/generate-tags', {
         title,
         abstract,
-        content: content || ''
+        content: content || '',
+        app_id: APP_ID
       });
       
       const tags = response.data?.tags || [];

@@ -44,7 +44,8 @@ async def search_general(
     q: str = Query(..., min_length=1, description="Search query text"), 
     k: int = Query(60, ge=1, le=1000, description="Number of results to return (default 5 pages * 12)") ,
     page_index: int = Query(0, ge=0, description="Page index (0-based)"),
-    page_size: int = Query(12, ge=1, le=100, description="Number of results per page (default 12)")
+    page_size: int = Query(12, ge=1, le=100, description="Number of results per page (default 12)"),
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results")
 ):
     """General search endpoint with intelligent query classification and routing.
     
@@ -56,9 +57,9 @@ async def search_general(
     
     Supports pagination with page_index and page_size parameters.
     """
-    print(f"🔍 General search: query='{q}', k={k}, page_index={page_index}, page_size={page_size}")
+    print(f"🔍 General search: query='{q}', k={k}, page_index={page_index}, page_size={page_size}, app_id={app_id}")
     try:
-        cache_key = f"search:general:{q}:{k}:{page_index}:{page_size}"
+        cache_key = f"search:general:{q}:{k}:{page_index}:{page_size}:{app_id or 'none'}"
         cached = await get_cache(cache_key)
 
         if cached is not None:
@@ -69,7 +70,7 @@ async def search_general(
 
         # Get search results from service layer using general search
         search_service = get_search_service()
-        result = search_service.search(q, k, page_index, page_size)
+        result = search_service.search(q, k, page_index, page_size, app_id)
 
         if not result or not result.get("results"):
             raise HTTPException(status_code=500, detail="Search failed - no results returned")
@@ -150,16 +151,17 @@ async def search_articles(
     q: str = Query(..., min_length=1, description="Search query text"), 
     k: int = Query(60, ge=1, le=1000, description="Number of results to return (default 5 pages * 12)"),
     page_index: int = Query(0, ge=0, description="Page index (0-based)"),
-    page_size: int = Query(12, ge=1, le=100, description="Number of results per page (default 12)")
+    page_size: int = Query(12, ge=1, le=100, description="Number of results per page (default 12)"),
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results")
 ):
     """Search articles with hybrid scoring and optional pagination.
     
     Returns a combination of semantic, keyword (BM25), vector, and business logic scores
     with configurable weights. Supports pagination with page_index and page_size parameters.
     """
-    print(f"🔍 Searching articles: query='{q}', k={k}, page_index={page_index}, page_size={page_size}")
+    print(f"🔍 Searching articles: query='{q}', k={k}, page_index={page_index}, page_size={page_size}, app_id={app_id}")
     try:
-        cache_key = f"search:articles:{q}:{k}:{page_index}:{page_size}"
+        cache_key = f"search:articles:{q}:{k}:{page_index}:{page_size}:{app_id or 'none'}"
         cached = await get_cache(cache_key)
         
         if cached is not None:
@@ -170,7 +172,7 @@ async def search_articles(
 
         # Get search results from service layer
         search_service = get_search_service()
-        result = search_service.search_articles(q, k, page_index, page_size)
+        result = search_service.search_articles(q, k, page_index, page_size, app_id)
 
         if not result or not result.get("results"):
             return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Search failed - no results returned"}})
@@ -232,7 +234,8 @@ async def search_authors(
     q: str = Query(..., min_length=1, description="Search query text"), 
     k: int = Query(60, ge=1, le=1000, description="Number of results to return (default 5 pages * 12)"),
     page_index: int = Query(0, ge=0, description="Page index (0-based)"),
-    page_size: int = Query(12, ge=1, le=100, description="Number of results per page (default 12)")
+    page_size: int = Query(12, ge=1, le=100, description="Number of results per page (default 12)"),
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results")
 ):
     """Search authors with hybrid scoring and optional pagination.
     
@@ -240,9 +243,9 @@ async def search_authors(
     Vector and business scoring can be enabled via environment variables.
     Supports pagination with page_index and page_size parameters.
     """
-    print(f"🔍 Searching authors: query='{q}', k={k}, page_index={page_index}, page_size={page_size}")
+    print(f"🔍 Searching authors: query='{q}', k={k}, page_index={page_index}, page_size={page_size}, app_id={app_id}")
     try:
-        cache_key = f"search:authors:{q}:{k}:{page_index}:{page_size}"
+        cache_key = f"search:authors:{q}:{k}:{page_index}:{page_size}:{app_id or 'none'}"
         cached = await get_cache(cache_key)
         if cached is not None:
             print(f"👥 Redis Cache HIT for authors search: {q}")
@@ -252,7 +255,7 @@ async def search_authors(
 
         # Get search results from service layer
         search_service = get_search_service()
-        result = search_service.search_authors(q, k, page_index, page_size)
+        result = search_service.search_authors(q, k, page_index, page_size, app_id)
 
         if not result or not result.get("results"):
             return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Search failed - no results returned"}})

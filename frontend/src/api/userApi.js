@@ -1,4 +1,5 @@
 import { apiClient } from './config';
+import { APP_ID } from '../config/appConfig';
 
 export const userApi = {
   // Get current user info (legacy method)
@@ -8,7 +9,9 @@ export const userApi = {
       if (!userId) {
         throw new Error('No user ID found');
       }
-      const response = await apiClient.get(`/users/${userId}`);
+      const response = await apiClient.get(`/users/${userId}`, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -23,7 +26,8 @@ export const userApi = {
           q: params.q,
           k: params.limit || 10,
           page_index: (params.page || 1) - 1, // Convert to 0-based for backend
-          page_size: params.limit || 10
+          page_size: params.limit || 10,
+          app_id: APP_ID
         }
       });
       return response.data;
@@ -36,7 +40,9 @@ export const userApi = {
   // Get user profile by ID
   getUser: async (id) => {
     try {
-      const response = await apiClient.get(`/users/${id}`);
+      const response = await apiClient.get(`/users/${id}`, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -46,7 +52,9 @@ export const userApi = {
   // Enhanced version with error handling
   getUserById: async (userId) => {
     try {
-      const response = await apiClient.get(`/users/${userId}`);
+      const response = await apiClient.get(`/users/${userId}`, {
+        params: { app_id: APP_ID }
+      });
       return {
         success: true,
         data: response.data?.data || response.data
@@ -196,7 +204,7 @@ export const userApi = {
   getAllUsers: async (page = 1, limit = 20, featured = false) => {
     try {
       const response = await apiClient.get('/users', {
-        params: { page, limit, featured }
+        params: { page, limit, featured, app_id: APP_ID }
       });
       return response.data;
     } catch (error) {
@@ -209,7 +217,7 @@ export const userApi = {
   getAllUsersAdmin: async (page = 1, limit = 20) => {
     try {
       const response = await apiClient.get('/users/admin/all', {
-        params: { page, limit }
+        params: { page, limit, app_id: APP_ID }
       });
       return response.data;
     } catch (error) {

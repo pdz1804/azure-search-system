@@ -27,7 +27,7 @@ async def _convert_to_user_dto(user: dict) -> dict:
     }
 
 
-async def _convert_to_user_detail_dto(user: dict) -> dict:
+async def _convert_to_user_detail_dto(user: dict, app_id: Optional[str] = None) -> dict:
     """Convert user data to dict following UserDetailDTO structure with statistics"""
     # Get user statistics
     user_id = user.get("id", "")
@@ -40,16 +40,17 @@ async def _convert_to_user_detail_dto(user: dict) -> dict:
     total_likes = 0
     
     try:
-        # Get article statistics for this user
-        stats = await article_repo.get_author_stats(user_id)
+        # Get article statistics for this user (filtered by app_id)
+        stats = await article_repo.get_author_stats(user_id, app_id=app_id)
         total_articles = stats.get('articles_count', 0)
         total_views = stats.get('total_views', 0)
         total_likes = stats.get('total_likes', 0)
         
-        # Get published articles count
-        user_articles = await article_repo.get_article_by_author(user_id, page=0, page_size=1000)
+        # Get published articles count (filtered by app_id)
+        user_articles = await article_repo.get_article_by_author(user_id, page=0, page_size=1000, app_id=app_id)
         if user_articles:
-            total_published = len([a for a in user_articles if a.get('status') == 'published'])
+            articles_list = user_articles.get("items", []) if isinstance(user_articles, dict) else user_articles
+            total_published = len([a for a in articles_list if a.get('status') == 'published'])
     except Exception as e:
         print(f"⚠️ Failed to get user statistics for {user_id}: {e}")
         # Use fallback values
@@ -70,8 +71,8 @@ async def _convert_to_user_detail_dto(user: dict) -> dict:
     }
 
 
-async def list_users() -> List[dict]:
-    users = await user_repo.get_list_user()
+async def list_users(app_id: Optional[str] = None) -> List[dict]:
+    users = await user_repo.get_list_user(app_id=app_id)
     if not users:
         return []
 
@@ -79,8 +80,8 @@ async def list_users() -> List[dict]:
     user_dicts = []
     for user in users:
         try:
-            # Enrich with quick stats
-            stats = await article_repo.get_author_stats(user.get('id'))
+            # Enrich with quick stats (also filter by app_id)
+            stats = await article_repo.get_author_stats(user.get('id'), app_id=app_id)
             user['articles_count'] = stats.get('articles_count', 0)
             user['total_views'] = stats.get('total_views', 0)
             
@@ -115,10 +116,10 @@ async def create_user(doc: dict) -> dict:
     # Convert to UserDetailDTO format before returning
     return await _convert_to_user_detail_dto(user)
 
-async def get_user_by_id(user_id: str) -> Optional[dict]:
+async def get_user_by_id(user_id: str, app_id: Optional[str] = None) -> Optional[dict]:
     user = await user_repo.get_user_by_id(user_id)
     if user:
-        return await _convert_to_user_detail_dto(user)
+        return await _convert_to_user_detail_dto(user, app_id=app_id)
     return None
 
 

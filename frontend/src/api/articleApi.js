@@ -1,5 +1,6 @@
 import { apiClient, apiClientFormData, createFormData } from './config';
 import { invalidateAuthorStats } from '../hooks/useAuthorStats';
+import { APP_ID } from '../config/appConfig';
 
 export const articleApi = {
   // Get all articles (supports both (page, limit, status) and (paramsObject))
@@ -24,6 +25,8 @@ export const articleApi = {
         params = { 'page[page]': page, 'page[page_size]': limit, limit };
         if (status) params.status = status;
       }
+      // Add app_id to all article listing requests
+      params.app_id = APP_ID;
       const response = await apiClient.get('/articles/', { params });
       return response.data;
     } catch (error) {
@@ -47,7 +50,7 @@ export const articleApi = {
   getArticlesByAuthor: async (authorId, page = 1, limit = 10) => {
     try {
       const response = await apiClient.get(`/articles/author/${authorId}`, {
-        params: { page, limit }
+        params: { page, limit, app_id: APP_ID }
       });
       return response.data;
     } catch (error) {
@@ -61,6 +64,8 @@ export const articleApi = {
     try {
       // backend expects form fields (Form & UploadFile), so send multipart/form-data
       const form = createFormData(articleData);
+      // Add app_id to article creation
+      form.append('app_id', APP_ID);
       // If image exists on articleData but wasn't added by createFormData, add it explicitly
       try {
         let hasImage = false;
@@ -165,7 +170,8 @@ export const articleApi = {
           q: query,
           k: Math.min(limit, maxResults),
           page_index: page - 1,
-          page_size: Math.min(limit, maxResults)
+          page_size: Math.min(limit, maxResults),
+          app_id: APP_ID
         }
       });
       return response.data;
@@ -196,7 +202,7 @@ export const articleApi = {
   getPopularArticles: async (limit = 10) => {
     try {
       const response = await apiClient.get('/articles/popular', {
-        params: { limit }
+        params: { limit, app_id: APP_ID }
       });
       return response.data;
     } catch (error) {
@@ -223,7 +229,9 @@ export const articleApi = {
   // Get categories
   getCategories: async () => {
     try {
-      const response = await apiClient.get('/articles/categories');
+      const response = await apiClient.get('/articles/categories', {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       console.error('Get categories error:', error);
@@ -235,7 +243,7 @@ export const articleApi = {
   getArticlesByCategory: async (category, page = 1, limit = 10) => {
     try {
       const response = await apiClient.get(`/articles/categories/${category}`, {
-        params: { page, limit }
+        params: { page, limit, app_id: APP_ID }
       });
       return response.data;
     } catch (error) {

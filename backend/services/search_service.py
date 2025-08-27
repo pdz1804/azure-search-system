@@ -109,20 +109,21 @@ class BackendSearchService:
         
         return filtered_results
     
-    def _get_app_id_filter(self) -> str:
+    def _get_app_id_filter(self, app_id: str = None) -> str:
         """
         Get the app_id filter string for the current application.
         
-        Returns:
-            Filter string for app_id, or empty string if not configured
-        """
-        from ai_search.config.settings import SETTINGS
+        Args:
+            app_id: Application ID to filter by
         
-        if not SETTINGS.app_id:
-            print("⚠️ No APP_ID configured, skipping app filtering")
+        Returns:
+            Filter string for app_id, or empty string if not provided
+        """
+        if not app_id:
+            print("⚠️ No app_id provided, skipping app filtering")
             return ""
         
-        app_filter = f"app_id eq '{SETTINGS.app_id}'"
+        app_filter = f"app_id eq '{app_id}'"
         print(f"🔒 Applying app filter: {app_filter}")
         return app_filter
     
@@ -174,7 +175,7 @@ class BackendSearchService:
         
         return cleaned
     
-    def search(self, query: str, k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None) -> Dict[str, Any]:
+    def search(self, query: str, k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None, app_id: str = None) -> Dict[str, Any]:
         """
         General search function that uses LLM planning to classify and route queries.
         
@@ -188,6 +189,7 @@ class BackendSearchService:
             k: Number of results to return
             page_index: Page index for pagination (optional)
             page_size: Page size for pagination (optional)
+            app_id: Application ID for filtering results (optional)
             
         Returns:
             Dict containing search results with unified format
@@ -221,16 +223,16 @@ class BackendSearchService:
         
         if search_type == "authors":
             print(f"📋 Routing to authors search")
-            return self._search_authors_planned(query, plan, k, page_index, page_size)
+            return self._search_authors_planned(query, plan, k, page_index, page_size, app_id)
         elif search_type == "articles":
             print(f"📋 Routing to articles search")
-            return self._search_articles_planned(query, plan, k, page_index, page_size)
+            return self._search_articles_planned(query, plan, k, page_index, page_size, app_id)
         else:
             # Fallback for unmeaningful or unknown types
             print(f"❓ Unknown search type: {search_type}, defaulting to articles")
-            return self._search_articles_planned(query, plan, k, page_index, page_size)
+            return self._search_articles_planned(query, plan, k, page_index, page_size, app_id)
     
-    def search_articles(self, query: str, k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None) -> Dict[str, Any]:
+    def search_articles(self, query: str, k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None, app_id: str = None) -> Dict[str, Any]:
         """
         Search for articles using LLM planning for query enhancement.
         
@@ -272,9 +274,9 @@ class BackendSearchService:
             }
         
         # Use the planned search function
-        return self._search_articles_planned(query, plan, k, page_index, page_size)
+        return self._search_articles_planned(query, plan, k, page_index, page_size, app_id)
 
-    def search_authors(self, query: str, k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None) -> Dict[str, Any]:
+    def search_authors(self, query: str, k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None, app_id: str = None) -> Dict[str, Any]:
         """
         Search for authors using LLM planning for query enhancement.
         
@@ -313,7 +315,7 @@ class BackendSearchService:
             }
         
         # Use the planned search function
-        return self._search_authors_planned(query, plan, k, page_index, page_size)
+        return self._search_authors_planned(query, plan, k, page_index, page_size, app_id)
     
     def _test_semantic_search(self) -> bool:
         """Test if semantic search is available on this service."""
@@ -343,7 +345,7 @@ class BackendSearchService:
             # For any other errors, assume semantic search is not available
             return False
     
-    def _batch_get_documents(self, client: SearchClient, document_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+    def _batch_get_documents(self, client: SearchClient, document_ids: List[str], app_id: str = None) -> Dict[str, Dict[str, Any]]:
         """
         Batch retrieve documents by IDs to avoid N+1 query problem.
         
@@ -364,7 +366,7 @@ class BackendSearchService:
             id_filter = " or ".join([f"id eq '{doc_id}'" for doc_id in document_ids])
             
             # Apply app_id filter
-            app_filter = self._get_app_id_filter()
+            app_filter = self._get_app_id_filter(app_id)
             if app_filter:
                 final_filter = self._merge_filters(id_filter, app_filter)
             else:
@@ -393,7 +395,7 @@ class BackendSearchService:
                     print(f"⚠️ Failed to retrieve document {doc_id}: {individual_error}")
             return doc_dict
 
-    def _search_authors_planned(self, original_query: str, plan: Dict[str, Any], k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None) -> Dict[str, Any]:
+    def _search_authors_planned(self, original_query: str, plan: Dict[str, Any], k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None, app_id: str = None) -> Dict[str, Any]:
         """
         Internal authors search function that uses pre-planned query data.
         
@@ -423,7 +425,7 @@ class BackendSearchService:
         try:
             # Get all authors and perform fuzzy matching (as per established approach)
             print("🔍 Getting all authors from index for fuzzy matching...")
-            all_authors = self._get_all_authors()
+            all_authors = self._get_all_authors(app_id)
             print(f"📋 Retrieved {len(all_authors)} authors from index")
             
             # Perform fuzzy matching
@@ -496,7 +498,7 @@ class BackendSearchService:
             print(f"❌ Authors search failed: {e}")
             raise
     
-    def _search_articles_planned(self, original_query: str, plan: Dict[str, Any], k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None) -> Dict[str, Any]:
+    def _search_articles_planned(self, original_query: str, plan: Dict[str, Any], k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None, app_id: str = None) -> Dict[str, Any]:
         """
         Internal articles search function that uses pre-planned query data.
         
@@ -552,7 +554,7 @@ class BackendSearchService:
                             search_kwargs["search_fields"] = search_params["search_fields"]
                         
                         # Apply app_id filter
-                        app_filter = self._get_app_id_filter()
+                        app_filter = self._get_app_id_filter(app_id)
                         if app_filter:
                             existing_filter = search_kwargs.get("filter", "")
                             search_kwargs["filter"] = self._merge_filters(existing_filter, app_filter)
@@ -584,7 +586,7 @@ class BackendSearchService:
                                 search_kwargs["search_fields"] = search_params["search_fields"]
                             
                             # Apply app_id filter
-                            app_filter = self._get_app_id_filter()
+                            app_filter = self._get_app_id_filter(app_id)
                             if app_filter:
                                 existing_filter = search_kwargs.get("filter", "")
                                 search_kwargs["filter"] = self._merge_filters(existing_filter, app_filter)
@@ -614,7 +616,7 @@ class BackendSearchService:
                         search_kwargs["search_fields"] = search_params["search_fields"]
                     
                     # Apply app_id filter
-                    app_filter = self._get_app_id_filter()
+                    app_filter = self._get_app_id_filter(app_id)
                     if app_filter:
                         existing_filter = search_kwargs.get("filter", "")
                         search_kwargs["filter"] = self._merge_filters(existing_filter, app_filter)
@@ -663,7 +665,7 @@ class BackendSearchService:
                     vector_search_kwargs["order_by"] = search_params["order_by"]
                 
                 # Apply app_id filter
-                app_filter = self._get_app_id_filter()
+                app_filter = self._get_app_id_filter(app_id)
                 if app_filter:
                     existing_filter = vector_search_kwargs.get("filter", "")
                     vector_search_kwargs["filter"] = self._merge_filters(existing_filter, app_filter)
@@ -729,7 +731,7 @@ class BackendSearchService:
             missing_parent_ids = [pid for pid, row in id_to_row.items() if row.get("doc") is None]
             if missing_parent_ids:
                 print(f"📦 Fetching {len(missing_parent_ids)} parent article documents")
-                batch_parents = self._batch_get_documents(self.articles_parent, missing_parent_ids)
+                batch_parents = self._batch_get_documents(self.articles_parent, missing_parent_ids, app_id)
                 for pid in missing_parent_ids:
                     if pid in batch_parents:
                         parent_doc = batch_parents[pid]
@@ -785,7 +787,7 @@ class BackendSearchService:
             print(f"❌ Articles search failed: {e}")
             raise
 
-    def _get_all_authors(self) -> List[Dict[str, Any]]:
+    def _get_all_authors(self, app_id: str = None) -> List[Dict[str, Any]]:
         """
         Get all authors from the index for fuzzy matching.
         
@@ -802,7 +804,7 @@ class BackendSearchService:
             }
             
             # Apply app_id filter
-            app_filter = self._get_app_id_filter()
+            app_filter = self._get_app_id_filter(app_id)
             if app_filter:
                 search_kwargs["filter"] = app_filter
             

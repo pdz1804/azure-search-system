@@ -49,9 +49,6 @@ class Settings:
     cosmos_articles: str = os.environ.get("COSMOS_ARTICLES", "articles")  # Articles container
     cosmos_users: str = os.environ.get("COSMOS_USERS", "users")  # Users container
 
-    # Application configuration
-    app_id: str = os.environ.get("APP_ID", "")  # Application ID for filtering data
-
     # Embeddings configuration
     embedding_provider: str = os.environ.get("EMBEDDING_PROVIDER", "openai").lower()  # "openai" or "hf"
     embedding_model: str = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")  # OpenAI model name
@@ -99,7 +96,6 @@ SETTINGS = Settings()
 print("⚙️ Configuration loaded:")
 print(f"   🔍 Search: {SETTINGS.search_endpoint}")
 print(f"   🌌 Cosmos: {SETTINGS.cosmos_db}/{SETTINGS.cosmos_articles}, {SETTINGS.cosmos_db}/{SETTINGS.cosmos_users}")
-print(f"   🆔 App ID: {SETTINGS.app_id or 'Not configured'}")
 print(f"   🧮 Embeddings: {SETTINGS.embedding_provider} ({SETTINGS.embedding_model if SETTINGS.embedding_provider == 'openai' else SETTINGS.hf_model_name})")
 print(f"   📊 Article weights: sem={SETTINGS.w_semantic}, bm25={SETTINGS.w_bm25}, vec={SETTINGS.w_vector}, biz={SETTINGS.w_business}")
 print(f"   👤 Author weights: sem={SETTINGS.aw_semantic}, bm25={SETTINGS.aw_bm25}, vec={SETTINGS.aw_vector}, biz={SETTINGS.aw_business}")

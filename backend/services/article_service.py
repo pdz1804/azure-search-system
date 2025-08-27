@@ -222,8 +222,8 @@ async def delete_article(article_id: str):
     await delete_cache_pattern("articles:home*")
     await delete_cache_pattern("articles:recent*")
 
-async def list_articles(page: int, page_size: int) -> List[dict]:
-    cache_key = generate_cache_key(CACHE_KEYS["articles_home"], page=page, page_size=page_size)
+async def list_articles(page: int, page_size: int, app_id: Optional[str] = None) -> List[dict]:
+    cache_key = generate_cache_key(CACHE_KEYS["articles_home"], page=page, page_size=page_size, app_id=app_id or 'none')
     
     cached_articles = await get_cache(cache_key)
     if cached_articles:
@@ -232,7 +232,7 @@ async def list_articles(page: int, page_size: int) -> List[dict]:
         return cached_articles
     
     print(f"💾 Cache MISS for home articles page {page}")
-    result = await article_repo.list_articles(page, page_size)
+    result = await article_repo.list_articles(page, page_size, app_id=app_id)
     
     # Extract the actual articles from the repository response
     articles = result.get("items", []) if isinstance(result, dict) else result
@@ -318,15 +318,15 @@ async def decrement_article_dislikes(article_id: str):
 #     except Exception:
 #         return False
 
-async def get_articles_by_author(author_id: str, page: int = 1, page_size: int = 20) -> List[dict]:
-    cache_key = generate_cache_key(CACHE_KEYS["user_articles"], user_id=author_id, page=page, page_size=page_size)
+async def get_articles_by_author(author_id: str, page: int = 1, page_size: int = 20, app_id: Optional[str] = None) -> List[dict]:
+    cache_key = generate_cache_key(CACHE_KEYS["user_articles"], user_id=author_id, page=page, page_size=page_size, app_id=app_id or 'none')
     
     cached_articles = await get_cache(cache_key)
     if cached_articles:
         # Return cached dict data directly
         return cached_articles
     
-    articles = await article_repo.get_article_by_author(author_id, page, page_size)
+    articles = await article_repo.get_article_by_author(author_id, page, page_size, app_id=app_id)
     
     if articles:
         # Convert to dicts
@@ -337,8 +337,8 @@ async def get_articles_by_author(author_id: str, page: int = 1, page_size: int =
     
     return []
 
-async def get_popular_articles(page: int = 1, page_size: int = 10) -> List[dict]:
-    cache_key = generate_cache_key(CACHE_KEYS["articles_popular"], page=page, page_size=page_size)
+async def get_popular_articles(page: int = 1, page_size: int = 10, app_id: Optional[str] = None) -> List[dict]:
+    cache_key = generate_cache_key(CACHE_KEYS["articles_popular"], page=page, page_size=page_size, app_id=app_id or 'none')
     
     cached_articles = await get_cache(cache_key)
     if cached_articles:
@@ -347,7 +347,7 @@ async def get_popular_articles(page: int = 1, page_size: int = 10) -> List[dict]
     
     try:
         # Get articles from repository
-        articles_data = await article_repo.list_articles(page=1, page_size=page_size * 3)  # Get more for sorting
+        articles_data = await article_repo.list_articles(page=1, page_size=page_size * 3, app_id=app_id)  # Get more for sorting
         
         # Handle different return formats from repository
         if isinstance(articles_data, dict):
@@ -465,27 +465,37 @@ async def get_summary() -> Dict:
             "authors": 0,
         }
 
-async def get_total_articles_count():
+async def get_total_articles_count(app_id: Optional[str] = None):
     """Get total count of published articles."""
     try:
         from backend.database.cosmos import get_articles_container
         articles_container = await get_articles_container()
         
-        query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published'"
-        async for count in articles_container.query_items(query=query):
+        if app_id:
+            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published' AND c.app_id = @app_id"
+            parameters = [{"name": "@app_id", "value": app_id}]
+        else:
+            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published'"
+            parameters = []
+            
+        async for count in articles_container.query_items(query=query, parameters=parameters):
             return count
         return 0
     except Exception:
         return 0
 
-async def get_total_articles_count_by_author(author_id: str):
+async def get_total_articles_count_by_author(author_id: str, app_id: Optional[str] = None):
     """Get total count of published articles by specific author."""
     try:
         from backend.database.cosmos import get_articles_container
         articles_container = await get_articles_container()
         
-        query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published' AND c.author_id = @author_id"
-        parameters = [{"name": "@author_id", "value": author_id}]
+        if app_id:
+            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published' AND c.author_id = @author_id AND c.app_id = @app_id"
+            parameters = [{"name": "@author_id", "value": author_id}, {"name": "@app_id", "value": app_id}]
+        else:
+            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published' AND c.author_id = @author_id"
+            parameters = [{"name": "@author_id", "value": author_id}]
         
         async for count in articles_container.query_items(query=query, parameters=parameters):
             return count
