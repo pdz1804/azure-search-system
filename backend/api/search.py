@@ -176,7 +176,7 @@ async def search_articles(
 
         if not result or not result.get("results"):
             return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Search failed - no results returned"}})
-        docs = await search_response_articles(result)
+        docs = await search_response_articles(result, app_id)
         
         # Transform results to ArticleHit format for API response
         # articles = [

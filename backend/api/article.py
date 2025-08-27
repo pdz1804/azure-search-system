@@ -105,16 +105,6 @@ async def get_articles(
     limit: Optional[int] = Query(10),
     app_id: Optional[str] = Query(None, description="Application ID for filtering results")
 ):
-    """Get articles with pagination and filtering."""
-    # Check Redis cache first
-    cache_key = f"articles:list:page_{page or 1}_size_{page_size or limit or 20}_status_{status or 'published'}_sort_{sort_by or 'created_at'}_app_{app_id or 'none'}"
-    # Temporarily disable cache to serve fresh pagination data
-    cached_articles = await get_cache(cache_key)
-    if cached_articles:
-        print("📚 Redis Cache HIT for articles list")
-        return cached_articles
-    
-    print("📚 Redis Cache MISS for articles list - Loading from DB...")
     try:
         # Use provided parameters or defaults
         current_page = page or 1
@@ -144,12 +134,6 @@ async def get_articles(
             }
         }
         
-        print(f"📄 [ARTICLES API DEBUG] Returning pagination: {result['pagination']}")
-        print(f"📄 [ARTICLES API DEBUG] total_items={total_items}, total_pages={total_pages}, page_size={current_page_size}")
-        
-        # Cache the results for 3 minutes (180 seconds)
-        await set_cache(cache_key, result, ttl=180)
-        print("📚 Redis Cache SET for articles list")
         
         return result
     except Exception as e:
@@ -552,10 +536,10 @@ async def get_articles_by_category(
 #         raise HTTPException(status_code=500, detail=str(e))
 
 @articles.get("/{article_id}")
-async def get_one(article_id: str):
+async def get_one(article_id: str, app_id: Optional[str] = Query(None, description="Application ID for multi-tenant filtering")):
     try:
         # Get article detail with auto-generation of recommendations if needed
-        art = await get_article_by_id(article_id)
+        art = await get_article_by_id(article_id, app_id)
         if not art:
             return JSONResponse(status_code=404, content={"success": False, "data": None})
         
@@ -579,12 +563,21 @@ async def update(
     tags: Optional[str] = Form(None),
     status: Optional[str] = Form(None),
     image: UploadFile = File(None),
+    app_id: Optional[str] = Form(None, description="Application ID for multi-tenant filtering"),
     current_user: dict = Depends(get_current_user)
 ):
-    art = await get_article_by_id(article_id)
+    # Get article with app_id filtering for security
+    art = await get_article_by_id(article_id, app_id)
     if not art:
         return JSONResponse(status_code=404, content={"success": False, "data": None})
-    if art.get("author_id") != current_user["id"] and current_user.get("role") not in [ Role.ADMIN]:
+    
+    # Verify the article belongs to the current user's app_id (if specified)
+    if app_id and art.get("app_id") != app_id:
+        print(f"🔒 Access denied: Article {article_id} app_id mismatch - requested: {app_id}, actual: {art.get('app_id')}")
+        return JSONResponse(status_code=403, content={"success": False, "data": {"error": "Access denied - app_id mismatch"}})
+    
+    # Check user permissions
+    if art.get("author_id") != current_user["id"] and current_user.get("role") not in [Role.ADMIN]:
         return JSONResponse(status_code=403, content={"success": False, "data": {"error": "Not allowed to update"}})
     update_data = {}
     if title is not None and title != "":
@@ -613,12 +606,21 @@ async def update(
     return {"success": True, "data": updated}
 
 @articles.delete("/{article_id}")
-async def remove(article_id: str, current_user: dict = Depends(get_current_user)):
-    art = await get_article_by_id(article_id)
+async def remove(article_id: str, app_id: Optional[str] = Query(None, description="Application ID for multi-tenant filtering"), current_user: dict = Depends(get_current_user)):
+    # Get article with app_id filtering for security
+    art = await get_article_by_id(article_id, app_id)
     if not art:
         return JSONResponse(status_code=404, content={"success": False, "data": None})
-    if art.get("author_id") != current_user["id"] and current_user.get("role") not in [ Role.ADMIN]:
+    
+    # Verify the article belongs to the current user's app_id (if specified)
+    if app_id and art.get("app_id") != app_id:
+        print(f"🔒 Access denied: Article {article_id} app_id mismatch - requested: {app_id}, actual: {art.get('app_id')}")
+        return JSONResponse(status_code=403, content={"success": False, "data": {"error": "Access denied - app_id mismatch"}})
+    
+    # Check user permissions
+    if art.get("author_id") != current_user["id"] and current_user.get("role") not in [Role.ADMIN]:
         return JSONResponse(status_code=403, content={"success": False, "data": {"error": "Not allowed to delete"}})
+    
     await delete_article(article_id)
     return {"success": True, "data": {"message": "deleted"}}
 
