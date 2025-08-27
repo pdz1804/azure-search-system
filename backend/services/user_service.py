@@ -8,33 +8,90 @@ article related counters to the article service where appropriate.
 from datetime import datetime
 import uuid
 from fastapi import HTTPException
-from typing import Any, Dict, Dict, List, Optional
-from backend.model.dto.user_dto import user_dto
+from typing import Any, Dict, List, Optional
 from backend.repositories import article_repo, user_repo
-import asyncio
 from backend.services import article_service
 from backend.services.cache_service import CACHE_KEYS, delete_cache_pattern
-from backend.utils import get_current_user, hash_password, verify_password
+from backend.utils import hash_password, verify_password
 
 
-async def list_users() -> list:
+async def _convert_to_user_dto(user: dict) -> dict:
+    """Convert user data to dict following UserDTO structure"""
+    return {
+        "user_id": user.get("id", ""),
+        "full_name": user.get("full_name", ""),
+        "email": user.get("email", ""),
+        "avatar_url": user.get("avatar_url"),
+        "role": user.get("role", "user"),
+        "is_active": user.get("is_active", True)
+    }
+
+
+async def _convert_to_user_detail_dto(user: dict) -> dict:
+    """Convert user data to dict following UserDetailDTO structure with statistics"""
+    # Get user statistics
+    user_id = user.get("id", "")
+    
+    # Calculate statistics
+    total_followers = len(user.get("followers", []))
+    total_articles = 0
+    total_published = 0
+    total_views = 0
+    total_likes = 0
+    
+    try:
+        # Get article statistics for this user
+        stats = await article_repo.get_author_stats(user_id)
+        total_articles = stats.get('articles_count', 0)
+        total_views = stats.get('total_views', 0)
+        total_likes = stats.get('total_likes', 0)
+        
+        # Get published articles count
+        user_articles = await article_repo.get_article_by_author(user_id, page=0, page_size=1000)
+        if user_articles:
+            total_published = len([a for a in user_articles if a.get('status') == 'published'])
+    except Exception as e:
+        print(f"⚠️ Failed to get user statistics for {user_id}: {e}")
+        # Use fallback values
+        total_articles = len(user.get("articles", []))
+    
+    return {
+        "user_id": user_id,
+        "full_name": user.get("full_name", ""),
+        "email": user.get("email", ""),
+        "avatar_url": user.get("avatar_url"),
+        "role": user.get("role", "user"),
+        "is_active": user.get("is_active", True),
+        "total_followers": total_followers,
+        "total_articles": total_articles,
+        "total_published": total_published,
+        "total_views": total_views,
+        "total_likes": total_likes
+    }
+
+
+async def list_users() -> List[dict]:
     users = await user_repo.get_list_user()
     if not users:
         return []
 
-    # Enrich each user with quick author stats (articles_count, total_views)
-    async def enrich(u):
+    # Convert each user to UserDTO format
+    user_dicts = []
+    for user in users:
         try:
-            stats = await article_repo.get_author_stats(u.get('id'))
-            u['articles_count'] = stats.get('articles_count', 0)
-            u['total_views'] = stats.get('total_views', 0)
+            # Enrich with quick stats
+            stats = await article_repo.get_author_stats(user.get('id'))
+            user['articles_count'] = stats.get('articles_count', 0)
+            user['total_views'] = stats.get('total_views', 0)
+            
+            user_dict = await _convert_to_user_dto(user)
+            user_dicts.append(user_dict)
         except Exception:
-            u['articles_count'] = u.get('articles_count', 0) or 0
-            u['total_views'] = u.get('total_views', 0) or 0
-        return u
-
-    enriched = await asyncio.gather(*(enrich(u) for u in users))
-    return enriched
+            # If stats fail, still include user with basic info
+            user_dict = await _convert_to_user_dto(user)
+            user_dicts.append(user_dict)
+    
+    return user_dicts
 
 async def login(email: str, password: str) -> Optional[dict]:
     user = await user_repo.get_by_email(email)
@@ -54,11 +111,15 @@ async def create_user(doc: dict) -> dict:
     doc["created_at"] = datetime.utcnow().isoformat()
     doc["id"] = uuid.uuid4().hex
     user = await user_repo.insert(doc)
-    return user
+    
+    # Convert to UserDetailDTO format before returning
+    return await _convert_to_user_detail_dto(user)
 
 async def get_user_by_id(user_id: str) -> Optional[dict]:
     user = await user_repo.get_user_by_id(user_id)
-    return map_to_user_dto(user) if user else None
+    if user:
+        return await _convert_to_user_detail_dto(user)
+    return None
 
 
 async def update_user(user_id: str, update_data: dict) -> Optional[dict]:
@@ -75,7 +136,8 @@ async def update_user(user_id: str, update_data: dict) -> Optional[dict]:
         # Clear any related caches
         await delete_cache_pattern("authors:*")
         
-        return updated_user
+        # Convert to UserDetailDTO format before returning
+        return await _convert_to_user_detail_dto(updated_user)
     except Exception as e:
         print(f"Error in update_user service: {e}")
         raise
@@ -184,16 +246,20 @@ async def delete_reaction(article_id: str) -> bool:
     
 async def search_response_users(data: Dict) -> List[dict]:
     users_ids = [user["id"] for user in data.get("results", [])]
-    return await user_repo.get_users_by_ids(users_ids)
+    users = await user_repo.get_users_by_ids(users_ids)
+    # Convert to UserDTO format
+    return [await _convert_to_user_dto(user) for user in users]
 
-def map_to_user_dto(user: dict) -> user_dto:
-    return user_dto(
-        id=user["id"],
-        full_name=user.get("full_name"),
-        email=user.get("email"),
-        num_followers=len(user.get("followers", [])),
-        num_following=len(user.get("following", [])),
-        num_articles=len(user.get("articles", [])) if user.get("articles") else 0,
-        role=user.get("role"),
-        avatar_url=user.get("avatar_url")
-    ) 
+
+# Remove old function that used the old user_dto class
+# def map_to_user_dto(user: dict) -> user_dto:
+#     return user_dto(
+#         id=user["id"],
+#         full_name=user.get("full_name"),
+#         email=user.get("email"),
+#         num_followers=len(user.get("followers", [])),
+#         num_following=len(user.get("following", [])),
+#         num_articles=len(user.get("articles", [])) if user.get("articles") else 0,
+#         role=user.get("role"),
+#         avatar_url=user.get("avatar_url")
+#     ) 
