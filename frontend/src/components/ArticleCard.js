@@ -202,12 +202,12 @@ const ArticleCard = ({
           {/* Large Image */}
           <div className="aspect-[16/9] overflow-hidden">
             <LazyLoadImage
-              src={article.image || '/blog_default.jpg'}
+              src={article.image || 'https://articleweb.blob.core.windows.net/images/blog_default.jpg'}
               alt={article.title}
               className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
               effect="opacity"
               onError={(e) => {
-                e.target.src = '/blog_default.jpg';
+                e.target.src = 'https://articleweb.blob.core.windows.net/images/blog_default.jpg';
               }}
             />
           </div>
@@ -415,12 +415,12 @@ const ArticleCard = ({
           {/* Image */}
           <div className="w-48 h-32 flex-shrink-0">
             <LazyLoadImage
-              src={article.image || '/blog_default.jpg'}
+              src={article.image || 'https://articleweb.blob.core.windows.net/images/blog_default.jpg'}
               alt={article.title}
               className="w-full h-full object-cover"
               effect="opacity"
               onError={(e) => {
-                e.target.src = '/blog_default.jpg';
+                e.target.src = 'https://articleweb.blob.core.windows.net/images/blog_default.jpg';
               }}
             />
           </div>
@@ -493,12 +493,12 @@ const ArticleCard = ({
         {/* Image */}
         <div className="aspect-video overflow-hidden">
           <LazyLoadImage
-            src={article.image || '/blog_default.jpg'}
+            src={article.image || 'https://articleweb.blob.core.windows.net/images/blog_default.jpg'}
             alt={article.title}
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
             effect="opacity"
             onError={(e) => {
-              e.target.src = '/src/imgs/blog_default.jpg';
+              e.target.src = 'https://articleweb.blob.core.windows.net/images/blog_default.jpg';
             }}
           />
         </div>

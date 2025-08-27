@@ -71,13 +71,21 @@ Note:
 # 26/08
 
 - **Chức năng cấp quyền / xóa quyền writer của ADMIN cho 1 USER nào đó + Chức năng deactivate account của user / writer nào đó ==> DONE**
+- **Chuong done deploy on Azure for the current webapp**
+
+---
+
+# 27/08
+
+- 
 
 ---
 
 # TODO
 
+- add the `app_id` field for the users and authors and update the code for the `index` and `indexer` to get that field from cosmos db too and update the search function to include the `app_id` field in the `filter`. 
+- update the backend for those creation methods to include the `app_id` field 
+- update the deletion of user from the admin dashboard and backend api such that the `is_active=false` for soft delete (done in index, indexer of ai_search already).
 - recommended authors and articles are not working now ==> now recommend articles = search (work) + recommend users thì đang làm
 - trong quá trình return lại kết quả sau khi dùng DTO thì 2 thg kết quả search của articles và của authors đang bị chưa đúng thứ tự của score cao --> score thấp
-- DEPLOY
 - AUTO fit with new data or firms
-

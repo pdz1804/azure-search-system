@@ -109,6 +109,43 @@ class BackendSearchService:
         
         return filtered_results
     
+    def _get_app_id_filter(self) -> str:
+        """
+        Get the app_id filter string for the current application.
+        
+        Returns:
+            Filter string for app_id, or empty string if not configured
+        """
+        from ai_search.config.settings import SETTINGS
+        
+        if not SETTINGS.app_id:
+            print("⚠️ No APP_ID configured, skipping app filtering")
+            return ""
+        
+        app_filter = f"app_id eq '{SETTINGS.app_id}'"
+        print(f"🔒 Applying app filter: {app_filter}")
+        return app_filter
+    
+    def _merge_filters(self, existing_filter: str, app_filter: str) -> str:
+        """
+        Merge existing filter with app_id filter.
+        
+        Args:
+            existing_filter: Existing filter string
+            app_filter: App ID filter string
+            
+        Returns:
+            Combined filter string
+        """
+        if not app_filter:
+            return existing_filter
+        
+        if not existing_filter:
+            return app_filter
+        
+        # Combine filters with AND operator
+        return f"({existing_filter}) and ({app_filter})"
+    
     def _normalize_text(self, text: str) -> str:
         """
         Normalize text for better fuzzy matching by removing diacritics and standardizing.
@@ -326,9 +363,16 @@ class BackendSearchService:
             # Use search with ID filter to batch retrieve documents
             id_filter = " or ".join([f"id eq '{doc_id}'" for doc_id in document_ids])
             
+            # Apply app_id filter
+            app_filter = self._get_app_id_filter()
+            if app_filter:
+                final_filter = self._merge_filters(id_filter, app_filter)
+            else:
+                final_filter = id_filter
+            
             results = client.search(
                 search_text="*",
-                filter=id_filter,
+                filter=final_filter,
                 top=len(document_ids),
                 select=["*"]  # Get all fields
             )
@@ -507,6 +551,12 @@ class BackendSearchService:
                         if search_params.get("search_fields"):
                             search_kwargs["search_fields"] = search_params["search_fields"]
                         
+                        # Apply app_id filter
+                        app_filter = self._get_app_id_filter()
+                        if app_filter:
+                            existing_filter = search_kwargs.get("filter", "")
+                            search_kwargs["filter"] = self._merge_filters(existing_filter, app_filter)
+                        
                         print(f"Search params: {search_kwargs}")
                         
                         text_res_local = self.articles_parent.search(**search_kwargs)
@@ -533,6 +583,12 @@ class BackendSearchService:
                             if search_params.get("search_fields"):
                                 search_kwargs["search_fields"] = search_params["search_fields"]
                             
+                            # Apply app_id filter
+                            app_filter = self._get_app_id_filter()
+                            if app_filter:
+                                existing_filter = search_kwargs.get("filter", "")
+                                search_kwargs["filter"] = self._merge_filters(existing_filter, app_filter)
+                            
                             print(f"Search params: {search_kwargs}")
                             
                             text_res_local = self.articles_parent.search(**search_kwargs)
@@ -556,6 +612,12 @@ class BackendSearchService:
                         search_kwargs["order_by"] = search_params["order_by"]
                     if search_params.get("search_fields"):
                         search_kwargs["search_fields"] = search_params["search_fields"]
+                    
+                    # Apply app_id filter
+                    app_filter = self._get_app_id_filter()
+                    if app_filter:
+                        existing_filter = search_kwargs.get("filter", "")
+                        search_kwargs["filter"] = self._merge_filters(existing_filter, app_filter)
                     
                     print(f"Search params: {search_kwargs}")
                     
@@ -599,6 +661,12 @@ class BackendSearchService:
                     vector_search_kwargs["filter"] = search_params["filter"]
                 if search_params.get("order_by"):
                     vector_search_kwargs["order_by"] = search_params["order_by"]
+                
+                # Apply app_id filter
+                app_filter = self._get_app_id_filter()
+                if app_filter:
+                    existing_filter = vector_search_kwargs.get("filter", "")
+                    vector_search_kwargs["filter"] = self._merge_filters(existing_filter, app_filter)
 
                 print(f"Vector search params: {vector_search_kwargs}")
 
@@ -726,12 +794,19 @@ class BackendSearchService:
         """
         try:
             # Use wildcard search to get all authors
-            all_results = self.authors.search(
-                search_text="*",
-                query_type="simple",
+            search_kwargs = {
+                "search_text": "*",
+                "query_type": "simple",
                 # top=10000,  # Large number to get all authors
-                select=["id", "full_name"]
-            )
+                "select": ["id", "full_name"]
+            }
+            
+            # Apply app_id filter
+            app_filter = self._get_app_id_filter()
+            if app_filter:
+                search_kwargs["filter"] = app_filter
+            
+            all_results = self.authors.search(**search_kwargs)
             
             authors = []
             for doc in all_results:

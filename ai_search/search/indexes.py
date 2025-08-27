@@ -96,6 +96,9 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
         SimpleField(name="updated_at", type=SearchFieldDataType.DateTimeOffset, filterable=True, sortable=True),
         SimpleField(name="business_date", type=SearchFieldDataType.DateTimeOffset, filterable=True, sortable=True),
         
+        # Application filtering
+        SimpleField(name="app_id", type=SearchFieldDataType.String, filterable=True),
+        
         # Consolidated searchable text for highlighting
         SearchableField(name="searchable_text", type=SearchFieldDataType.String, analyzer_name="en.lucene"),
         
@@ -153,6 +156,9 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
         SimpleField(name="role", type=SearchFieldDataType.String, filterable=True, facetable=True),
         SimpleField(name="created_at", type=SearchFieldDataType.DateTimeOffset, filterable=True, sortable=True),
         
+        # Application filtering
+        SimpleField(name="app_id", type=SearchFieldDataType.String, filterable=True),
+        
         # Consolidated searchable text
         SearchableField(name="searchable_text", type=SearchFieldDataType.String, analyzer_name="en.lucene"),
         
@@ -193,6 +199,10 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
         SearchField(name="chunk", type=SearchFieldDataType.String, searchable=True),
         # Keep ordinal as string to avoid projection type-mismatch unless your enrichment guarantees ints
         SearchField(name="chunk_ordinal", type=SearchFieldDataType.String, filterable=True, sortable=True),
+        
+        # Application filtering
+        SearchField(name="app_id", type=SearchFieldDataType.String, filterable=True),
+        
         SearchField(
             name="chunk_vector",
             type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
@@ -202,7 +212,11 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
         ),
     ]
 
-    chunk_index = SearchIndex(name="articles-chunks-index", fields=chunk_fields, vector_search=_vector_search())
+    chunk_index = SearchIndex(
+        name="articles-chunks-index", 
+        fields=chunk_fields, 
+        vector_search=_vector_search()
+    )
 
     # Create or update all indexes we need
     for idx in (articles_index, authors_index, chunk_index):
