@@ -26,7 +26,8 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from backend.services.search_service import get_search_service
-from backend.services.article_service import get_article_by_id, update_article
+from backend.services.article_service import update_article
+from backend.repositories.article_repo import get_article_by_id as get_article_by_id_repo
 
 
 class RecommendationService:
@@ -98,7 +99,7 @@ class RecommendationService:
             print(f"⚠️ Error parsing recommended_time '{article.get('recommended_time')}': {e}")
             return False
 
-    def _generate_fresh_recommendations(self, article: Dict) -> List[Dict]:
+    def _generate_fresh_recommendations(self, article: Dict, app_id: Optional[str] = None) -> List[Dict]:
         """
         Generate fresh recommendations using the AI search service.
         
@@ -110,6 +111,7 @@ class RecommendationService:
         
         Args:
             article (Dict): The source article document with title, abstract, and id
+            app_id (Optional[str]): Application ID for filtering search results to same app
             
         Returns:
             List[Dict]: List of recommendation objects in format:
@@ -139,7 +141,8 @@ class RecommendationService:
                 query=content_query,
                 k=15,  # Request more to ensure we get 10 after filtering
                 page_index=None,
-                page_size=None
+                page_size=None,
+                app_id=app_id  # Filter by app_id for multi-tenant support
             )
             
             # Extract only article IDs and scores, filter out the current article
@@ -164,7 +167,7 @@ class RecommendationService:
             print(f"❌ Error generating recommendations: {e}")
             return []
 
-    async def get_article_recommendations(self, article_id: str) -> Tuple[List[Dict], bool]:
+    async def get_article_recommendations(self, article_id: str, app_id: Optional[str] = None) -> Tuple[List[Dict], bool]:
         """
         Get recommendations for an article with intelligent caching and database persistence.
         
@@ -178,6 +181,7 @@ class RecommendationService:
         
         Args:
             article_id (str): Unique identifier of the article to get recommendations for
+            app_id (Optional[str]): Application ID for filtering recommendations to same app
             
         Returns:
             Tuple[List[Dict], bool]: 
@@ -197,8 +201,8 @@ class RecommendationService:
         print(f"📖 Getting recommendations for article: {article_id}")
         
         try:
-            # Fetch the current article
-            article = await get_article_by_id(article_id)
+            # Fetch the current article using repository to avoid circular dependency
+            article = await get_article_by_id_repo(article_id)
             if not article:
                 print(f"❌ Article {article_id} not found")
                 return [], False
@@ -214,7 +218,7 @@ class RecommendationService:
             
             # Generate fresh recommendations
             print("🔄 Generating fresh recommendations...")
-            fresh_recommendations = self._generate_fresh_recommendations(article)
+            fresh_recommendations = self._generate_fresh_recommendations(article, app_id)
             
             if not fresh_recommendations:
                 # If generation failed, return cached ones if available
@@ -282,7 +286,7 @@ class RecommendationService:
             - Preserves recommendation scores for ranking and display
             - Used by frontend to get rich article metadata for display
         """
-        from backend.services.article_service import get_article_by_id
+        from backend.repositories.article_repo import get_article_by_id as get_article_by_id_repo
         
         detailed_recommendations = []
         
@@ -291,7 +295,7 @@ class RecommendationService:
             score = rec.get('score', 0.0)
             
             try:
-                article_details = await get_article_by_id(article_id)
+                article_details = await get_article_by_id_repo(article_id)
                 if article_details:
                     article_details['recommendation_score'] = score
                     detailed_recommendations.append(article_details)
@@ -375,7 +379,7 @@ class RecommendationService:
             "more5": formatted_more5
         }
 
-    async def refresh_recommendations_batch(self, article_ids: List[str]) -> Dict[str, bool]:
+    async def refresh_recommendations_batch(self, article_ids: List[str], app_id: Optional[str] = None) -> Dict[str, bool]:
         """
         Refresh recommendations for multiple articles in batch for operational efficiency.
         
@@ -387,6 +391,7 @@ class RecommendationService:
         
         Args:
             article_ids (List[str]): List of article IDs to refresh recommendations for
+            app_id (Optional[str]): Application ID for filtering recommendations to same app
             
         Returns:
             Dict[str, bool]: Mapping of article_id to success status
@@ -399,7 +404,7 @@ class RecommendationService:
         results = {}
         for article_id in article_ids:
             try:
-                _, was_refreshed = await self.get_article_recommendations(article_id)
+                _, was_refreshed = await self.get_article_recommendations(article_id, app_id)
                 results[article_id] = was_refreshed
             except Exception as e:
                 print(f"❌ Failed to refresh recommendations for {article_id}: {e}")

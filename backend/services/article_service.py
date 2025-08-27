@@ -92,7 +92,7 @@ async def _convert_to_article_detail_dto(article: dict, app_id: Optional[str] = 
         print(f"🔄 No recommendations found for article {article_id}, generating new ones...")
                     
         # Get recommendations using recommendation service
-        recommendations, was_refreshed = await recommendation_service.get_article_recommendations(article_id)
+        recommendations, was_refreshed = await recommendation_service.get_article_recommendations(article_id, app_id)
                     
         if recommendations and was_refreshed:
             # Extract just the article IDs from recommendations
