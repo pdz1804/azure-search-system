@@ -74,7 +74,7 @@ async def _convert_to_article_dto(article: dict) -> dict:
         "total_view": article.get("views", 0)
     }
 
-async def _convert_to_article_detail_dto(article: dict) -> dict:
+async def _convert_to_article_detail_dto(article: dict, app_id: Optional[str] = None) -> dict:
     """Convert article data to dict following ArticleDetailDTO structure"""
     author_dto = await _convert_to_author_dto_with_avatar(article)
     
@@ -112,6 +112,11 @@ async def _convert_to_article_detail_dto(article: dict) -> dict:
             for rec_id in recommended_ids:
                 rec_article = await article_repo.get_article_by_id(rec_id)
                 if rec_article:
+                    # Filter recommendations by app_id if specified
+                    if app_id and rec_article.get('app_id') != app_id:
+                        print(f"🔒 Filtering recommendation {rec_id} - different app_id")
+                        continue
+                    
                     rec_dto = await _convert_to_article_dto(rec_article)
                     recommended_dtos.append(rec_dto)  # rec_dto is already a dict now
         except Exception as e:
@@ -135,7 +140,7 @@ async def _convert_to_article_detail_dto(article: dict) -> dict:
         "recommended": recommended_dtos if recommended_dtos else None
     }
 
-async def create_article(doc: dict) -> dict:
+async def create_article(doc: dict, app_id: Optional[str] = None) -> dict:
     # prepare fields expected by repository/db
     now = datetime.utcnow().isoformat()
     doc["created_at"] = now
@@ -145,6 +150,10 @@ async def create_article(doc: dict) -> dict:
     doc.setdefault("likes", 0)
     doc.setdefault("dislikes", 0)
     doc.setdefault("views", 0)
+    
+    # Set app_id if provided
+    if app_id:
+        doc["app_id"] = app_id
     
     print(f"📝 Creating new article with created_at = updated_at = {now}")
 
@@ -158,20 +167,25 @@ async def create_article(doc: dict) -> dict:
     await delete_cache_pattern("articles:recent*")
     
     # Convert to dict before returning
-    return await _convert_to_article_detail_dto(art)
+    return await _convert_to_article_detail_dto(art, app_id=app_id)
 
-async def get_article_by_id(article_id: str) -> Optional[dict]:
+async def get_article_by_id(article_id: str, app_id: Optional[str] = None) -> Optional[dict]:
     """
-    Get article by ID with optional automatic recommendations generation.
+    Get article by ID with optional app_id filtering.
     
     Args:
         article_id: The article ID to fetch
+        app_id: Optional application ID for filtering
     
     Returns:
         Dict following ArticleDetailDTO structure with recommended field (list of article data)
+        Returns None if article not found or doesn't belong to specified app_id
     """
-    # Try to get from cache first (without recommendations for now)
+    # Try to get from cache first
     cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
+    if app_id:
+        cache_key = f"{cache_key}:app_{app_id}"
+    
     cached_article = await get_cache(cache_key)
     
     article = None
@@ -182,7 +196,12 @@ async def get_article_by_id(article_id: str) -> Optional[dict]:
         article = await article_repo.get_article_by_id(article_id)
     
     if article:
-        article_dict = await _convert_to_article_detail_dto(article)
+        # Check app_id filtering if specified
+        if app_id and article.get('app_id') != app_id:
+            print(f"🔒 Article {article_id} belongs to app '{article.get('app_id')}', requested app '{app_id}' - access denied")
+            return None
+        
+        article_dict = await _convert_to_article_detail_dto(article, app_id=app_id)
         
         # Cache the dict data
         await set_cache(cache_key, article_dict, CACHE_TTL["detail"])
@@ -191,7 +210,7 @@ async def get_article_by_id(article_id: str) -> Optional[dict]:
     
     return None
 
-async def update_article(article_id: str, update_doc: dict) -> Optional[dict]:
+async def update_article(article_id: str, update_doc: dict, app_id: Optional[str] = None) -> Optional[dict]:
     # Only add updated_at if it's not a recommendations-only update
     if not (set(update_doc.keys()) <= {'recommended', 'recommended_time'}):
         update_doc["updated_at"] = datetime.utcnow().isoformat()
@@ -202,8 +221,15 @@ async def update_article(article_id: str, update_doc: dict) -> Optional[dict]:
     updated_article = await article_repo.update_article(article_id, update_doc)
     
     # Clear caches to ensure fresh data
-    cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
-    await delete_cache_pattern(cache_key)
+    # Clear all app_id variants for this article or specific app_id
+    if app_id:
+        cache_key = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}:app_{app_id}"
+        await delete_cache_pattern(cache_key)
+    else:
+        cache_key_pattern = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}*"
+        await delete_cache_pattern(cache_key_pattern)
+    
+    # Clear home and recent caches for all app_ids
     await delete_cache_pattern("articles:home*")
     await delete_cache_pattern("articles:recent*")
     
@@ -211,14 +237,22 @@ async def update_article(article_id: str, update_doc: dict) -> Optional[dict]:
     
     # Convert to dict before returning
     if updated_article:
-        return await _convert_to_article_detail_dto(updated_article)
+        return await _convert_to_article_detail_dto(updated_article, app_id=app_id)
     return None
 
-async def delete_article(article_id: str):
+async def delete_article(article_id: str, app_id: Optional[str] = None):
     await article_repo.delete_article(article_id)
     await user_service.delete_reaction(article_id)
-    cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
-    await delete_cache_pattern(cache_key)
+    
+    # Clear all app_id variants for this article or specific app_id
+    if app_id:
+        cache_key = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}:app_{app_id}"
+        await delete_cache_pattern(cache_key)
+    else:
+        cache_key_pattern = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}*"
+        await delete_cache_pattern(cache_key_pattern)
+    
+    # Clear home and recent caches for all app_ids
     await delete_cache_pattern("articles:home*")
     await delete_cache_pattern("articles:recent*")
 
@@ -246,30 +280,60 @@ async def list_articles(page: int, page_size: int, app_id: Optional[str] = None)
     
     return []
     
-async def increment_article_views(article_id: str):
+async def increment_article_views(article_id: str, app_id: Optional[str] = None):
     await article_repo.increment_article_views(article_id)
-    cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
-    await delete_cache_pattern(cache_key)
+    # Clear cache for all app_id variants or specific app_id
+    if app_id:
+        cache_key = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}:app_{app_id}"
+        await delete_cache_pattern(cache_key)
+    else:
+        # Clear all app_id variants for this article
+        cache_key_pattern = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}*"
+        await delete_cache_pattern(cache_key_pattern)
 
-async def increment_article_dislikes(article_id: str):
+async def increment_article_dislikes(article_id: str, app_id: Optional[str] = None):
     await article_repo.increment_article_dislikes(article_id)
-    cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
-    await delete_cache_pattern(cache_key)
+    # Clear cache for all app_id variants or specific app_id
+    if app_id:
+        cache_key = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}:app_{app_id}"
+        await delete_cache_pattern(cache_key)
+    else:
+        # Clear all app_id variants for this article
+        cache_key_pattern = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}*"
+        await delete_cache_pattern(cache_key_pattern)
 
-async def increment_article_likes(article_id: str):
+async def increment_article_likes(article_id: str, app_id: Optional[str] = None):
     await article_repo.increment_article_likes(article_id)
-    cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
-    await delete_cache_pattern(cache_key)
+    # Clear cache for all app_id variants or specific app_id
+    if app_id:
+        cache_key = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}:app_{app_id}"
+        await delete_cache_pattern(cache_key)
+    else:
+        # Clear all app_id variants for this article
+        cache_key_pattern = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}*"
+        await delete_cache_pattern(cache_key_pattern)
 
-async def decrement_article_likes(article_id: str):
+async def decrement_article_likes(article_id: str, app_id: Optional[str] = None):
     await article_repo.decrement_article_likes(article_id)
-    cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
-    await delete_cache_pattern(cache_key)
+    # Clear cache for all app_id variants or specific app_id
+    if app_id:
+        cache_key = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}:app_{app_id}"
+        await delete_cache_pattern(cache_key)
+    else:
+        # Clear all app_id variants for this article
+        cache_key_pattern = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}*"
+        await delete_cache_pattern(cache_key_pattern)
 
-async def decrement_article_dislikes(article_id: str):
+async def decrement_article_dislikes(article_id: str, app_id: Optional[str] = None):
     await article_repo.decrement_article_dislikes(article_id)
-    cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
-    await delete_cache_pattern(cache_key)
+    # Clear cache for all app_id variants or specific app_id
+    if app_id:
+        cache_key = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}:app_{app_id}"
+        await delete_cache_pattern(cache_key)
+    else:
+        # Clear all app_id variants for this article
+        cache_key_pattern = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}*"
+        await delete_cache_pattern(cache_key_pattern)
 
 # async def like_article(article_id: str, user_id: str) -> bool:
 #     """Like an article. Returns True if successful, False if already liked."""
@@ -319,20 +383,12 @@ async def decrement_article_dislikes(article_id: str):
 #         return False
 
 async def get_articles_by_author(author_id: str, page: int = 1, page_size: int = 20, app_id: Optional[str] = None) -> List[dict]:
-    cache_key = generate_cache_key(CACHE_KEYS["user_articles"], user_id=author_id, page=page, page_size=page_size, app_id=app_id or 'none')
-    
-    cached_articles = await get_cache(cache_key)
-    if cached_articles:
-        # Return cached dict data directly
-        return cached_articles
-    
     articles = await article_repo.get_article_by_author(author_id, page, page_size, app_id=app_id)
     
     if articles:
         # Convert to dicts
         article_dicts = [await _convert_to_article_dto(article) for article in articles]
         # Cache the dicts
-        await set_cache(cache_key, article_dicts, CACHE_TTL["user_articles"])
         return article_dicts
     
     return []
@@ -426,9 +482,15 @@ async def get_popular_articles(page: int = 1, page_size: int = 10, app_id: Optio
         print(f"❌ Error in get_popular_articles: {e}")
         return []
 
-async def search_response_articles(data: Dict) -> List[dict]:
+async def search_response_articles(data: Dict, app_id: Optional[str] = None) -> List[dict]:
     article_ids = [article["id"] for article in data.get("results", [])]
     articles = await article_repo.get_articles_by_ids(article_ids)
+    
+    # Filter by app_id if specified for security
+    if app_id:
+        articles = [article for article in articles if article.get("app_id") == app_id]
+        print(f"🔒 Filtered search results by app_id {app_id}: {len(articles)} articles remaining")
+    
     # Convert to dicts
     return [await _convert_to_article_dto(article) for article in articles]
 
