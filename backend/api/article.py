@@ -91,7 +91,7 @@ async def create(
                 print(f"[DEBUG] create - error handling fallback form image: {e}")
         else:
             print("[DEBUG] No image provided in create request")
-    art = await create_article(doc)
+    art = await create_article(doc, app_id)
     # Convert DTO to dict for JSON response
     return {"success": True, "data": art}
 
@@ -209,87 +209,42 @@ async def generate_article_tags(
         )
 
 @articles.get("/stats")
-async def get_statistics():
+async def get_statistics(app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
     """Get statistics for articles, authors, views, and bookmarks."""
-    # Check Redis cache first
-    cache_key = "homepage:statistics"
+    # Check Redis cache first with app_id-specific key
+    cache_key = f"homepage:statistics"
+    if app_id:
+        cache_key = f"homepage:statistics:app_{app_id}"
+    
     cached_stats = await get_cache(cache_key)
     if cached_stats:
-        print("📊 Redis Cache HIT for statistics")
+        print(f"📊 Redis Cache HIT for statistics (app_id: {app_id or 'all'})")
         return {"success": True, "data": cached_stats}
     
-    print("📊 Redis Cache MISS for statistics - Loading from DB...")
+    print(f"📊 Redis Cache MISS for statistics (app_id: {app_id or 'all'}) - Loading from DB...")
     try:
-        # Try to get data from Cosmos DB first
-        try:
-            articles_container = await get_articles_container()
-
-            # Iterate across all articles and compute aggregates in code to avoid
-            # unsupported server-side DISTINCT/count aggregation across partitions.
-            total_articles = 0
-            total_views = 0
-            author_ids = set()
-
-            async for item in articles_container.read_all_items():
-                try:
-                    if not item or not item.get('is_active'):
-                        continue
-                    total_articles += 1
-                    try:
-                        total_views += int(item.get('views', 0) or 0)
-                    except Exception:
-                        # skip malformed view values
-                        pass
-                    aid = item.get('author_id')
-                    if aid:
-                        author_ids.add(aid)
-                except Exception:
-                    # ignore malformed documents
-                    continue
-
-            total_authors = len(author_ids)
-
-        except Exception as db_error:
-            print(f"Cosmos DB connection failed, using sample data: {db_error}")
-            # Fallback to sample data from articles.json
-            import json
-            import os
-            
-            # Path to the sample articles file
-            sample_file_path = os.path.join(os.path.dirname(__file__), '..', '..', 'ai_search', 'data', 'articles.json')
-            
-            if os.path.exists(sample_file_path):
-                with open(sample_file_path, 'r', encoding='utf-8') as f:
-                    sample_articles = json.load(f)
-                
-                # Calculate statistics from sample data
-                total_articles = len(sample_articles)
-                total_views = sum(article.get('views', 0) for article in sample_articles)
-                total_authors = len(set(article.get('author_id') for article in sample_articles if article.get('author_id')))
-            else:
-                # If sample file not found, use default values
-                total_articles = 50
-                total_views = 2500
-                total_authors = 15
+        # Use the service layer function for consistent data
+        from backend.services.article_service import get_summary
+        stats_data = await get_summary(app_id=app_id)
         
-        # For bookmarks, we'll need to check user reactions
-        # This is a simplified version - in a real app you'd count actual bookmarks
-        total_bookmarks = 0  # Placeholder for now
+        # Add bookmarks count (placeholder for now)
+        stats_data["bookmarks"] = 0  # Placeholder for bookmarks
         
-        stats_data = {
-            "articles": total_articles,
-            "authors": total_authors,
-            "total_views": total_views,
-            "bookmarks": total_bookmarks
+        # Rename fields to match expected API response format
+        api_stats = {
+            "articles": stats_data.get("total_articles", 0),
+            "authors": stats_data.get("authors", 0), 
+            "total_views": stats_data.get("total_views", 0),
+            "bookmarks": stats_data.get("bookmarks", 0)
         }
         
         # Cache the results for 3 minutes (180 seconds)
-        await set_cache(cache_key, stats_data, ttl=180)
-        print("📊 Redis Cache SET for statistics")
+        await set_cache(cache_key, api_stats, ttl=180)
+        print(f"📊 Redis Cache SET for statistics (app_id: {app_id or 'all'})")
         
         return {
             "success": True,
-            "data": stats_data
+            "data": api_stats
         }
     except Exception as e:
         print(f"Error fetching statistics: {e}")
@@ -543,7 +498,7 @@ async def get_one(article_id: str, app_id: Optional[str] = Query(None, descripti
         if not art:
             return JSONResponse(status_code=404, content={"success": False, "data": None})
         
-        await increment_article_views(article_id)
+        await increment_article_views(article_id, app_id)
         
         # art is already a dict
         return {
@@ -599,7 +554,7 @@ async def update(
             print(f"[ERROR] Failed uploading image in update: {e}")
     else:
         print("[DEBUG] No image provided in update request")
-    updated = await update_article(article_id, update_data)
+    updated = await update_article(article_id, update_data, app_id)
     if not updated:
         return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Update failed"}})
     # Convert DTO to dict for JSON response
@@ -621,7 +576,7 @@ async def remove(article_id: str, app_id: Optional[str] = Query(None, descriptio
     if art.get("author_id") != current_user["id"] and current_user.get("role") not in [Role.ADMIN]:
         return JSONResponse(status_code=403, content={"success": False, "data": {"error": "Not allowed to delete"}})
     
-    await delete_article(article_id)
+    await delete_article(article_id, app_id)
     return {"success": True, "data": {"message": "deleted"}}
 
 @articles.get("/author/{author_id}")
