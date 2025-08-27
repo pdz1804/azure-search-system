@@ -400,6 +400,8 @@ class AzureIndexerManager:
                         InputFieldMappingEntry(name="chunk_ordinal", source="/document/ordinals/*"),
                         # Carry over some parent fields
                         InputFieldMappingEntry(name="title", source="/document/title"),
+                        # Carry-over application id from parent so chunk docs can be filtered by app
+                        InputFieldMappingEntry(name="app_id", source="/document/app_id"),
                     ],
                 )
             ],

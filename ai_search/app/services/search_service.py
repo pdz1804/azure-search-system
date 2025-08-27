@@ -634,9 +634,11 @@ class SearchService:
                 chunk_hits = int(search_k * 4)
 
                 # Vector search against the chunks index using the chunk_vector field
+                # Note: Azure SDK will ignore unknown attributes on VectorizedQuery (e.g. 'k'),
+                # so rely on the top parameter for the overall number of returned items.
                 vector_search_kwargs = {
                     "search_text": None,
-                    "vector_queries": [VectorizedQuery(vector=qvec, k=chunk_hits, fields="chunk_vector")],
+                    "vector_queries": [VectorizedQuery(vector=qvec, fields="chunk_vector")],
                     "top": chunk_hits,
                     "select": ["chunk_id", "parent_id", "chunk", "chunk_ordinal"]
                 }

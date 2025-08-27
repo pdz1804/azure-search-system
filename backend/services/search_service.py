@@ -653,7 +653,7 @@ class BackendSearchService:
 
                 vector_search_kwargs = {
                     "search_text": None,
-                    "vector_queries": [VectorizedQuery(vector=qvec, k=chunk_hits, fields="chunk_vector")],
+                    "vector_queries": [VectorizedQuery(vector=qvec, fields="chunk_vector")],
                     "top": chunk_hits,
                     "select": ["chunk_id", "parent_id", "chunk", "chunk_ordinal"]
                 }
