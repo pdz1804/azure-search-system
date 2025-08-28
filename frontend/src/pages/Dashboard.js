@@ -156,6 +156,31 @@ const Dashboard = () => {
     }
   };
 
+  const handleDeleteUser = async (userId, userName) => {
+    Modal.confirm({
+      title: 'Delete User',
+      content: `Are you sure you want to delete "${userName}"? This action cannot be undone and will also delete all their articles.`,
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          const response = await userApi.deleteUser(userId);
+          
+          if (response.success) {
+            message.success('User deleted successfully');
+            fetchUsers(); // Refresh the list
+          } else {
+            message.error(response.error || 'Failed to delete user');
+          }
+        } catch (error) {
+          message.error('Failed to delete user');
+          console.error('Error deleting user:', error);
+        }
+      }
+    });
+  };
+
   const handleTableChange = (paginationInfo, filters, sorter) => {
     setPagination(prev => ({
       ...prev,
@@ -295,6 +320,17 @@ const Dashboard = () => {
           >
             Edit
           </Button>
+          {record.id !== user?.id && (
+            <Button
+              size="small"
+              type="primary"
+              danger
+              onClick={() => handleDeleteUser(record.id, record.full_name)}
+              icon={<ExclamationTriangleIcon className="w-4 h-4" />}
+            >
+              Delete
+            </Button>
+          )}
         </div>
       ),
     },

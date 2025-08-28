@@ -381,7 +381,9 @@ async def remove(article_id: str, app_id: Optional[str] = Query(None, descriptio
     if art.get("author_id") != current_user["id"] and current_user.get("role") not in [Role.ADMIN]:
         return JSONResponse(status_code=403, content={"success": False, "data": {"error": "Not allowed to delete"}})
     
-    await delete_article(article_id, app_id)
+    result = await delete_article(article_id, app_id)
+    if not result:
+        return JSONResponse(status_code=404, content={"success": False, "data": {"error": "Article not found or access denied"}})
     return {"success": True, "data": {"message": "deleted"}}
 
 @articles.get("/author/{author_id}")

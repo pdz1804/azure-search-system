@@ -50,6 +50,26 @@ async def list_users(
         print(f"👥 [API] Basic service returned {len(users_list)} users")
         return {"success": True, "data": users_list}
 
+@users.get("/bookmarks")
+async def get_bookmarked_articles(
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Return the current user's bookmarked articles as full article documents."""
+    try:
+        user_id = current_user["id"]
+        article_ids = await user_service.get_user_bookmarks(user_id, app_id)
+        
+        if not article_ids:
+            return {"success": True, "data": []}
+        
+        # Fetch full article docs in one call with app_id filtering
+        articles = await article_repo.get_articles_by_ids(article_ids, app_id)
+        return {"success": True, "data": articles}
+    except Exception as e:
+        print(f"Error fetching bookmarks: {e}")
+        return {"success": False, "data": {"error": "Failed to fetch bookmarks"}}
+
 @users.get("/{id}")
 async def get_user_by_id(id: str, app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
     # Use service layer to get user detail with statistics
@@ -127,23 +147,6 @@ async def check_article_status(article_id: str, current_user: dict = Depends(get
     status = await user_service.check_article_status(user_id, article_id)
     return {"success": True, "data": status}
 
-@users.get("/bookmarks")
-async def get_bookmarked_articles(current_user: dict = Depends(get_current_user)):
-    """Return the current user's bookmarked articles as full article documents."""
-    try:
-        user_id = current_user["id"]
-        article_ids = await user_service.get_user_bookmarks(user_id)
-        
-        if not article_ids:
-            return {"success": True, "data": []}
-        
-        # Fetch full article docs in one call
-        articles = await article_repo.get_articles_by_ids(article_ids)
-        return {"success": True, "data": articles}
-    except Exception as e:
-        print(f"Error fetching bookmarks: {e}")
-        return {"success": False, "data": {"error": "Failed to fetch bookmarks"}}
-
 @users.put("/{user_id}")
 async def update_user(
     user_id: str, 
@@ -201,6 +204,35 @@ async def get_all_users_admin(
     except Exception as e:
         print(f"Error fetching users for admin: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch users")
+
+
+@users.delete("/{user_id}")
+async def delete_user(
+    user_id: str,
+    app_id: Optional[str] = Query(None, description="Application ID for multi-tenant filtering"),
+    admin_user: dict = Depends(require_admin)
+):
+    """Delete a user (admin only)"""
+    try:
+        # Prevent admin from deleting themselves
+        if user_id == admin_user["id"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete your own account"
+            )
+        
+        # Delete user
+        result = await user_service.delete_user(user_id, app_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found or access denied")
+        
+        return {"success": True, "data": {"message": "User deleted successfully"}}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error deleting user: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete user")
 
 
 @users.get("/")

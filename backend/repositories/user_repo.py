@@ -5,6 +5,7 @@ functions like `get_by_email`, `follow_user`, `like_article`, etc.
 """
 
 from typing import Optional
+from datetime import datetime
 from backend.database.cosmos import get_users_container
 
 
@@ -27,10 +28,16 @@ async def get_list_user(app_id: Optional[str] = None):
         results.append(item)
     return results
 
-async def get_by_email(email: str) -> Optional[dict]:
+async def get_by_email(email: str, app_id: Optional[str] = None) -> Optional[dict]:
     users = await get_users()
-    query = "SELECT * FROM c WHERE c.email = @email"
-    parameters = [{"name": "@email", "value": email}]
+    
+    # Build query with app_id filter if provided
+    if app_id:
+        query = "SELECT * FROM c WHERE c.email = @email AND c.app_id = @app_id"
+        parameters = [{"name": "@email", "value": email}, {"name": "@app_id", "value": app_id}]
+    else:
+        query = "SELECT * FROM c WHERE c.email = @email"
+        parameters = [{"name": "@email", "value": email}]
     
     results = []
     async for item in users.query_items(
@@ -42,10 +49,16 @@ async def get_by_email(email: str) -> Optional[dict]:
     return results[0] if results else None
     
 
-async def get_by_full_name(full_name: str) -> Optional[dict]:
+async def get_by_full_name(full_name: str, app_id: Optional[str] = None) -> Optional[dict]:
     users = await get_users()
-    query = "SELECT * FROM c WHERE c.full_name = @full_name"
-    parameters = [{"name": "@full_name", "value": full_name}]
+    
+    # Build query with app_id filter if provided
+    if app_id:
+        query = "SELECT * FROM c WHERE c.full_name = @full_name AND c.app_id = @app_id"
+        parameters = [{"name": "@full_name", "value": full_name}, {"name": "@app_id", "value": app_id}]
+    else:
+        query = "SELECT * FROM c WHERE c.full_name = @full_name"
+        parameters = [{"name": "@full_name", "value": full_name}]
 
     results = []
     async for item in users.query_items(
@@ -56,10 +69,16 @@ async def get_by_full_name(full_name: str) -> Optional[dict]:
 
     return results[0] if results else None
 
-async def get_user_by_id(user_id: str) -> Optional[dict]:
+async def get_user_by_id(user_id: str, app_id: Optional[str] = None) -> Optional[dict]:
     users = await get_users()
-    query = "SELECT * FROM c WHERE c.id = @user_id"
-    parameters = [{"name": "@user_id", "value": user_id}]
+    
+    # Build query with app_id filter if provided
+    if app_id:
+        query = "SELECT * FROM c WHERE c.id = @user_id AND c.app_id = @app_id"
+        parameters = [{"name": "@user_id", "value": user_id}, {"name": "@app_id", "value": app_id}]
+    else:
+        query = "SELECT * FROM c WHERE c.id = @user_id"
+        parameters = [{"name": "@user_id", "value": user_id}]
     
     results = []
     async for item in users.query_items(
@@ -97,10 +116,10 @@ async def update_user(user_id: str, update_data: dict) -> Optional[dict]:
         print(f"Error updating user in repository: {e}")
         raise
 
-async def follow_user(follower_id: str, followee_id: str) -> bool:
+async def follow_user(follower_id: str, followee_id: str, app_id: Optional[str] = None) -> bool:
     users = await get_users()
     try:
-        follower = await get_user_by_id(follower_id)
+        follower = await get_user_by_id(follower_id, app_id)
         if not follower:
             return False
         following = set(follower.get("following", []))
@@ -110,7 +129,7 @@ async def follow_user(follower_id: str, followee_id: str) -> bool:
         follower["following"] = list(following)
         await users.upsert_item(body=follower)
 
-        followee = await get_user_by_id(followee_id)
+        followee = await get_user_by_id(followee_id, app_id)
         if not followee:
             return False
         followers = set(followee.get("followers", []))
@@ -123,16 +142,16 @@ async def follow_user(follower_id: str, followee_id: str) -> bool:
         return False
 
 
-async def unfollow_user(follower_id: str, followee_id: str) -> bool:
+async def unfollow_user(follower_id: str, followee_id: str, app_id: Optional[str] = None) -> bool:
     users = await get_users()
     try:
-        follower = await get_user_by_id(follower_id)
+        follower = await get_user_by_id(follower_id, app_id)
         if not follower:
             return False
         follower["following"] = [f for f in follower.get("following", []) if f != followee_id]
         await users.upsert_item(body=follower)
 
-        followee = await get_user_by_id(followee_id)
+        followee = await get_user_by_id(followee_id, app_id)
         if not followee:
             return False
         followee["followers"] = [f for f in followee.get("followers", []) if f != follower_id]
@@ -144,10 +163,10 @@ async def unfollow_user(follower_id: str, followee_id: str) -> bool:
         return False
 
 
-async def check_follow_status(follower_id: str, followee_id: str) -> bool:
+async def check_follow_status(follower_id: str, followee_id: str, app_id: Optional[str] = None) -> bool:
     users = await get_users()
     try:
-        follower = await get_user_by_id(follower_id)
+        follower = await get_user_by_id(follower_id, app_id)
         if not follower:
             return False
         return followee_id in follower.get("following", [])
@@ -244,4 +263,30 @@ async def get_users_by_ids(user_ids: list) -> list:
     results.sort(key=lambda x: order_map.get(x['id'], len(user_ids)))
 
     return results
+
+
+async def delete_user(user_id: str) -> bool:
+    """Delete a user from Cosmos DB"""
+    try:
+        users = await get_users()
+        
+        # Get the existing user document
+        existing_user = await get_user_by_id(user_id)
+        if not existing_user:
+            print(f"❌ User {user_id} not found for deletion")
+            return False
+        
+        # Mark user as inactive instead of hard deletion
+        existing_user["is_active"] = False
+        existing_user["deleted_at"] = datetime.utcnow().isoformat()
+        
+        # Use upsert to update the document
+        await users.upsert_item(body=existing_user)
+        
+        print(f"✅ User {user_id} marked as inactive")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error deleting user {user_id} in repository: {e}")
+        return False
     

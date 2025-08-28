@@ -59,6 +59,7 @@ async def _convert_to_user_detail_dto(user: dict, app_id: Optional[str] = None) 
         total_articles = len(user.get("articles", []))
     
     return {
+        "id": user_id,  # Keep original id for frontend compatibility
         "user_id": user_id,
         "full_name": user.get("full_name", ""),
         "email": user.get("email", ""),
@@ -69,7 +70,15 @@ async def _convert_to_user_detail_dto(user: dict, app_id: Optional[str] = None) 
         "total_articles": total_articles,
         "total_published": total_published,
         "total_views": total_views,
-        "total_likes": total_likes
+        "total_likes": total_likes,
+        # Include the arrays that frontend needs for statistics
+        "followers": user.get("followers", []),
+        "following": user.get("following", []),
+        "liked_articles": user.get("liked_articles", []),
+        "bookmarked_articles": user.get("bookmarked_articles", []),
+        "disliked_articles": user.get("disliked_articles", []),
+        "created_at": user.get("created_at"),
+        "app_id": user.get("app_id")
     }
 
 
@@ -224,17 +233,18 @@ async def list_users(app_id: Optional[str] = None) -> List[dict]:
     
     return user_dicts
 
-async def login(email: str, password: str) -> Optional[dict]:
-    user = await user_repo.get_by_email(email)
+async def login(email: str, password: str, app_id: Optional[str] = None) -> Optional[dict]:
+    user = await user_repo.get_by_email(email, app_id)
     if not user or not verify_password(password, user.get("password", "")):
         return None
+    
     return user
 
 async def create_user(doc: dict, app_id: Optional[str] = None) -> dict:
-    if await user_repo.get_by_email(doc["email"]):
+    if await user_repo.get_by_email(doc["email"], app_id):
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    if await user_repo.get_by_full_name(doc["full_name"]):
+    if await user_repo.get_by_full_name(doc["full_name"], app_id):
         raise HTTPException(status_code=400, detail="Full name already exists")
 
     doc["password"] = hash_password(doc.pop("password"))
@@ -252,17 +262,17 @@ async def create_user(doc: dict, app_id: Optional[str] = None) -> dict:
     return await _convert_to_user_detail_dto(user, app_id=app_id)
 
 async def get_user_by_id(user_id: str, app_id: Optional[str] = None) -> Optional[dict]:
-    user = await user_repo.get_user_by_id(user_id)
+    user = await user_repo.get_user_by_id(user_id, app_id)
     if user:
         return await _convert_to_user_detail_dto(user, app_id=app_id)
     return None
 
 
-async def update_user(user_id: str, update_data: dict) -> Optional[dict]:
+async def update_user(user_id: str, update_data: dict, app_id: Optional[str] = None) -> Optional[dict]:
     """Update user information (role, status, etc.)"""
     try:
         # Get existing user
-        existing_user = await user_repo.get_user_by_id(user_id)
+        existing_user = await user_repo.get_user_by_id(user_id, app_id)
         if not existing_user:
             return None
         
@@ -278,18 +288,18 @@ async def update_user(user_id: str, update_data: dict) -> Optional[dict]:
         print(f"Error in update_user service: {e}")
         raise
 
-async def follow_user(follower_id: str, followee_id: str):
-    return await user_repo.follow_user(follower_id, followee_id)
+async def follow_user(follower_id: str, followee_id: str, app_id: Optional[str] = None):
+    return await user_repo.follow_user(follower_id, followee_id, app_id)
 
-async def unfollow_user(follower_id: str, followee_id: str):
-    return await user_repo.unfollow_user(follower_id, followee_id)
+async def unfollow_user(follower_id: str, followee_id: str, app_id: Optional[str] = None):
+    return await user_repo.unfollow_user(follower_id, followee_id, app_id)
 
-async def check_follow_status(follower_id: str, followee_id: str) -> bool:
+async def check_follow_status(follower_id: str, followee_id: str, app_id: Optional[str] = None) -> bool:
     """Check if follower_id is following followee_id"""
-    return await user_repo.check_follow_status(follower_id, followee_id)
+    return await user_repo.check_follow_status(follower_id, followee_id, app_id)
 
-async def like_article(user_id: str, article_id: str):
-    is_liked = await check_article_status(user_id, article_id)
+async def like_article(user_id: str, article_id: str, app_id: Optional[str] = None):
+    is_liked = await check_article_status(user_id, article_id, app_id)
     if is_liked and is_liked.get("reaction_type") == "none":
         await user_repo.like_article(user_id, article_id)
         await article_repo.increment_article_likes(article_id)
@@ -299,8 +309,8 @@ async def like_article(user_id: str, article_id: str):
         await delete_cache_pattern("articles:recent*")
 
 
-async def unlike_article(user_id: str, article_id: str):
-    is_unliked = await check_article_status(user_id, article_id)
+async def unlike_article(user_id: str, article_id: str, app_id: Optional[str] = None):
+    is_unliked = await check_article_status(user_id, article_id, app_id)
     if is_unliked["reaction_type"] == "like":
         await user_repo.unlike_article(user_id, article_id)
         await article_repo.decrement_article_likes(article_id)
@@ -309,8 +319,8 @@ async def unlike_article(user_id: str, article_id: str):
         await delete_cache_pattern("articles:home*")
         await delete_cache_pattern("articles:recent*")
 
-async def dislike_article(user_id: str, article_id: str):
-    is_disliked = await check_article_status(user_id, article_id)
+async def dislike_article(user_id: str, article_id: str, app_id: Optional[str] = None):
+    is_disliked = await check_article_status(user_id, article_id, app_id)
     if is_disliked and is_disliked.get("reaction_type") == "none":
         await user_repo.dislike_article(user_id, article_id)
         await article_service.increment_article_dislikes(article_id)
@@ -319,24 +329,23 @@ async def dislike_article(user_id: str, article_id: str):
         await delete_cache_pattern("articles:home*")
         await delete_cache_pattern("articles:recent*")
 
-async def undislike_article(user_id: str, article_id: str):
-    is_disliked = await check_article_status(user_id, article_id)
+async def undislike_article(user_id: str, article_id: str, app_id: Optional[str] = None):
+    is_disliked = await check_article_status(user_id, article_id, app_id)
     if is_disliked["reaction_type"] == "dislike":
         await user_repo.undislike_article(user_id, article_id)
         await article_service.decrement_article_dislikes(article_id)
         cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
         await delete_cache_pattern(cache_key)
-        await delete_cache_pattern("articles:home*")
         await delete_cache_pattern("articles:recent*")
 
-async def bookmark_article(user_id: str, article_id: str):
+async def bookmark_article(user_id: str, article_id: str, app_id: Optional[str] = None):
     await user_repo.bookmark_article(user_id, article_id)
 
-async def unbookmark_article(user_id: str, article_id: str):
+async def unbookmark_article(user_id: str, article_id: str, app_id: Optional[str] = None):
     await user_repo.unbookmark_article(user_id, article_id)   
 
-async def check_article_status(user_id: str, article_id: str) -> Dict[str, Any]:
-    user = await user_repo.get_user_by_id(user_id)
+async def check_article_status(user_id: str, article_id: str, app_id: Optional[str] = None) -> Dict[str, Any]:
+    user = await user_repo.get_user_by_id(user_id, app_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     # Build a unified response expected by frontend: { reaction_type: 'like'|'dislike'|'none', is_bookmarked: bool }
@@ -349,31 +358,31 @@ async def check_article_status(user_id: str, article_id: str) -> Dict[str, Any]:
     is_bookmarked = article_id in user.get('bookmarked_articles', [])
     return {"reaction_type": reaction_type, "is_bookmarked": is_bookmarked}
 
-async def get_user_bookmarks(user_id: str) -> list:
-    user = await user_repo.get_user_by_id(user_id)
+async def get_user_bookmarks(user_id: str, app_id: Optional[str] = None) -> list:
+    user = await user_repo.get_user_by_id(user_id, app_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user.get("bookmarked_articles", [])
 
-async def get_user_followers(user_id: str) -> list:
-    user = await user_repo.get_user_by_id(user_id)
+async def get_user_followers(user_id: str, app_id: Optional[str] = None) -> list:
+    user = await user_repo.get_user_by_id(user_id, app_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user.get("followers", [])
 
-async def delete_reaction(article_id: str) -> bool:
+async def delete_reaction(article_id: str, app_id: Optional[str] = None) -> bool:
     users = await user_repo.get_list_user()
     for user in users:
         user_id = user.get("id")
         if article_id in user.get("liked_articles", []):
-            await unlike_article(user_id, article_id)
+            await unlike_article(user_id, article_id, app_id)
         if article_id in user.get("disliked_articles", []):
-            await undislike_article(user_id, article_id)
+            await undislike_article(user_id, article_id, app_id)
 
         # also remove from bookmarks to avoid stale references
         if article_id in user.get('bookmarked_articles', []):
             try:
-                await unbookmark_article(user_id, article_id)
+                await unbookmark_article(user_id, article_id, app_id)
             except Exception:
                 # continue cleanup even if one fails
                 pass
@@ -385,6 +394,45 @@ async def search_response_users(data: Dict) -> List[dict]:
     users = await user_repo.get_users_by_ids(users_ids)
     # Convert to UserDTO format
     return [await _convert_to_user_dto(user) for user in users]
+
+
+async def delete_user(user_id: str, app_id: Optional[str] = None) -> bool:
+    """Delete a user and all associated data (admin only)"""
+    try:
+        # Get user with app_id filtering for security
+        user = await user_repo.get_user_by_id(user_id, app_id)
+        if not user:
+            print(f"❌ User {user_id} not found or app_id mismatch for deletion")
+            return False
+        
+        # Check if user has articles
+        user_articles = await article_repo.get_article_by_author(user_id, page=0, page_size=1000, app_id=app_id)
+        if user_articles:
+            articles_list = user_articles.get("items", []) if isinstance(user_articles, dict) else user_articles
+            if articles_list and len(articles_list) > 0:
+                print(f"⚠️ User {user_id} has {len(articles_list)} articles. Deleting user will also delete their articles.")
+                
+                # Delete all user's articles
+                for article in articles_list:
+                    try:
+                        await article_repo.delete_article(article.get("id"))
+                        await user_service.delete_reaction(article.get("id"), app_id)
+                    except Exception as e:
+                        print(f"⚠️ Failed to delete article {article.get('id')}: {e}")
+        
+        # Delete user from repository
+        await user_repo.delete_user(user_id)
+        
+        # Clear affected caches
+        await delete_cache_pattern("users*")
+        await delete_cache_pattern("articles*")
+        
+        print(f"✅ User {user_id} deleted successfully")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error deleting user {user_id}: {e}")
+        return False
 
 
 # Remove old function that used the old user_dto class

@@ -89,8 +89,13 @@ const Profile = () => {
   const fetchUserData = async () => {
     try {
       if (!targetUserId) return;
+      console.log('🔍 fetchUserData called for targetUserId:', targetUserId);
+      
       const response = await userApi.getUserById(targetUserId);
+      console.log('🔍 getUserById response:', response);
+      
       if (response.success) {
+        console.log('🔍 User data received:', response.data);
         setUser(response.data);
         return response.data;
       } else {
@@ -206,6 +211,9 @@ const Profile = () => {
       if (!targetUserId) return;
       
       const u = userObj || user || {};
+      
+      console.log('🔍 fetchUserStats called with user:', u);
+      console.log('🔍 authorStats from hook:', authorStats);
 
       // Normalize followers/following to numeric counts
       const followersCount = (typeof u.num_followers === 'number')
@@ -220,20 +228,33 @@ const Profile = () => {
           ? u.following.length
           : Number(u.following) || 0;
 
-      // Use cached author stats from the hook
+      // Calculate stats from user data if authorStats is not available
+      const totalArticles = authorStats?.total_articles || 0;
+      const totalViews = authorStats?.total_views || 0;
+      const totalLikes = authorStats?.total_likes || 0;
+
+      // Fallback: calculate from user data if hook data is missing
+      const fallbackTotalArticles = Array.isArray(u.articles) ? u.articles.length : 0;
+      const fallbackTotalViews = u.total_views || u.views || 0;
+      const fallbackTotalLikes = u.total_likes || u.likes || 0;
+
       setStats({
-        totalArticles: authorStats.total_articles || 0,
-        totalViews: authorStats.total_views || 0,
-        totalLikes: authorStats.total_likes || 0,
+        totalArticles: totalArticles || fallbackTotalArticles,
+        totalViews: totalViews || fallbackTotalViews,
+        totalLikes: totalLikes || fallbackTotalLikes,
         followers: followersCount,
         following: followingCount
       });
 
-      console.log('User stats updated (optimized):', { 
-        totalViews: authorStats.total_views, 
-        totalLikes: authorStats.total_likes, 
-        articleCount: authorStats.total_articles, 
-        followersCount 
+      console.log('📊 User stats updated:', { 
+        totalArticles: totalArticles || fallbackTotalArticles,
+        totalViews: totalViews || fallbackTotalViews,
+        totalLikes: totalLikes || fallbackTotalLikes,
+        followers: followersCount,
+        following: followingCount,
+        userFollowers: u.followers,
+        userFollowing: u.following,
+        authorStatsAvailable: !!authorStats
       });
     } catch (error) {
       console.error('Error fetching user stats:', error);
