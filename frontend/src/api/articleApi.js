@@ -230,7 +230,7 @@ export const articleApi = {
         params: {
           q: query,
           k: Math.min(limit, maxResults),
-          page_index: page - 1,
+          page_index: page - 1, // Backend expects 0-based page index
           page_size: Math.min(limit, maxResults),
           app_id: APP_ID
         }
@@ -252,23 +252,6 @@ export const articleApi = {
     }
   },
 
-  // Simple search articles (fallback)
-  searchArticlesSimple: async (query, page = 1, limit = 10) => {
-    try {
-      const response = await apiClient.get('/articles/search', {
-        params: {
-          q: query,
-          page,
-          limit,
-          app_id: APP_ID
-        }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Simple search articles error:', error);
-      return { success: false, data: [], error: 'Search failed' };
-    }
-  },
 
   // Get popular articles
   getPopularArticles: async (limit = 10) => {

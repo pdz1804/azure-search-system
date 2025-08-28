@@ -9,7 +9,7 @@ export const searchApi = {
         params: {
           q: query,
           k: Math.min(limit, maxResults),
-          page_index: page - 1,
+          page_index: page - 1, // Backend expects 0-based page index
           page_size: Math.min(limit, maxResults),
           app_id: APP_ID
         }
@@ -28,7 +28,7 @@ export const searchApi = {
         params: {
           q: query,
           k: Math.min(limit, maxResults),
-          page_index: page - 1,
+          page_index: page - 1, // Backend expects 0-based page index
           page_size: Math.min(limit, maxResults),
           app_id: APP_ID
         }
@@ -47,7 +47,7 @@ export const searchApi = {
         params: {
           q: query,
           k: Math.min(limit, maxResults),
-          page_index: page - 1,
+          page_index: page - 1, // Backend expects 0-based page index
           page_size: Math.min(limit, maxResults),
           app_id: APP_ID
         }

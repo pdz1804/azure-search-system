@@ -325,7 +325,8 @@ const Dashboard = () => {
               size="small"
               type="primary"
               danger
-              onClick={() => handleDeleteUser(record.id, record.full_name)}
+              disabled
+              title="Delete functionality is not available in the current backend implementation"
               icon={<ExclamationTriangleIcon className="w-4 h-4" />}
             >
               Delete

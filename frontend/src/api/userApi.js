@@ -142,9 +142,7 @@ export const userApi = {
   // Follow a user
   followUser: async (id) => {
     try {
-      const response = await apiClient.post(`/users/${id}/follow`, {}, {
-        params: { app_id: APP_ID }
-      });
+      const response = await apiClient.post(`/users/${id}/follow`, {});
       return response.data;
     } catch (error) {
       throw error;
@@ -154,9 +152,7 @@ export const userApi = {
   // Unfollow a user (updated to match API documentation)
   unfollowUser: async (id) => {
     try {
-      const response = await apiClient.delete(`/users/${id}/follow`, {
-        params: { app_id: APP_ID }
-      });
+      const response = await apiClient.delete(`/users/${id}/follow`);
       return response.data;
     } catch (error) {
       throw error;
@@ -166,9 +162,7 @@ export const userApi = {
   // Check follow status (updated to match API documentation)
   checkFollowStatus: async (id) => {
     try {
-      const response = await apiClient.get(`/users/${id}/follow/status`, {
-        params: { app_id: APP_ID }
-      });
+      const response = await apiClient.get(`/users/${id}/follow/status`);
       return response.data;
     } catch (error) {
       throw error;
@@ -342,19 +336,13 @@ export const userApi = {
     }
   },
 
-  // Admin-only: Delete user
+  // Admin-only: Delete user - REMOVED: endpoint is commented out in backend
+  // This functionality is not available in the current backend implementation
   deleteUser: async (userId) => {
-    try {
-      const response = await apiClient.delete(`/users/${userId}`, {
-        params: { app_id: APP_ID }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Delete user error:', error);
-      return { 
-        success: false, 
-        error: error.response?.data?.detail || 'Failed to delete user' 
-      };
-    }
+    console.warn('Delete user functionality is not implemented in the backend');
+    return { 
+      success: false, 
+      error: 'Delete user functionality is not available' 
+    };
   }
 };

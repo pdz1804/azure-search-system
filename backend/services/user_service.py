@@ -29,7 +29,8 @@ async def _convert_to_user_dto(user: dict) -> dict:
         "role": user.get("role", "user"),
         "is_active": user.get("is_active", True),
         "articles_count": user.get("articles_count", 0),
-        "total_views": user.get("total_views", 0)
+        "total_views": user.get("total_views", 0),
+        "created_at": user.get("created_at")
     }
 
 

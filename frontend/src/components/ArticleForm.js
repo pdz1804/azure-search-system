@@ -65,12 +65,14 @@ const ArticleForm = () => {
 
     setGeneratingTags(true);
     try {
-      const response = await apiClient.post('/articles/generate-tags', {
-        title,
-        abstract,
-        content: content || '',
-        app_id: APP_ID
-      });
+      // Backend expects form data, not JSON
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('abstract', abstract);
+      formData.append('content', content || '');
+      formData.append('user_tags', JSON.stringify([])); // No user tags for now
+      
+      const response = await apiClientFormData.post('/articles/generate-tags', formData);
       
       const tags = response.data?.tags || [];
       setSuggestedTags(tags);
