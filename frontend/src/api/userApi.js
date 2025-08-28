@@ -70,7 +70,9 @@ export const userApi = {
   // Follow a user
   followUser: async (id) => {
     try {
-      const response = await apiClient.post(`/users/${id}/follow`);
+      const response = await apiClient.post(`/users/${id}/follow`, {}, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -80,7 +82,9 @@ export const userApi = {
   // Unfollow a user (updated to match API documentation)
   unfollowUser: async (id) => {
     try {
-      const response = await apiClient.delete(`/users/${id}/follow`);
+      const response = await apiClient.delete(`/users/${id}/follow`, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -90,7 +94,9 @@ export const userApi = {
   // Check follow status (updated to match API documentation)
   checkFollowStatus: async (id) => {
     try {
-      const response = await apiClient.get(`/users/${id}/follow/status`);
+      const response = await apiClient.get(`/users/${id}/follow/status`, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -100,7 +106,9 @@ export const userApi = {
   // Add reaction to article (like/dislike/bookmark)
   addReaction: async (articleId, reactionType) => {
     try {
-      const response = await apiClient.post(`/users/reactions/${articleId}/${reactionType}`);
+      const response = await apiClient.post(`/users/reactions/${articleId}/${reactionType}`, {}, {
+        params: { app_id: APP_ID }
+      });
       return {
         success: true,
         data: response.data
@@ -116,7 +124,9 @@ export const userApi = {
   // Remove reaction from article
   removeReaction: async (articleId, reactionType) => {
     try {
-      const response = await apiClient.delete(`/users/unreactions/${articleId}/${reactionType}`);
+      const response = await apiClient.delete(`/users/unreactions/${articleId}/${reactionType}`, {
+        params: { app_id: APP_ID }
+      });
       return {
         success: true,
         data: response.data
@@ -132,7 +142,9 @@ export const userApi = {
   // Check user's reaction status for article
   checkArticleReactionStatus: async (articleId) => {
     try {
-      const response = await apiClient.get(`/users/check_article_status/${articleId}`);
+      const response = await apiClient.get(`/users/check_article_status/${articleId}`, {
+        params: { app_id: APP_ID }
+      });
       // backend returns { success: true, data: { reaction_type, is_bookmarked } }
       return {
         success: true,
@@ -149,7 +161,9 @@ export const userApi = {
   // Get full bookmarked articles for current user
   getBookmarkedArticles: async () => {
     try {
-      const response = await apiClient.get('/users/bookmarks');
+      const response = await apiClient.get('/users/bookmarks', {
+        params: { app_id: APP_ID }
+      });
       console.log('Raw bookmarks API response:', response.data);
       
       // Handle different possible response structures
@@ -229,7 +243,9 @@ export const userApi = {
   // Admin-only: Update user role and status
   updateUser: async (userId, updateData) => {
     try {
-      const response = await apiClient.put(`/users/${userId}`, updateData);
+      const response = await apiClient.put(`/users/${userId}`, updateData, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       console.error('Update user error:', error);

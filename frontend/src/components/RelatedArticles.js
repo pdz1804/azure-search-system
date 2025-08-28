@@ -146,7 +146,7 @@ const RelatedArticles = ({ currentArticleId, authorId, tags = [] }) => {
                   </div>
                   
                   <span>
-                    {format(new Date(article.created_at), 'MMM dd')}
+                    {article.created_at ? format(new Date(article.created_at), 'MMM dd') : 'Recently'}
                   </span>
                 </div>
               </div>

@@ -38,7 +38,9 @@ export const articleApi = {
   // Get article by ID
   getArticleById: async (id) => {
     try {
-      const response = await apiClient.get(`/articles/${id}`);
+      const response = await apiClient.get(`/articles/${id}`, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       console.error('Get article error:', error);
@@ -147,7 +149,9 @@ export const articleApi = {
   // Delete article
   deleteArticle: async (id) => {
     try {
-      const response = await apiClient.delete(`/articles/${id}`);
+      const response = await apiClient.delete(`/articles/${id}`, {
+        params: { app_id: APP_ID }
+      });
       
       // Invalidate author stats cache for the article's author
       const userId = localStorage.getItem('user_id');
@@ -188,7 +192,8 @@ export const articleApi = {
         params: {
           q: query,
           page,
-          limit
+          limit,
+          app_id: APP_ID
         }
       });
       return response.data;
@@ -214,7 +219,9 @@ export const articleApi = {
   // Get statistics
   getStatistics: async () => {
     try {
-      const response = await apiClient.get('/articles/stats');
+      const response = await apiClient.get('/articles/stats', {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       console.error('Get statistics error:', error);
@@ -255,7 +262,9 @@ export const articleApi = {
   // Get article by ID
   getArticle: async (id) => {
     try {
-      const response = await apiClient.get(`/articles/${id}`);
+      const response = await apiClient.get(`/articles/${id}`, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       console.error('Get article error:', error);

@@ -252,7 +252,7 @@ const ArticleCard = ({
                       {article.author_name || article.author?.full_name || 'Unknown Author'}
                     </p>
                     <p className="text-sm text-gray-500">
-                      {formatDistanceToNow(new Date(article.created_at), { addSuffix: true })}
+                      {article.created_at ? formatDistanceToNow(new Date(article.created_at), { addSuffix: true }) : 'Recently'}
                     </p>
                   </div>
                 </div>
@@ -544,7 +544,7 @@ const ArticleCard = ({
                     {article.author_name || article.author?.full_name || 'Unknown Author'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {formatDistanceToNow(new Date(article.created_at), { addSuffix: true })}
+                    {article.created_at ? formatDistanceToNow(new Date(article.created_at), { addSuffix: true }) : 'Recently'}
                   </p>
                 </div>
               </div>

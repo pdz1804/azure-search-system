@@ -5,7 +5,15 @@
   "main": "index.js",
   "scripts": {
     "start": "react-scripts start",
+    "start:blog": "copy env.blog .env.local && react-scripts start",
+    "start:news": "copy env.news .env.local && react-scripts start",
+    "start:tech": "copy env.tech .env.local && react-scripts start",
     "build": "react-scripts build",
+    "build:blog": "copy env.blog .env.local && react-scripts build",
+    "build:news": "copy env.news .env.local && react-scripts build",
+    "build:tech": "copy env.tech .env.local && react-scripts build",
+    "switch": "node switch-app.js",
+    "switch:win": "switch-app.bat",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "analyze": "npm run build && npx webpack-bundle-analyzer build/static/js/*.js"
