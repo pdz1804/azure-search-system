@@ -75,9 +75,15 @@ Note:
 
 ---
 
-# 27/08
+# 28/08
 
-- 
+- update bị lâu do recommend ...
+- check lại summary (api/articles/stats) xem đã filter is_active=false chưa, đang bị get all item xong mới đếm chứ hong phải là select + count
+- chương fix phân trang của tất cả :)))
+- hiện tại chương sẽ soft delete user TUY NHIÊN hong delete like dislike số lương bên article 
+- get user by id hiện đang truyền app_id, tuy nhiên nếu sai app_id vẫn dô đc ==> chương fix
+- get user in admin dashboard hiện đang truyền app_id, tuy nhiên nếu sai app_id vẫn dô đc ==> chương fix
+
 
 ---
 
@@ -89,3 +95,6 @@ Note:
 - recommended authors and articles are not working now ==> now recommend articles = search (work) + recommend users thì đang làm
 - trong quá trình return lại kết quả sau khi dùng DTO thì 2 thg kết quả search của articles và của authors đang bị chưa đúng thứ tự của score cao --> score thấp
 - AUTO fit with new data or firms
+
+
+
