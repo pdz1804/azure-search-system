@@ -2,6 +2,36 @@ import { apiClient, apiClientFormData, createFormData } from './config';
 import { invalidateAuthorStats } from '../hooks/useAuthorStats';
 import { APP_ID } from '../config/appConfig';
 
+// Helper function to normalize article data from backend
+const normalizeArticleData = (article) => {
+  if (!article) return article;
+  
+  // Create a normalized copy
+  const normalized = { ...article };
+  
+  // Map backend field names to frontend expectations
+  if (article.article_id && !article.id) {
+    normalized.id = article.article_id;
+  }
+  if (article.created_date && !article.created_at) {
+    normalized.created_at = article.created_date;
+  }
+  if (article.total_like !== undefined && article.likes === undefined) {
+    normalized.likes = article.total_like;
+  }
+  if (article.total_view !== undefined && article.views === undefined) {
+    normalized.views = article.total_view;
+  }
+  
+  return normalized;
+};
+
+// Helper function to normalize article arrays
+const normalizeArticleArray = (articles) => {
+  if (!Array.isArray(articles)) return articles;
+  return articles.map(normalizeArticleData);
+};
+
 export const articleApi = {
   // Get all articles (supports both (page, limit, status) and (paramsObject))
   getArticles: async (...args) => {
@@ -28,6 +58,16 @@ export const articleApi = {
       // Add app_id to all article listing requests
       params.app_id = APP_ID;
       const response = await apiClient.get('/articles/', { params });
+      
+      // Normalize article data to ensure consistent field names
+      if (response.data && response.data.success && response.data.data) {
+        const normalizedData = {
+          ...response.data,
+          data: normalizeArticleArray(response.data.data)
+        };
+        return normalizedData;
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Get articles error:', error);
@@ -38,7 +78,9 @@ export const articleApi = {
   // Get article by ID
   getArticleById: async (id) => {
     try {
-      const response = await apiClient.get(`/articles/${id}`);
+      const response = await apiClient.get(`/articles/${id}`, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       console.error('Get article error:', error);
@@ -52,6 +94,16 @@ export const articleApi = {
       const response = await apiClient.get(`/articles/author/${authorId}`, {
         params: { page, limit, app_id: APP_ID }
       });
+      
+      // Normalize article data to ensure consistent field names
+      if (response.data && response.data.success && response.data.data) {
+        const normalizedData = {
+          ...response.data,
+          data: normalizeArticleArray(response.data.data)
+        };
+        return normalizedData;
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Get articles by author error:', error);
@@ -114,8 +166,10 @@ export const articleApi = {
         invalidateAuthorStats(userId);
       }
       
-      // If backend returns wrapper { success: true, data: {...} }, return the inner data
-      if (response.data && response.data.success && response.data.data) return response.data.data;
+      // Backend returns wrapper { success: true, data: {...} }
+      if (response.data && response.data.success && response.data.data) {
+        return { success: true, data: response.data.data };
+      }
       return response.data;
     } catch (error) {
       console.error('Create article error:', error);
@@ -136,7 +190,10 @@ export const articleApi = {
         invalidateAuthorStats(userId);
       }
       
-      if (response.data && response.data.success && response.data.data) return response.data.data;
+      // Backend returns wrapper { success: true, data: {...} }
+      if (response.data && response.data.success && response.data.data) {
+        return { success: true, data: response.data.data };
+      }
       return response.data;
     } catch (error) {
       console.error('Update article error:', error);
@@ -147,7 +204,9 @@ export const articleApi = {
   // Delete article
   deleteArticle: async (id) => {
     try {
-      const response = await apiClient.delete(`/articles/${id}`);
+      const response = await apiClient.delete(`/articles/${id}`, {
+        params: { app_id: APP_ID }
+      });
       
       // Invalidate author stats cache for the article's author
       const userId = localStorage.getItem('user_id');
@@ -174,6 +233,16 @@ export const articleApi = {
           app_id: APP_ID
         }
       });
+      
+      // Normalize article data to ensure consistent field names
+      if (response.data && response.data.success && response.data.data) {
+        const normalizedData = {
+          ...response.data,
+          data: normalizeArticleArray(response.data.data)
+        };
+        return normalizedData;
+      }
+      
       return response.data;
     } catch (error) {
       console.error('AI search articles error:', error);
@@ -188,7 +257,8 @@ export const articleApi = {
         params: {
           q: query,
           page,
-          limit
+          limit,
+          app_id: APP_ID
         }
       });
       return response.data;
@@ -204,6 +274,16 @@ export const articleApi = {
       const response = await apiClient.get('/articles/popular', {
         params: { limit, app_id: APP_ID }
       });
+      
+      // Normalize article data to ensure consistent field names
+      if (response.data && response.data.success && response.data.data) {
+        const normalizedData = {
+          ...response.data,
+          data: normalizeArticleArray(response.data.data)
+        };
+        return normalizedData;
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Get popular articles error:', error);
@@ -214,7 +294,9 @@ export const articleApi = {
   // Get statistics
   getStatistics: async () => {
     try {
-      const response = await apiClient.get('/articles/stats');
+      const response = await apiClient.get('/articles/stats', {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       console.error('Get statistics error:', error);
@@ -245,6 +327,16 @@ export const articleApi = {
       const response = await apiClient.get(`/articles/categories/${category}`, {
         params: { page, limit, app_id: APP_ID }
       });
+      
+      // Normalize article data to ensure consistent field names
+      if (response.data && response.data.success && response.data.data) {
+        const normalizedData = {
+          ...response.data,
+          data: normalizeArticleArray(response.data.data)
+        };
+        return normalizedData;
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Get articles by category error:', error);
@@ -255,7 +347,9 @@ export const articleApi = {
   // Get article by ID
   getArticle: async (id) => {
     try {
-      const response = await apiClient.get(`/articles/${id}`);
+      const response = await apiClient.get(`/articles/${id}`, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       console.error('Get article error:', error);

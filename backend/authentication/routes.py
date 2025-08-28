@@ -67,5 +67,5 @@ async def register(
     if not user:
         raise HTTPException(status_code=400, detail="User could not be created")
         
-    token = create_access_token({"sub": user["id"]})
-    return TokenResponse(access_token=token, user_id=user["id"], role=user.get("role", "user"))
+    token = create_access_token({"sub": user["user_id"]})
+    return TokenResponse(access_token=token, user_id=user["user_id"], role=user.get("role", "user"))

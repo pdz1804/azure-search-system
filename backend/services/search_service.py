@@ -197,7 +197,17 @@ class BackendSearchService:
         print(f"🔍 General search initiated: '{query}'")
         
         # Step 1: Plan the query using LLM
-        plan = self.llm_service.plan_query(query)
+        if self.llm_service:
+            plan = self.llm_service.plan_query(query)
+        else:
+            print("⚠️ LLM service not available, using fallback plan")
+            # Fallback plan when LLM service is not available
+            plan = {
+                "isMeaningful": True,
+                "search_type": "articles",
+                "normalized_query": query,
+                "search_parameters": {}
+            }
         
         # Step 2: Handle non-meaningful queries
         if not plan.get("isMeaningful", True):
@@ -248,7 +258,17 @@ class BackendSearchService:
         print(f"📖 Articles search: '{query}'")
         
         # Use LLM planning to enhance the query
-        plan = self.llm_service.plan_query(query)
+        if self.llm_service:
+            plan = self.llm_service.plan_query(query)
+        else:
+            print("⚠️ LLM service not available, using fallback plan")
+            # Fallback plan when LLM service is not available
+            plan = {
+                "isMeaningful": True,
+                "search_type": "articles", 
+                "normalized_query": query,
+                "search_parameters": {}
+            }
         
         # Force search type to articles for this endpoint
         plan["search_type"] = "articles"
@@ -292,7 +312,17 @@ class BackendSearchService:
         print(f"👤 Authors search: '{query}'")
         
         # Use LLM planning to enhance the query
-        plan = self.llm_service.plan_query(query)
+        if self.llm_service:
+            plan = self.llm_service.plan_query(query)
+        else:
+            print("⚠️ LLM service not available, using fallback plan")
+            # Fallback plan when LLM service is not available
+            plan = {
+                "isMeaningful": True,
+                "search_type": "authors", 
+                "normalized_query": query,
+                "search_parameters": {}
+            }
         
         # Force search type to authors for this endpoint
         plan["search_type"] = "authors"

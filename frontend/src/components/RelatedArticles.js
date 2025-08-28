@@ -22,7 +22,7 @@ const RelatedArticles = ({ currentArticleId, authorId, tags = [] }) => {
           const authorResponse = await articleApi.getArticlesByAuthor(authorId, 1, 6);
           if (authorResponse.success && authorResponse.data.items) {
             relatedArticles = authorResponse.data.items.filter(
-              article => article.id !== currentArticleId
+              article => (article.id || article.article_id) !== currentArticleId
             );
           }
         }
@@ -36,8 +36,8 @@ const RelatedArticles = ({ currentArticleId, authorId, tags = [] }) => {
               : popularResponse.data.items || [];
             
             const filteredPopular = popularArticles.filter(
-              article => article.id !== currentArticleId && 
-                       !relatedArticles.some(existing => existing.id === article.id)
+              article => (article.id || article.article_id) !== currentArticleId && 
+                       !relatedArticles.some(existing => (existing.id || existing.article_id) === (article.id || article.article_id))
             );
             
             relatedArticles = [...relatedArticles, ...filteredPopular];
@@ -59,9 +59,15 @@ const RelatedArticles = ({ currentArticleId, authorId, tags = [] }) => {
   }, [currentArticleId, authorId, tags]);
 
   const calculateReadingTime = (content) => {
+    if (!content || typeof content !== 'string') return 1; // Default to 1 min if no content
     const wordsPerMinute = 200;
-    const words = content?.split(' ').length || 0;
-    return Math.ceil(words / wordsPerMinute);
+    const words = content.trim().split(/\s+/).filter(word => word.length > 0).length;
+    return Math.max(1, Math.ceil(words / wordsPerMinute)); // Minimum 1 minute
+  };
+  
+  // Get content for reading time calculation (fallback to abstract if content is missing)
+  const getContentForReading = (article) => {
+    return article.content || article.abstract || '';
   };
 
   if (loading) {
@@ -84,19 +90,22 @@ const RelatedArticles = ({ currentArticleId, authorId, tags = [] }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {articles.map((article) => (
           <Link
-            key={article.id}
-            to={`/articles/${article.id}`}
+            key={article.id || article.article_id}
+            to={`/articles/${article.id || article.article_id}`}
             className="group block"
           >
             <article className="bg-surface-2 rounded-lg overflow-hidden hover:shadow-md transition-shadow border-surface" style={{ borderWidth: 1 }}>
               {/* Article Image */}
               {article.image && (
                 <div className="aspect-video overflow-hidden">
-                  <LazyLoadImage
+                  <img
                     src={article.image}
                     alt={article.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    effect="opacity"
+                    onError={(e) => {
+                      console.log('Related article image failed to load:', article.image);
+                      e.target.src = 'https://articleweb.blob.core.windows.net/images/blog_default.jpg';
+                    }}
                   />
                 </div>
               )}
@@ -139,14 +148,14 @@ const RelatedArticles = ({ currentArticleId, authorId, tags = [] }) => {
                       <HeartIcon className="w-3 h-3 mr-1" />
                       {article.likes || 0}
                     </span>
-                    <span className="flex items-center">
-                      <ClockIcon className="w-3 h-3 mr-1" />
-                      {calculateReadingTime(article.content)} min
-                    </span>
+                                         <span className="flex items-center">
+                       <ClockIcon className="w-3 h-3 mr-1" />
+                       {calculateReadingTime(getContentForReading(article))} min
+                     </span>
                   </div>
                   
                   <span>
-                    {format(new Date(article.created_at), 'MMM dd')}
+                    {(article.created_date || article.created_at) ? format(new Date(article.created_date || article.created_at), 'MMM dd') : 'Recently'}
                   </span>
                 </div>
               </div>

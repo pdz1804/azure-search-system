@@ -1,8 +1,14 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { API_URL } from '../config/appConfig';
 
 // Ensure HTTPS for production, fallback to localhost for development
 const getApiBaseUrl = () => {
+  // Check if we have environment variable from appConfig
+  if (API_URL) {
+    return API_URL;
+  }
+  
   // Check if we have environment variable
   if (process.env.REACT_APP_API_URL) {
     return process.env.REACT_APP_API_URL;

@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import enUS from 'antd/locale/en_US';
 import { AuthProvider } from './context/AuthContext';
-import { getCurrentAppConfig } from './config/appConfig';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -38,14 +37,7 @@ const theme = {
 };
 
 function App() {
-  // Log current app configuration on startup
-  React.useEffect(() => {
-    const appConfig = getCurrentAppConfig();
-    console.log(`🚀 Starting ${appConfig.name} (${appConfig.id})`);
-    console.log(`📱 Description: ${appConfig.description}`);
-    console.log(`🌐 Port: ${appConfig.port}`);
-  }, []);
-
+  
   return (
     <ConfigProvider locale={enUS} theme={theme}>
       <AuthProvider>

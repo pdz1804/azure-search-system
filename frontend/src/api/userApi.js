@@ -1,6 +1,57 @@
 import { apiClient } from './config';
 import { APP_ID } from '../config/appConfig';
 
+// Helper function to normalize user data from backend to frontend format
+const normalizeUserData = (user) => {
+  if (!user) return user;
+  
+  const normalized = { ...user };
+  
+  // Map backend field names to frontend expectations
+  if (user.user_id && !user.id) {
+    normalized.id = user.user_id;
+  }
+  
+  if (user.full_name && !user.name) {
+    normalized.name = user.full_name;
+  }
+  
+  // Ensure we have both fields for compatibility
+  if (user.full_name && !normalized.full_name) {
+    normalized.full_name = user.full_name;
+  }
+  
+  if (user.name && !normalized.full_name) {
+    normalized.full_name = user.name;
+  }
+  
+  // Handle followers/following counts
+  if (user.total_followers !== undefined && user.num_followers === undefined) {
+    normalized.num_followers = user.total_followers;
+  }
+  
+  if (user.total_following !== undefined && user.num_following === undefined) {
+    normalized.num_following = user.total_following;
+  }
+  
+  // Handle article statistics
+  if (user.articles_count !== undefined) {
+    normalized.articles_count = user.articles_count;
+  }
+  
+  if (user.total_views !== undefined) {
+    normalized.total_views = user.total_views;
+  }
+  
+  return normalized;
+};
+
+// Helper function to normalize user arrays
+const normalizeUserArray = (users) => {
+  if (!Array.isArray(users)) return users;
+  return users.map(normalizeUserData);
+};
+
 export const userApi = {
   // Get current user info (legacy method)
   getMe: async () => {
@@ -12,7 +63,10 @@ export const userApi = {
       const response = await apiClient.get(`/users/${userId}`, {
         params: { app_id: APP_ID }
       });
-      return response.data;
+      
+      let userData = response.data?.data || response.data;
+      
+      return normalizeUserData(userData);
     } catch (error) {
       throw error;
     }
@@ -30,6 +84,13 @@ export const userApi = {
           app_id: APP_ID
         }
       });
+      
+      // Backend returns { success: true, data: [...] }
+      if (response.data && response.data.success && response.data.data) {
+        const users = normalizeUserArray(response.data.data);
+        return { ...response.data, data: users };
+      }
+      
       return response.data;
     } catch (error) {
       console.error('AI search users error:', error);
@@ -43,6 +104,14 @@ export const userApi = {
       const response = await apiClient.get(`/users/${id}`, {
         params: { app_id: APP_ID }
       });
+      
+      // Backend returns { success: true, data: { user_id, full_name, ... } }
+      // Frontend expects { id, full_name, ... }
+      if (response.data && response.data.success && response.data.data) {
+        const userData = normalizeUserData(response.data.data);
+        return { success: true, data: userData };
+      }
+      
       return response.data;
     } catch (error) {
       throw error;
@@ -55,9 +124,12 @@ export const userApi = {
       const response = await apiClient.get(`/users/${userId}`, {
         params: { app_id: APP_ID }
       });
+      
+      let userData = response.data?.data || response.data;
+      
       return {
         success: true,
-        data: response.data?.data || response.data
+        data: normalizeUserData(userData)
       };
     } catch (error) {
       return {
@@ -70,7 +142,9 @@ export const userApi = {
   // Follow a user
   followUser: async (id) => {
     try {
-      const response = await apiClient.post(`/users/${id}/follow`);
+      const response = await apiClient.post(`/users/${id}/follow`, {}, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -80,7 +154,9 @@ export const userApi = {
   // Unfollow a user (updated to match API documentation)
   unfollowUser: async (id) => {
     try {
-      const response = await apiClient.delete(`/users/${id}/follow`);
+      const response = await apiClient.delete(`/users/${id}/follow`, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -90,7 +166,9 @@ export const userApi = {
   // Check follow status (updated to match API documentation)
   checkFollowStatus: async (id) => {
     try {
-      const response = await apiClient.get(`/users/${id}/follow/status`);
+      const response = await apiClient.get(`/users/${id}/follow/status`, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -100,7 +178,9 @@ export const userApi = {
   // Add reaction to article (like/dislike/bookmark)
   addReaction: async (articleId, reactionType) => {
     try {
-      const response = await apiClient.post(`/users/reactions/${articleId}/${reactionType}`);
+      const response = await apiClient.post(`/users/reactions/${articleId}/${reactionType}`, {}, {
+        params: { app_id: APP_ID }
+      });
       return {
         success: true,
         data: response.data
@@ -116,7 +196,9 @@ export const userApi = {
   // Remove reaction from article
   removeReaction: async (articleId, reactionType) => {
     try {
-      const response = await apiClient.delete(`/users/unreactions/${articleId}/${reactionType}`);
+      const response = await apiClient.delete(`/users/unreactions/${articleId}/${reactionType}`, {
+        params: { app_id: APP_ID }
+      });
       return {
         success: true,
         data: response.data
@@ -132,7 +214,9 @@ export const userApi = {
   // Check user's reaction status for article
   checkArticleReactionStatus: async (articleId) => {
     try {
-      const response = await apiClient.get(`/users/check_article_status/${articleId}`);
+      const response = await apiClient.get(`/users/check_article_status/${articleId}`, {
+        params: { app_id: APP_ID }
+      });
       // backend returns { success: true, data: { reaction_type, is_bookmarked } }
       return {
         success: true,
@@ -149,7 +233,9 @@ export const userApi = {
   // Get full bookmarked articles for current user
   getBookmarkedArticles: async () => {
     try {
-      const response = await apiClient.get('/users/bookmarks');
+      const response = await apiClient.get('/users/bookmarks', {
+        params: { app_id: APP_ID }
+      });
       console.log('Raw bookmarks API response:', response.data);
       
       // Handle different possible response structures
@@ -206,6 +292,13 @@ export const userApi = {
       const response = await apiClient.get('/users', {
         params: { page, limit, featured, app_id: APP_ID }
       });
+      
+      // Backend returns { success: true, data: [...] }
+      if (response.data && response.data.success && response.data.data) {
+        const users = normalizeUserArray(response.data.data);
+        return { ...response.data, data: users };
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Get all users error:', error);
@@ -219,6 +312,13 @@ export const userApi = {
       const response = await apiClient.get('/users/admin/all', {
         params: { page, limit, app_id: APP_ID }
       });
+      
+      // Backend returns { success: true, data: [...] }
+      if (response.data && response.data.success && response.data.data) {
+        const users = normalizeUserArray(response.data.data);
+        return { ...response.data, data: users };
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Get all users admin error:', error);
@@ -229,7 +329,9 @@ export const userApi = {
   // Admin-only: Update user role and status
   updateUser: async (userId, updateData) => {
     try {
-      const response = await apiClient.put(`/users/${userId}`, updateData);
+      const response = await apiClient.put(`/users/${userId}`, updateData, {
+        params: { app_id: APP_ID }
+      });
       return response.data;
     } catch (error) {
       console.error('Update user error:', error);

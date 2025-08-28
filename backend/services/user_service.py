@@ -23,7 +23,9 @@ async def _convert_to_user_dto(user: dict) -> dict:
         "email": user.get("email", ""),
         "avatar_url": user.get("avatar_url"),
         "role": user.get("role", "user"),
-        "is_active": user.get("is_active", True)
+        "is_active": user.get("is_active", True),
+        "articles_count": user.get("articles_count", 0),
+        "total_views": user.get("total_views", 0)
     }
 
 
@@ -141,9 +143,22 @@ async def list_users_with_cache(page: int = 1, page_size: int = 20, featured: bo
         
         # Filter featured users if requested
         if featured:
-            # For now, consider users with more articles as "featured"
-            # In a real app, you'd have a featured flag in the user model
-            users_data = [u for u in users_data if u.get("article_count", 0) > 0]
+            print(f"👥 [FEATURED USERS] Filtering {len(users_data)} total users for featured status...")
+            
+            # STRICT FILTERING: Only show users with articles > 0
+            active_users = [u for u in users_data if u.get("articles_count", 0) > 0]
+            print(f"👥 [FEATURED USERS] Found {len(active_users)} users with articles > 0")
+            
+            if active_users:
+                # Sort by articles count (descending) to show most active authors first
+                active_users.sort(key=lambda u: u.get("articles_count", 0), reverse=True)
+                users_data = active_users
+                print(f"👥 [FEATURED USERS] Sorted by articles count. Top user: {active_users[0].get('full_name', 'Unknown')} with {active_users[0].get('articles_count', 0)} articles")
+                print(f"👥 [FEATURED USERS] All featured users: {[(u.get('full_name', 'Unknown'), u.get('articles_count', 0)) for u in active_users[:5]]}")
+            else:
+                # NO FALLBACK: If no users with articles, return empty list
+                users_data = []
+                print("👥 [FEATURED USERS] No users with articles found, returning empty list")
         
         # Apply pagination
         total_items = len(users_data)
@@ -195,10 +210,17 @@ async def list_users(app_id: Optional[str] = None) -> List[dict]:
             
             user_dict = await _convert_to_user_dto(user)
             user_dicts.append(user_dict)
-        except Exception:
+        except Exception as e:
+            print(f"⚠️ Failed to get stats for user {user.get('id', 'unknown')}: {e}")
             # If stats fail, still include user with basic info
             user_dict = await _convert_to_user_dto(user)
             user_dicts.append(user_dict)
+    
+    print(f"👥 [LIST USERS] Processed {len(user_dicts)} users. Sample stats: {[(u.get('full_name', 'Unknown'), u.get('articles_count', 0), u.get('total_views', 0)) for u in user_dicts[:3]]}")
+    
+    # Debug: Check if articles_count field is properly set
+    for i, user in enumerate(user_dicts[:3]):
+        print(f"👥 [LIST USERS] User {i+1}: {user.get('full_name', 'Unknown')} - articles_count: {user.get('articles_count', 'MISSING')}, total_views: {user.get('total_views', 'MISSING')}")
     
     return user_dicts
 

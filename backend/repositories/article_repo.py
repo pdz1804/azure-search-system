@@ -24,11 +24,16 @@ async def insert_article(doc: dict):
 
 
 
-async def get_article_by_id(article_id: str) -> Optional[dict]:
+async def get_article_by_id(article_id: str, app_id: Optional[str] = None) -> Optional[dict]:
     articles = await get_articles()
     
-    query = "SELECT * FROM c WHERE c.id = @id AND c.is_active = true"
-    parameters = [{"name": "@id", "value": article_id}]
+    # Build query with app_id filter if provided
+    if app_id:
+        query = "SELECT * FROM c WHERE c.id = @id AND c.is_active = true AND c.app_id = @app_id"
+        parameters = [{"name": "@id", "value": article_id}, {"name": "@app_id", "value": app_id}]
+    else:
+        query = "SELECT * FROM c WHERE c.id = @id AND c.is_active = true"
+        parameters = [{"name": "@id", "value": article_id}]
     
     try:
         results = [doc async for doc in articles.query_items(
