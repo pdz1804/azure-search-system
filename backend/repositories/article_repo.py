@@ -301,3 +301,145 @@ async def get_articles_by_ids(article_ids: List[str]):
     results.sort(key=lambda x: order_map.get(x['id'], len(article_ids)))
 
     return results
+
+
+async def get_categories_with_counts(app_id: Optional[str] = None) -> List[Dict]:
+    """Get all available categories and their article counts from database."""
+    articles = await get_articles()
+    
+    # Cosmos DB does not support GROUP BY across partitioned arrays in the SDK easily.
+    # We'll read items and aggregate tag counts client-side. Use read_all_items
+    # to iterate across partitions without passing unsupported kwargs.
+    categories_result = []
+    from collections import Counter
+    tag_counter = Counter()
+
+    # iterate over all articles and accumulate tags (filter client-side)
+    async for item in articles.read_all_items():
+        try:
+            if not item or not item.get('is_active'):
+                continue
+            # Filter by app_id if provided
+            if app_id and item.get('app_id') != app_id:
+                continue
+            tags = item.get('tags') or []
+            for t in tags:
+                tag_counter[t] += 1
+        except Exception:
+            # ignore malformed documents
+            continue
+
+    # prepare top categories (limit to top 10)
+    for tag, count in tag_counter.most_common(10):
+        categories_result.append({"name": tag, "count": count})
+    
+    return categories_result
+
+
+async def get_articles_by_category(
+    category_name: str,
+    page: int = 1,
+    limit: int = 10,
+    app_id: Optional[str] = None
+) -> Dict:
+    """Get articles by category with pagination."""
+    articles = await get_articles()
+    
+    # Query articles that have the specified category in their tags
+    if app_id:
+        query = """
+        SELECT * FROM c 
+        WHERE c.is_active = true 
+        AND ARRAY_CONTAINS(c.tags, @category)
+        AND c.app_id = @app_id
+        ORDER BY c.created_at DESC
+        OFFSET @skip LIMIT @limit
+        """
+    else:
+        query = """
+        SELECT * FROM c 
+        WHERE c.is_active = true 
+        AND ARRAY_CONTAINS(c.tags, @category)
+        ORDER BY c.created_at DESC
+        OFFSET @skip LIMIT @limit
+        """
+    
+    skip = (page - 1) * limit
+    parameters = [
+        {"name": "@category", "value": category_name},
+        {"name": "@skip", "value": skip},
+        {"name": "@limit", "value": limit}
+    ]
+    if app_id:
+        parameters.append({"name": "@app_id", "value": app_id})
+    
+    results = []
+    async for doc in articles.query_items(query=query, parameters=parameters):
+        results.append(doc)
+    
+    # Calculate total pages for category
+    # First get total count for this category
+    count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published'"
+    if category_name != "all":
+        count_query += " AND ARRAY_CONTAINS(c.tags, @category)"
+    if app_id:
+        count_query += " AND c.app_id = @app_id"
+    
+    count_parameters = []
+    if category_name != "all":
+        count_parameters.append({"name": "@category", "value": category_name})
+    if app_id:
+        count_parameters.append({"name": "@app_id", "value": app_id})
+    
+    total_items = 0
+    async for count in articles.query_items(query=count_query, parameters=count_parameters):
+        total_items = count
+        break
+    
+    total_pages = (total_items + limit - 1) // limit
+    
+    return {
+        "items": results,
+        "total_items": total_items,
+        "total_pages": total_pages,
+        "current_page": page,
+        "page_size": limit
+    }
+
+
+async def get_total_articles_count_by_author(author_id: str, app_id: Optional[str] = None) -> int:
+    """Get total count of published articles by specific author."""
+    try:
+        articles = await get_articles()
+        
+        if app_id:
+            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published' AND c.author_id = @author_id AND c.app_id = @app_id"
+            parameters = [{"name": "@author_id", "value": author_id}, {"name": "@app_id", "value": app_id}]
+        else:
+            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published' AND c.author_id = @author_id"
+            parameters = [{"name": "@author_id", "value": author_id}]
+        
+        async for count in articles.query_items(query=query, parameters=parameters):
+            return count
+        return 0
+    except Exception:
+        return 0
+
+
+async def get_total_articles_count(app_id: Optional[str] = None) -> int:
+    """Get total count of published articles."""
+    try:
+        articles = await get_articles()
+        
+        if app_id:
+            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published' AND c.app_id = @app_id"
+            parameters = [{"name": "@app_id", "value": app_id}]
+        else:
+            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published'"
+            parameters = []
+            
+        async for count in articles.query_items(query=query, parameters=parameters):
+            return count
+        return 0
+    except Exception:
+        return 0

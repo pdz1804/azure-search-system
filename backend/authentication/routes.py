@@ -42,6 +42,7 @@ async def register(
     email: EmailStr = Form(...),
     password: str = Form(...),
     role: str = Form("user"),
+    app_id: Optional[str] = Form(None),
     avatar: Optional[UploadFile] = File(None)
 ):
     # Collect registration fields and optionally upload avatar to blob
@@ -62,7 +63,7 @@ async def register(
             print(f"Failed uploading avatar: {e}")
             # Continue without avatar rather than failing registration
 
-    user = await create_user(user_data)
+    user = await create_user(user_data, app_id=app_id)
     if not user:
         raise HTTPException(status_code=400, detail="User could not be created")
         

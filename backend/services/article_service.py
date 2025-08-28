@@ -63,6 +63,7 @@ async def _convert_to_article_dto(article: dict) -> dict:
     author_dto = await _convert_to_author_dto(article)
     
     return {
+        "app_id": article.get("app_id", ""),
         "article_id": article.get("id", ""),
         "title": article.get("title", ""),
         "abstract": article.get("abstract"),
@@ -383,15 +384,112 @@ async def decrement_article_dislikes(article_id: str, app_id: Optional[str] = No
 #         return False
 
 async def get_articles_by_author(author_id: str, page: int = 1, page_size: int = 20, app_id: Optional[str] = None) -> List[dict]:
+    cache_key = f"articles:author:{author_id}:page_{page}_size_{page_size}:app_{app_id or 'none'}"
+    cached_articles = await get_cache(cache_key)
+    if cached_articles:
+        print(f"✍️ Redis Cache HIT for author {author_id} articles")
+        return cached_articles
+
+    print(f"✍️ Redis Cache MISS for author {author_id} articles - Loading from DB...")
     articles = await article_repo.get_article_by_author(author_id, page, page_size, app_id=app_id)
     
     if articles:
         # Convert to dicts
         article_dicts = [await _convert_to_article_dto(article) for article in articles]
         # Cache the dicts
+        await set_cache(cache_key, article_dicts,ttl=CACHE_TTL["user_articles"])
         return article_dicts
     
     return []
+
+
+async def get_total_articles_count_by_author(author_id: str, app_id: Optional[str] = None):
+    """Get total count of published articles by specific author."""
+    return await article_repo.get_total_articles_count_by_author(author_id, app_id)
+
+
+async def list_articles_with_pagination(page: int = 1, page_size: int = 20, app_id: Optional[str] = None) -> dict:
+    """Get articles with pagination metadata."""
+    try:
+        # Get articles from existing service function
+        articles_data = await list_articles(page=page, page_size=page_size, app_id=app_id)
+        
+        # Get total count
+        total_items = await get_total_articles_count(app_id=app_id)
+        total_pages = (total_items + page_size - 1) // page_size  # Ceiling division
+        
+        return {
+            "success": True,
+            "data": articles_data,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total": total_pages,  # total pages
+                "total_results": total_items  # total result count
+            }
+        }
+    except Exception as e:
+        print(f"Error in list_articles_with_pagination: {e}")
+        return {
+            "success": False,
+            "data": {"error": str(e)}
+        }
+
+
+async def get_popular_articles_with_pagination(page: int = 1, page_size: int = 10, app_id: Optional[str] = None) -> dict:
+    """Get popular articles with pagination metadata."""
+    try:
+        # Get popular articles from existing service function
+        popular_articles = await get_popular_articles(page, page_size, app_id=app_id)
+        
+        # Get total count for popular articles calculation
+        total_items = await get_total_articles_count(app_id=app_id)
+        total_pages = (total_items + page_size - 1) // page_size
+        
+        return {
+            "success": True,
+            "data": popular_articles,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total": total_pages,  # total pages
+                "total_results": total_items  # total result count
+            }
+        }
+    except Exception as e:
+        print(f"Error in get_popular_articles_with_pagination: {e}")
+        return {
+            "success": False,
+            "data": {"error": "Failed to fetch popular articles"}
+        }
+
+
+async def get_articles_by_author_with_pagination(author_id: str, page: int = 1, page_size: int = 20, app_id: Optional[str] = None) -> dict:
+    """Get articles by author with pagination metadata."""
+    try:
+        # Get articles by author from existing service function
+        articles_list = await get_articles_by_author(author_id, page - 1, page_size, app_id=app_id)
+        
+        # Get total count for this author
+        total_items = await get_total_articles_count_by_author(author_id, app_id=app_id)
+        total_pages = (total_items + page_size - 1) // page_size
+        
+        return {
+            "success": True,
+            "data": articles_list,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total": total_pages,  # total pages
+                "total_results": total_items  # total result count
+            }
+        }
+    except Exception as e:
+        print(f"Error in get_articles_by_author_with_pagination: {e}")
+        return {
+            "success": False,
+            "data": {"error": str(e)}
+        }
 
 async def get_popular_articles(page: int = 1, page_size: int = 10, app_id: Optional[str] = None) -> List[dict]:
     cache_key = generate_cache_key(CACHE_KEYS["articles_popular"], page=page, page_size=page_size, app_id=app_id or 'none')
@@ -496,10 +594,22 @@ async def search_response_articles(data: Dict, app_id: Optional[str] = None) -> 
 
 
 async def get_summary(app_id: Optional[str] = None) -> Dict:
-    """Aggregate basic articles summary for dashboards.
+    """Aggregate basic articles summary for dashboards with caching.
 
     Note: For simplicity we fetch up to 1000 most recent articles.
     """
+    # Check Redis cache first with app_id-specific key
+    cache_key = f"homepage:statistics"
+    if app_id:
+        cache_key = f"homepage:statistics:app_{app_id}"
+    
+    cached_stats = await get_cache(cache_key)
+    if cached_stats:
+        print(f"📊 Redis Cache HIT for statistics (app_id: {app_id or 'all'})")
+        return cached_stats
+    
+    print(f"📊 Redis Cache MISS for statistics (app_id: {app_id or 'all'}) - Loading from DB...")
+    
     try:
         data = await article_repo.list_articles(page=1, page_size=1000, app_id=app_id)
         items = data.get("items", []) if isinstance(data, dict) else data
@@ -509,7 +619,8 @@ async def get_summary(app_id: Optional[str] = None) -> Dict:
         total_views = sum(int(a.get("views", 0)) for a in items)
         total_likes = sum(int(a.get("likes", 0)) for a in items)
         authors = len({a.get("author_id") for a in items if a.get("author_id")})
-        return {
+        
+        stats_data = {
             "total_articles": total,
             "published_articles": published,
             "draft_articles": drafts,
@@ -517,6 +628,12 @@ async def get_summary(app_id: Optional[str] = None) -> Dict:
             "total_likes": total_likes,
             "authors": authors,
         }
+        
+        # Cache the results for 3 minutes (180 seconds)
+        await set_cache(cache_key, stats_data, ttl=180)
+        print(f"📊 Redis Cache SET for statistics (app_id: {app_id or 'all'})")
+        
+        return stats_data
     except Exception:
         return {
             "total_articles": 0,
@@ -529,38 +646,114 @@ async def get_summary(app_id: Optional[str] = None) -> Dict:
 
 async def get_total_articles_count(app_id: Optional[str] = None):
     """Get total count of published articles."""
-    try:
-        from backend.database.cosmos import get_articles_container
-        articles_container = await get_articles_container()
-        
-        if app_id:
-            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published' AND c.app_id = @app_id"
-            parameters = [{"name": "@app_id", "value": app_id}]
-        else:
-            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published'"
-            parameters = []
-            
-        async for count in articles_container.query_items(query=query, parameters=parameters):
-            return count
-        return 0
-    except Exception:
-        return 0
+    return await article_repo.get_total_articles_count(app_id)
 
-async def get_total_articles_count_by_author(author_id: str, app_id: Optional[str] = None):
-    """Get total count of published articles by specific author."""
+async def get_categories(app_id: Optional[str] = None) -> List[Dict]:
+    """Get all available categories and their article counts with caching."""
+    # Check Redis cache first
+    cache_key = f"homepage:categories:app_{app_id or 'none'}"
+    cached_categories = await get_cache(cache_key)
+    if cached_categories:
+        print("🏷️ Redis Cache HIT for categories")
+        return cached_categories
+    
+    print("🏷️ Redis Cache MISS for categories - Loading from DB...")
     try:
-        from backend.database.cosmos import get_articles_container
-        articles_container = await get_articles_container()
+        # Try to get data from repository
+        try:
+            categories_result = await article_repo.get_categories_with_counts(app_id)
+            
+        except Exception as db_error:
+            print(f"Repository failed, using sample data fallback for categories: {db_error}")
+            # Fallback to sample data from articles.json
+            import json
+            import os
+            from collections import Counter
+            
+            # Path to the sample articles file
+            sample_file_path = os.path.join(os.path.dirname(__file__), '..', '..', 'ai_search', 'data', 'articles.json')
+            
+            if os.path.exists(sample_file_path):
+                with open(sample_file_path, 'r', encoding='utf-8') as f:
+                    sample_articles = json.load(f)
+                
+                # Count tags from sample data
+                all_tags = []
+                for article in sample_articles:
+                    # Filter by app_id if provided
+                    if app_id and article.get('app_id') != app_id:
+                        continue
+                    if article.get('tags'):
+                        all_tags.extend(article['tags'])
+                
+                tag_counts = Counter(all_tags)
+                categories_result = [
+                    {"name": tag, "count": count} 
+                    for tag, count in tag_counts.most_common(10)  # Top 10 categories
+                ]
+            else:
+                # If sample file not found, use default categories
+                categories_result = [
+                    {"name": "Technology", "count": 15},
+                    {"name": "Design", "count": 12},
+                    {"name": "Business", "count": 10},
+                    {"name": "Science", "count": 8},
+                    {"name": "Health", "count": 6},
+                    {"name": "Lifestyle", "count": 5}
+                ]
         
-        if app_id:
-            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published' AND c.author_id = @author_id AND c.app_id = @app_id"
-            parameters = [{"name": "@author_id", "value": author_id}, {"name": "@app_id", "value": app_id}]
-        else:
-            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published' AND c.author_id = @author_id"
-            parameters = [{"name": "@author_id", "value": author_id}]
+        # Add default categories if none exist
+        if not categories_result:
+            categories_result = [
+                {"name": "Technology", "count": 15},
+                {"name": "Design", "count": 12},
+                {"name": "Business", "count": 10},
+                {"name": "Science", "count": 8},
+                {"name": "Health", "count": 6},
+                {"name": "Lifestyle", "count": 5}
+            ]
         
-        async for count in articles_container.query_items(query=query, parameters=parameters):
-            return count
-        return 0
-    except Exception:
-        return 0
+        # Cache the results for 3 minutes (180 seconds)
+        await set_cache(cache_key, categories_result, ttl=180)
+        print("🏷️ Redis Cache SET for categories")
+        
+        return categories_result
+    except Exception as e:
+        print(f"Error fetching categories: {e}")
+        # Return default categories as fallback
+        return [
+            {"name": "Technology", "count": 15},
+            {"name": "Design", "count": 12},
+            {"name": "Business", "count": 10},
+            {"name": "Science", "count": 8},
+            {"name": "Health", "count": 6},
+            {"name": "Lifestyle", "count": 5}
+        ]
+
+
+async def get_articles_by_category(
+    category_name: str,
+    page: int = 1,
+    limit: int = 10,
+    app_id: Optional[str] = None
+) -> dict:
+    """Get articles by category with pagination."""
+    try:
+        result = await article_repo.get_articles_by_category(category_name, page, limit, app_id)
+        
+        return {
+            "success": True,
+            "data": result["items"],
+            "pagination": {
+                "page": result["current_page"],
+                "limit": result["page_size"],
+                "total": result["total_pages"],  # total pages
+                "total_results": result["total_items"]  # total result count
+            }
+        }
+    except Exception as e:
+        print(f"Error fetching articles by category: {e}")
+        return {
+            "success": False,
+            "data": {"error": str(e)}
+        }

@@ -11,7 +11,7 @@ from fastapi import HTTPException
 from typing import Any, Dict, List, Optional
 from backend.repositories import article_repo, user_repo
 from backend.services import article_service
-from backend.services.cache_service import CACHE_KEYS, delete_cache_pattern
+from backend.services.cache_service import CACHE_KEYS, delete_cache_pattern, get_cache, set_cache
 from backend.utils import hash_password, verify_password
 
 
@@ -71,6 +71,114 @@ async def _convert_to_user_detail_dto(user: dict, app_id: Optional[str] = None) 
     }
 
 
+async def list_users_with_pagination_admin(page: int = 1, limit: int = 20, app_id: Optional[str] = None) -> dict:
+    """Get all users for admin dashboard with pagination."""
+    try:
+        users_data = await list_users(app_id=app_id)
+        
+        if not users_data:
+            return {
+                "success": True,
+                "data": [],
+                "pagination": {
+                    "page": page,
+                    "limit": limit,
+                    "total": 0,
+                    "total_results": 0
+                }
+            }
+        
+        # Apply pagination
+        total_items = len(users_data)
+        total_pages = (total_items + limit - 1) // limit
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        paginated_users = users_data[start_idx:end_idx]
+        
+        return {
+            "success": True,
+            "data": paginated_users,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total_pages,
+                "total_results": total_items
+            }
+        }
+    except Exception as e:
+        print(f"Error fetching users for admin with pagination: {e}")
+        return {
+            "success": False,
+            "data": {"error": str(e)}
+        }
+
+
+async def list_users_with_cache(page: int = 1, page_size: int = 20, featured: bool = False, app_id: Optional[str] = None) -> dict:
+    """Get all users with pagination and caching support."""
+    # Check Redis cache first
+    cache_key = f"authors:page_{page}_limit_{page_size}_featured_{featured}_app_{app_id or 'none'}"
+    cached_authors = await get_cache(cache_key)
+    if cached_authors:
+        print("👥 Redis Cache HIT for authors")
+        return cached_authors
+    
+    print("👥 Redis Cache MISS for authors - Loading from DB...")
+    try:
+        users_data = await list_users(app_id=app_id)
+        
+        if not users_data:
+            result = {
+                "success": True,
+                "data": [],
+                "pagination": {
+                    "page": page,
+                    "limit": page_size,
+                    "total": 0,  # total pages
+                    "total_results": 0  # total result count
+                }
+            }
+            return result
+        
+        # Filter featured users if requested
+        if featured:
+            # For now, consider users with more articles as "featured"
+            # In a real app, you'd have a featured flag in the user model
+            users_data = [u for u in users_data if u.get("article_count", 0) > 0]
+        
+        # Apply pagination
+        total_items = len(users_data)
+        total_pages = (total_items + page_size - 1) // page_size  # Ceiling division
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_users = users_data[start_idx:end_idx]
+        
+        result = {
+            "success": True,
+            "data": paginated_users,
+            "pagination": {
+                "page": page,
+                "limit": page_size,
+                "total": total_pages,  # total pages
+                "total_results": total_items  # total result count
+            }
+        }
+        
+        print(f"👥 [USERS SERVICE DEBUG] Returning pagination: {result['pagination']}")
+        print(f"👥 [USERS SERVICE DEBUG] total_items={total_items}, total_pages={total_pages}, limit={page_size}")
+        
+        # Cache the results for 3 minutes (180 seconds)
+        await set_cache(cache_key, result, ttl=180)
+        print("👥 Redis Cache SET for authors")
+        
+        return result
+    except Exception as e:
+        print(f"Error fetching users with cache: {e}")
+        return {
+            "success": False,
+            "data": {"error": str(e)}
+        }
+
+
 async def list_users(app_id: Optional[str] = None) -> List[dict]:
     users = await user_repo.get_list_user(app_id=app_id)
     if not users:
@@ -100,7 +208,7 @@ async def login(email: str, password: str) -> Optional[dict]:
         return None
     return user
 
-async def create_user(doc: dict) -> dict:
+async def create_user(doc: dict, app_id: Optional[str] = None) -> dict:
     if await user_repo.get_by_email(doc["email"]):
         raise HTTPException(status_code=400, detail="Email already registered")
 
@@ -111,10 +219,15 @@ async def create_user(doc: dict) -> dict:
     doc["role"] = doc.get("role", "user")
     doc["created_at"] = datetime.utcnow().isoformat()
     doc["id"] = uuid.uuid4().hex
+    
+    # Add app_id to user document if provided
+    if app_id:
+        doc["app_id"] = app_id
+    
     user = await user_repo.insert(doc)
     
     # Convert to UserDetailDTO format before returning
-    return await _convert_to_user_detail_dto(user)
+    return await _convert_to_user_detail_dto(user, app_id=app_id)
 
 async def get_user_by_id(user_id: str, app_id: Optional[str] = None) -> Optional[dict]:
     user = await user_repo.get_user_by_id(user_id)
