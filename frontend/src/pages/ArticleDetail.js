@@ -43,6 +43,7 @@ import { articleApi } from '../api/articleApi';
 import { userApi } from '../api/userApi';
 import { useAuth } from '../context/AuthContext';
 import { formatDate, formatNumber } from '../utils/helpers';
+import { getRandomDefaultImage } from '../utils/defaultImage';
 
 const { Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -764,7 +765,7 @@ const ArticleDetail = () => {
                           objectFit: 'cover',
                           borderRadius: 8
                         }}
-                        fallback="https://articleweb.blob.core.windows.net/images/blog_default.jpg"
+                        fallback={getRandomDefaultImage()}
                       />
                     </div>
                   )}

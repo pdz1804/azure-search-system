@@ -17,6 +17,7 @@ import {
   BookmarkIcon as BookmarkSolidIcon
 } from '@heroicons/react/24/solid';
 import { format, formatDistanceToNow } from 'date-fns';
+import { getRandomDefaultImage } from '../utils/defaultImage';
 import toast from 'react-hot-toast';
 
 import { useAuth } from '../context/AuthContext';
@@ -247,12 +248,12 @@ const ArticleCard = ({
           {/* Large Image */}
           <div className="aspect-[16/9] overflow-hidden">
             <LazyLoadImage
-              src={article.image || 'https://articleweb.blob.core.windows.net/images/blog_default.jpg'}
+              src={article.image || getRandomDefaultImage()}
               alt={article.title}
               className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
               effect="opacity"
               onError={(e) => {
-                e.target.src = 'https://articleweb.blob.core.windows.net/images/blog_default.jpg';
+                e.target.src = getRandomDefaultImage();
               }}
             />
           </div>
@@ -460,12 +461,12 @@ const ArticleCard = ({
           {/* Image */}
           <div className="w-48 h-32 flex-shrink-0">
             <img
-              src={article.image || 'https://articleweb.blob.core.windows.net/images/blog_default.jpg'}
+              src={article.image || getRandomDefaultImage()}
               alt={article.title}
               className="w-full h-full object-cover"
               onError={(e) => {
                 console.log('Image failed to load:', article.image);
-                e.target.src = 'https://articleweb.blob.core.windows.net/images/blog_default.jpg';
+                e.target.src = getRandomDefaultImage();
               }}
             />
           </div>
@@ -538,12 +539,12 @@ const ArticleCard = ({
         {/* Image */}
         <div className="aspect-video overflow-hidden">
           <img
-            src={article.image || 'https://articleweb.blob.core.windows.net/images/blog_default.jpg'}
+            src={article.image || getRandomDefaultImage()}
             alt={article.title}
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
             onError={(e) => {
               console.log('Grid image failed to load:', article.image);
-              e.target.src = 'https://articleweb.blob.core.windows.net/images/blog_default.jpg';
+              e.target.src = getRandomDefaultImage();
             }}
           />
         </div>

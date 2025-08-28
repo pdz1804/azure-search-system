@@ -5,6 +5,7 @@ import { EyeIcon, HeartIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { articleApi } from '../api/articleApi';
 import LoadingSpinner from './LoadingSpinner';
+import { getRandomDefaultImage } from '../utils/defaultImage';
 
 const RelatedArticles = ({ currentArticleId, authorId, tags = [] }) => {
   const [articles, setArticles] = useState([]);
@@ -104,7 +105,7 @@ const RelatedArticles = ({ currentArticleId, authorId, tags = [] }) => {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
                       console.log('Related article image failed to load:', article.image);
-                      e.target.src = 'https://articleweb.blob.core.windows.net/images/blog_default.jpg';
+                      e.target.src = getRandomDefaultImage();
                     }}
                   />
                 </div>

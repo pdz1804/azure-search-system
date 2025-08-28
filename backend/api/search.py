@@ -247,9 +247,9 @@ async def search_authors(
     try:
         cache_key = f"search:authors:{q}:{k}:{page_index}:{page_size}:{app_id or 'none'}"
         cached = await get_cache(cache_key)
-        # if cached is not None:
-        #     print(f"👥 Redis Cache HIT for authors search: {q}")
-        #     return cached
+        if cached is not None:
+            print(f"👥 Redis Cache HIT for authors search: {q}")
+            return cached
         
         print(f"👥 Redis Cache MISS for authors search: {q} - Loading from search service...")
 
