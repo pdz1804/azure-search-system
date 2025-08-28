@@ -271,6 +271,8 @@ async def get_users_by_ids(user_ids: list, app_id: Optional[str] = None) -> list
     order_map = {id_: idx for idx, id_ in enumerate(user_ids)}
     results.sort(key=lambda x: order_map.get(x['id'], len(user_ids)))
 
+    print(f"👥 [GET USERS BY IDS] Results: {results}")
+
     return results
 
 

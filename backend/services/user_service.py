@@ -377,6 +377,9 @@ async def delete_reaction(article_id: str, app_id: Optional[str] = None) -> bool
     
 async def search_response_users(data: Dict) -> List[dict]:
     users_ids = [user["id"] for user in data.get("results", [])]
+
+    print(f"👥 [SEARCH RESPONSE USERS] Users IDs: {users_ids}")
+
     users = await user_repo.get_users_by_ids(users_ids)
     # Convert to UserDTO format
     return [await _convert_to_user_dto(user) for user in users]

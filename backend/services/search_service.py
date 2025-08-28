@@ -483,6 +483,11 @@ class BackendSearchService:
             
             # Apply score threshold filtering
             all_fused_results = self._apply_score_threshold(all_fused_results)
+            # Ensure strict ordering by final score (descending)
+            try:
+                all_fused_results = sorted(all_fused_results, key=lambda r: r.get("_final", 0.0), reverse=True)
+            except Exception:
+                pass
             total_results = len(all_fused_results)
             
             # Apply pagination if requested
