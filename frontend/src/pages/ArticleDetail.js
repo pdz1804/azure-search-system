@@ -103,9 +103,9 @@ const ArticleDetail = () => {
       more5: processedRecommendations.slice(5, 10),
       total: processedRecommendations.length,
       was_refreshed: processedRecommendations.length > 0,
-      last_updated: new Date().toISOString()
+      last_updated: article?.recommended_time || new Date().toISOString()
     };
-  }, [processedRecommendations]);
+  }, [processedRecommendations, article?.recommended_time]);
     
   const top5Recs = recommendations.top5;
   const more5Recs = recommendations.more5;

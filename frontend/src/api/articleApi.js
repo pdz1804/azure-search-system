@@ -182,6 +182,8 @@ export const articleApi = {
     try {
       // send as multipart/form-data so backend Form(...) parameters are populated
       const form = createFormData(articleData);
+      // Add app_id to article updates
+      form.append('app_id', APP_ID);
       const response = await apiClientFormData.put(`/articles/${id}`, form);
       
       // Invalidate author stats cache for the article's author

@@ -105,7 +105,7 @@ async def follow_user(follower_id: str, followee_id: str) -> bool:
             return False
         following = set(follower.get("following", []))
         if followee_id in following:
-            return False  # Already following
+            return True  # Already following, consider this a success
         following.add(followee_id)
         follower["following"] = list(following)
         await users.upsert_item(body=follower)
