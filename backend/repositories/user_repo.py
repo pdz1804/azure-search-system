@@ -15,11 +15,14 @@ async def get_users():
 async def get_list_user(app_id: Optional[str] = None):
     users = await get_users()
     
-    # Note: Users don't have app_id directly, but we can filter users who have articles in the specified app
-    # For now, we'll return all users since users are shared across apps, but in the service layer
-    # we'll filter their stats by app_id
-    query = "SELECT * FROM c"
-    parameters = []
+    # Filter users by app_id if provided
+    if app_id:
+        query = "SELECT * FROM c WHERE c.app_id = @app_id"
+        parameters = [{"name": "@app_id", "value": app_id}]
+    else:
+        query = "SELECT * FROM c"
+        parameters = []
+        
     results = []
     async for item in users.query_items(
         query=query,

@@ -408,7 +408,7 @@ async def get_articles_by_category(
         total_items = count
         break
     
-    total_pages = (total_items + limit - 1) // limit
+    total_pages = math.ceil(total_items / limit) if total_items > 0 else 1
     
     return {
         "items": results,
@@ -420,15 +420,15 @@ async def get_articles_by_category(
 
 
 async def get_total_articles_count_by_author(author_id: str, app_id: Optional[str] = None) -> int:
-    """Get total count of published articles by specific author."""
+    """Get total count of active articles by specific author (matching get_article_by_author filter)."""
     try:
         articles = await get_articles()
         
         if app_id:
-            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published' AND c.author_id = @author_id AND c.app_id = @app_id"
+            query = "SELECT VALUE COUNT(1) FROM c WHERE c.author_id = @author_id AND c.is_active = true AND c.app_id = @app_id"
             parameters = [{"name": "@author_id", "value": author_id}, {"name": "@app_id", "value": app_id}]
         else:
-            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published' AND c.author_id = @author_id"
+            query = "SELECT VALUE COUNT(1) FROM c WHERE c.author_id = @author_id AND c.is_active = true"
             parameters = [{"name": "@author_id", "value": author_id}]
         
         async for count in articles.query_items(query=query, parameters=parameters):
@@ -439,15 +439,15 @@ async def get_total_articles_count_by_author(author_id: str, app_id: Optional[st
 
 
 async def get_total_articles_count(app_id: Optional[str] = None) -> int:
-    """Get total count of published articles."""
+    """Get total count of active articles (matching list_articles filter)."""
     try:
         articles = await get_articles()
         
         if app_id:
-            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published' AND c.app_id = @app_id"
+            query = "SELECT VALUE COUNT(1) FROM c WHERE c.is_active = true AND c.app_id = @app_id"
             parameters = [{"name": "@app_id", "value": app_id}]
         else:
-            query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published'"
+            query = "SELECT VALUE COUNT(1) FROM c WHERE c.is_active = true"
             parameters = []
             
         async for count in articles.query_items(query=query, parameters=parameters):
@@ -455,3 +455,80 @@ async def get_total_articles_count(app_id: Optional[str] = None) -> int:
         return 0
     except Exception:
         return 0
+
+async def get_article_summary_counts(app_id: Optional[str] = None) -> Dict:
+    """Get efficient count-based summary for articles with all statistics."""
+    try:
+        articles = await get_articles()
+        
+        # Build base filter conditions
+        if app_id:
+            base_filter = "c.is_active = true AND c.app_id = @app_id"
+            parameters = [{"name": "@app_id", "value": app_id}]
+        else:
+            base_filter = "c.is_active = true"
+            parameters = []
+        
+        # Execute all count queries in parallel for better performance
+        queries = {
+            "total": f"SELECT VALUE COUNT(1) FROM c WHERE {base_filter}",
+            "published": f"SELECT VALUE COUNT(1) FROM c WHERE {base_filter} AND c.status = 'published'",
+            "draft": f"SELECT VALUE COUNT(1) FROM c WHERE {base_filter} AND c.status = 'draft'",
+            "authors": f"SELECT VALUE COUNT(DISTINCT c.author_id) FROM c WHERE {base_filter} AND c.author_id != null",
+        }
+        
+        # Execute count queries
+        results = {}
+        for key, query in queries.items():
+            async for count in articles.query_items(query=query, parameters=parameters):
+                results[key] = count
+                break
+        
+        return {
+            "total_articles": results.get("total", 0),
+            "published_articles": results.get("published", 0),
+            "draft_articles": results.get("draft", 0),
+            "authors": results.get("authors", 0),
+        }
+    except Exception:
+        return {
+            "total_articles": 0,
+            "published_articles": 0,
+            "draft_articles": 0,
+            "authors": 0,
+        }
+
+async def get_article_summary_aggregations(app_id: Optional[str] = None) -> Dict:
+    """Get aggregation statistics (views, likes) for articles."""
+    try:
+        articles = await get_articles()
+        
+        # Build aggregation query
+        if app_id:
+            query = """
+                SELECT 
+                    SUM(c.views) as total_views,
+                    SUM(c.likes) as total_likes
+                FROM c 
+                WHERE c.is_active = true AND c.app_id = @app_id
+            """
+            parameters = [{"name": "@app_id", "value": app_id}]
+        else:
+            query = """
+                SELECT 
+                    SUM(c.views) as total_views,
+                    SUM(c.likes) as total_likes
+                FROM c 
+                WHERE c.is_active = true
+            """
+            parameters = []
+        
+        async for result in articles.query_items(query=query, parameters=parameters):
+            return {
+                "total_views": int(result.get("total_views", 0) or 0),
+                "total_likes": int(result.get("total_likes", 0) or 0),
+            }
+        
+        return {"total_views": 0, "total_likes": 0}
+    except Exception:
+        return {"total_views": 0, "total_likes": 0}
