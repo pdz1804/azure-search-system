@@ -166,67 +166,9 @@ async def _convert_to_article_dto(article: dict) -> dict:
         "total_view": article.get("views", 0)
     }
 
-async def _convert_to_article_detail_dto(article: dict, app_id: Optional[str] = None) -> dict:
+async def _convert_to_article_detail_dto(article: dict, recommended_dtos: Optional[List[dict]] = None, app_id: Optional[str] = None) -> dict:
     """Convert article data to dict following ArticleDetailDTO structure"""
     author_dto = await _convert_to_author_dto_with_avatar(article)
-    
-    # Get recommended article IDs from database
-    recommended_ids = []
-    recommended_dtos = []
-    
-    # Check if article already has recommendations in the database
-    existing_recommendations = article.get("recommended", [])
-    if existing_recommendations:
-        # Extract article IDs from existing recommendations
-        recommended_ids = [rec.get("article_id") for rec in existing_recommendations if rec.get("article_id")]
-        print(f"📋 Found {len(recommended_ids)} existing recommendations for article {article.get('id', '')}")
-        print(f"📋 Recommendation IDs: {recommended_ids[:3]}..." if len(recommended_ids) > 3 else f"📋 Recommendation IDs: {recommended_ids}")
-    else:
-        # If no recommendations exist, generate them
-        try:
-            from backend.services.recommendation_service import get_recommendation_service
-                        
-            article_id = article.get("id", "")
-            recommendation_service = get_recommendation_service()
-                        
-            print(f"🔄 No recommendations found for article {article_id}, generating new ones...")
-                        
-            # Get recommendations using recommendation service
-            recommendations, was_refreshed = await recommendation_service.get_article_recommendations(article_id, app_id)
-                        
-            if recommendations and was_refreshed:
-                # Extract just the article IDs from recommendations
-                recommended_ids = [rec.get("article_id") for rec in recommendations if rec.get("article_id")]
-                print(f"✅ Generated {len(recommended_ids)} recommendations for article {article_id}")
-            else:
-                recommended_ids = []
-                        
-        except Exception as e:
-            print(f"⚠️ Failed to generate recommendations for article {article.get('id', '')}: {e}")
-            # Continue without recommendations rather than failing
-            recommended_ids = []
-    
-    # Convert recommended article IDs to ArticleDTO objects
-    if recommended_ids:
-        try:
-            print(f"🔄 Converting {len(recommended_ids)} recommendation IDs to full article objects...")
-            for rec_id in recommended_ids:
-                rec_article = await article_repo.get_article_by_id(rec_id, app_id=app_id)
-                if rec_article:
-                    # Filter recommendations by app_id if specified
-                    if app_id and rec_article.get('app_id') != app_id:
-                        print(f"🔒 Filtering recommendation {rec_id} - different app_id")
-                        continue
-                    
-                    rec_dto = await _convert_to_article_dto(rec_article)
-                    recommended_dtos.append(rec_dto)  # rec_dto is already a dict now
-                    print(f"✅ Converted recommendation {rec_id} to article DTO: {rec_dto.get('title', 'No title')}")
-                else:
-                    print(f"⚠️ Could not find article for recommendation ID: {rec_id}")
-            print(f"📋 Final recommended_dtos count: {len(recommended_dtos)}")
-        except Exception as e:
-            print(f"⚠️ Failed to fetch recommended articles: {e}")
-            recommended_dtos = []
     
     return {
         "app_id": article.get("app_id", ""),
@@ -275,7 +217,7 @@ async def create_article(doc: dict, app_id: Optional[str] = None) -> dict:
     )
     
     # Convert to dict before returning
-    return await _convert_to_article_detail_dto(art, app_id=app_id)
+    return await _convert_to_article_detail_dto(art, None, app_id=app_id)
 
 async def get_article_by_id(article_id: str, app_id: Optional[str] = None) -> Optional[dict]:
     return await article_repo.get_article_by_id(article_id, app_id=app_id)
@@ -308,7 +250,65 @@ async def get_article_detail(article_id: str, app_id: Optional[str] = None) -> O
             print(f"🔒 Article {article_id} belongs to app '{article.get('app_id')}', requested app '{app_id}' - access denied")
             return None
         
-        article_dict = await _convert_to_article_detail_dto(article, app_id=app_id)
+        # Get recommended article IDs from database
+        recommended_ids = []
+        recommended_dtos = []
+        
+        # Check if article already has recommendations in the database
+        existing_recommendations = article.get("recommended", [])
+        if existing_recommendations:
+            # Extract article IDs from existing recommendations
+            recommended_ids = [rec.get("article_id") for rec in existing_recommendations if rec.get("article_id")]
+            print(f"📋 Found {len(recommended_ids)} existing recommendations for article {article.get('id', '')}")
+            print(f"📋 Recommendation IDs: {recommended_ids[:3]}..." if len(recommended_ids) > 3 else f"📋 Recommendation IDs: {recommended_ids}")
+        else:
+            # If no recommendations exist, generate them
+            try:
+                from backend.services.recommendation_service import get_recommendation_service
+                            
+                recommendation_service = get_recommendation_service()
+                            
+                print(f"🔄 No recommendations found for article {article_id}, generating new ones...")
+                            
+                # Get recommendations using recommendation service
+                recommendations, was_refreshed = await recommendation_service.get_article_recommendations(article_id, app_id)
+                            
+                if recommendations and was_refreshed:
+                    # Extract just the article IDs from recommendations
+                    recommended_ids = [rec.get("article_id") for rec in recommendations if rec.get("article_id")]
+                    print(f"✅ Generated {len(recommended_ids)} recommendations for article {article_id}")
+                else:
+                    recommended_ids = []
+                            
+            except Exception as e:
+                print(f"⚠️ Failed to generate recommendations for article {article.get('id', '')}: {e}")
+                # Continue without recommendations rather than failing
+                recommended_ids = []
+        
+        # Convert recommended article IDs to ArticleDTO objects
+        if recommended_ids:
+            try:
+                print(f"🔄 Converting {len(recommended_ids)} recommendation IDs to full article objects...")
+                for rec_id in recommended_ids:
+                    rec_article = await article_repo.get_article_by_id(rec_id, app_id=app_id)
+                    if rec_article:
+                        # Filter recommendations by app_id if specified
+                        if app_id and rec_article.get('app_id') != app_id:
+                            print(f"🔒 Filtering recommendation {rec_id} - different app_id")
+                            continue
+                        
+                        rec_dto = await _convert_to_article_dto(rec_article)
+                        recommended_dtos.append(rec_dto)  # rec_dto is already a dict now
+                        print(f"✅ Converted recommendation {rec_id} to article DTO: {rec_dto.get('title', 'No title')}")
+                    else:
+                        print(f"⚠️ Could not find article for recommendation ID: {rec_id}")
+                print(f"📋 Final recommended_dtos count: {len(recommended_dtos)}")
+            except Exception as e:
+                print(f"⚠️ Failed to fetch recommended articles: {e}")
+                recommended_dtos = []
+        
+        # Convert to detail DTO with recommendations
+        article_dict = await _convert_to_article_detail_dto(article, recommended_dtos, app_id=app_id)
         
         # Cache the dict data using new cache API
         await set_cache(
@@ -347,7 +347,7 @@ async def update_article(article_id: str, update_doc: dict, app_id: Optional[str
     
     # Convert to dict before returning
     if updated_article:
-        return await _convert_to_article_detail_dto(updated_article, app_id=app_id)
+        return await _convert_to_article_detail_dto(updated_article, None, app_id=app_id)
     return None
 
 async def delete_article(article_id: str, app_id: Optional[str] = None):
