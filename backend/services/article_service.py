@@ -19,9 +19,99 @@ from backend.model.dto.article_dto import AuthorDTO
 from backend.repositories import article_repo
 from backend.services import user_service
 from backend.services.cache_service import (
-    get_cache, set_cache, delete_cache_pattern, 
-    CACHE_KEYS, CACHE_TTL, generate_cache_key
+    get_cache, set_cache, delete_cache, delete_cache_pattern, 
+    CACHE_KEYS, CACHE_TTL
 )
+
+async def clear_affected_caches(
+    operation: str,
+    app_id: Optional[str] = None,
+    article_id: Optional[str] = None,
+    author_id: Optional[str] = None,
+    updated_fields: Optional[List[str]] = None
+):
+    """
+    Universal cache clearing function that intelligently clears only affected caches
+    
+    Operations:
+    - "create": New article created → clear all listings, stats, categories, author
+    - "delete": Article deleted → clear all listings, stats, categories, author
+    - "update": Article updated → selective clearing based on updated_fields
+    - "like": Article liked → clear detail, popular, stats
+    - "unlike": Article unliked → clear detail, popular, stats  
+    - "dislike": Article disliked → clear detail, stats only
+    - "undislike": Article undisliked → clear detail, stats only
+    - "view": Article viewed → clear detail, popular, stats
+    """
+    
+    print(f"🗑️ Cache clearing: {operation} (app_id: {app_id}, article_id: {article_id}, author_id: {author_id})")
+    
+    # Always clear article detail if article_id provided
+    if article_id:
+        await delete_cache(CACHE_KEYS["article_detail"], app_id=app_id, article_id=article_id)
+    
+    # Operation-specific cache clearing
+    if operation == "create":
+        # New article affects everything
+        await delete_cache_pattern(CACHE_KEYS["articles_home"] + "*", app_id=app_id)
+        await delete_cache_pattern(CACHE_KEYS["articles_popular"] + "*", app_id=app_id)
+        await delete_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)
+        await delete_cache(CACHE_KEYS["homepage_categories"], app_id=app_id)
+        if author_id:
+            author_pattern = CACHE_KEYS["articles_author"].format(author_id=author_id) + "*"
+            await delete_cache_pattern(author_pattern, app_id=app_id)
+    
+    elif operation == "delete":
+        # Article removal affects everything
+        await delete_cache_pattern(CACHE_KEYS["articles_home"] + "*", app_id=app_id)
+        await delete_cache_pattern(CACHE_KEYS["articles_popular"] + "*", app_id=app_id)
+        await delete_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)
+        await delete_cache(CACHE_KEYS["homepage_categories"], app_id=app_id)
+        if author_id:
+            author_pattern = CACHE_KEYS["articles_author"].format(author_id=author_id) + "*"
+            await delete_cache_pattern(author_pattern, app_id=app_id)
+    
+    elif operation == "update" and updated_fields:
+        fields_set = set(updated_fields)
+        
+        # Recommendations only - minimal impact
+        if fields_set <= {'recommended', 'recommended_time'}:
+            # Only article detail already cleared above
+            pass
+        
+        # Status change affects visibility
+        elif 'status' in fields_set:
+            await delete_cache_pattern(CACHE_KEYS["articles_home"] + "*", app_id=app_id)
+            await delete_cache_pattern(CACHE_KEYS["articles_popular"] + "*", app_id=app_id)
+            await delete_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)
+            if author_id:
+                author_pattern = CACHE_KEYS["articles_author"].format(author_id=author_id) + "*"
+                await delete_cache_pattern(author_pattern, app_id=app_id)
+        
+        # Tags change affects categories
+        elif 'tags' in fields_set:
+            await delete_cache(CACHE_KEYS["homepage_categories"], app_id=app_id)
+            
+        elif 'abstract' in fields_set:
+            await delete_cache_pattern(CACHE_KEYS["articles_popular"] + "*", app_id=app_id)
+            await delete_cache(CACHE_KEYS["homepage_categories"], app_id=app_id)
+
+        # Content changes affect popularity
+        elif any(field in fields_set for field in ['title', 'content', 'abstract', 'image']):
+            await delete_cache_pattern(CACHE_KEYS["articles_popular"] + "*", app_id=app_id)
+        
+        # Other minor changes - only detail cache cleared above
+    
+    elif operation in ["like", "unlike", "view"]:
+        # Interactions that affect popularity
+        await delete_cache_pattern(CACHE_KEYS["articles_popular"] + "*", app_id=app_id)
+        await delete_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)
+    
+    elif operation in ["dislike", "undislike"]:
+        # Interactions that only affect stats
+        await delete_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)
+    
+    print(f"✅ Cache clearing completed for {operation}")
 
 async def _convert_to_author_dto(article: dict) -> AuthorDTO:
     """Convert article author data to AuthorDTO"""
@@ -175,10 +265,12 @@ async def create_article(doc: dict, app_id: Optional[str] = None) -> dict:
     inserted_id = await article_repo.insert_article(doc)
     art = await article_repo.get_article_by_id(inserted_id, app_id=app_id)
     
-    # Invalidate caches that list articles so the home/recent pages
-    # reflect the newly created item.
-    await delete_cache_pattern("articles:home*")
-    await delete_cache_pattern("articles:recent*")
+    # Clear affected caches
+    await clear_affected_caches(
+        operation="create",
+        app_id=app_id,
+        author_id=doc.get("author_id")
+    )
     
     # Convert to dict before returning
     return await _convert_to_article_detail_dto(art, app_id=app_id)
@@ -195,14 +287,9 @@ async def get_article_by_id(article_id: str, app_id: Optional[str] = None) -> Op
         Dict following ArticleDetailDTO structure with recommended field (list of article data)
         Returns None if article not found or doesn't belong to specified app_id
     """
-    # Try to get from cache first
-    cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
-    if app_id:
-        cache_key = f"{cache_key}:app_{app_id}"
+    # Try to get from cache first using new cache API
+    cached_article = await get_cache(CACHE_KEYS["article_detail"], app_id=app_id, article_id=article_id)
     
-    cached_article = await get_cache(cache_key)
-    
-    article = None
     if cached_article:
         return cached_article
     else:
@@ -217,8 +304,14 @@ async def get_article_by_id(article_id: str, app_id: Optional[str] = None) -> Op
         
         article_dict = await _convert_to_article_detail_dto(article, app_id=app_id)
         
-        # Cache the dict data
-        await set_cache(cache_key, article_dict, CACHE_TTL["detail"])
+        # Cache the dict data using new cache API
+        await set_cache(
+            CACHE_KEYS["article_detail"], 
+            article_dict, 
+            app_id=app_id, 
+            ttl=CACHE_TTL["detail"],
+            article_id=article_id
+        )
         
         return article_dict
     
@@ -232,22 +325,19 @@ async def update_article(article_id: str, update_doc: dict, app_id: Optional[str
     print(f"📝 Article service updating article {article_id}")
     print(f"🔑 Update fields: {list(update_doc.keys())}")
     
+    # Get article info before update to get author_id
+    original_article = await article_repo.get_article_by_id(article_id)
+    
     updated_article = await article_repo.update_article(article_id, update_doc)
     
-    # Clear caches to ensure fresh data
-    # Clear all app_id variants for this article or specific app_id
-    if app_id:
-        cache_key = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}:app_{app_id}"
-        await delete_cache_pattern(cache_key)
-    else:
-        cache_key_pattern = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}*"
-        await delete_cache_pattern(cache_key_pattern)
-    
-    # Clear home and recent caches for all app_ids
-    await delete_cache_pattern("articles:home*")
-    await delete_cache_pattern("articles:recent*")
-    
-    print(f"🗑️ Cleared caches for article {article_id}")
+    # Clear affected caches based on updated fields
+    await clear_affected_caches(
+        operation="update",
+        app_id=app_id,
+        article_id=article_id,
+        author_id=original_article.get("author_id") if original_article else None,
+        updated_fields=list(update_doc.keys())
+    )
     
     # Convert to dict before returning
     if updated_article:
@@ -255,25 +345,33 @@ async def update_article(article_id: str, update_doc: dict, app_id: Optional[str
     return None
 
 async def delete_article(article_id: str, app_id: Optional[str] = None):
+    # Get article info before deletion to get author_id and app_id
+    article_to_delete = await article_repo.get_article_by_id(article_id)
+    
     await article_repo.delete_article(article_id)
     await user_service.delete_reaction(article_id)
     
-    # Clear all app_id variants for this article or specific app_id
-    if app_id:
-        cache_key = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}:app_{app_id}"
-        await delete_cache_pattern(cache_key)
-    else:
-        cache_key_pattern = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}*"
-        await delete_cache_pattern(cache_key_pattern)
+    # Use the article's actual app_id if not provided
+    if not app_id and article_to_delete:
+        app_id = article_to_delete.get("app_id")
     
-    # Clear home and recent caches for all app_ids
-    await delete_cache_pattern("articles:home*")
-    await delete_cache_pattern("articles:recent*")
+    # Clear affected caches
+    await clear_affected_caches(
+        operation="delete",
+        app_id=app_id,
+        article_id=article_id,
+        author_id=article_to_delete.get("author_id") if article_to_delete else None
+    )
 
 async def list_articles(page: int, page_size: int, app_id: Optional[str] = None) -> List[dict]:
-    cache_key = generate_cache_key(CACHE_KEYS["articles_home"], page=page, page_size=page_size, app_id=app_id or 'none')
+    # Try to get from cache using new cache API
+    cached_articles = await get_cache(
+        CACHE_KEYS["articles_home"], 
+        app_id=app_id, 
+        page=page, 
+        page_size=page_size
+    )
     
-    cached_articles = await get_cache(cache_key)
     if cached_articles:
         print(f"📋 Cache HIT for home articles page {page}")
         # Return cached dict data directly
@@ -288,66 +386,38 @@ async def list_articles(page: int, page_size: int, app_id: Optional[str] = None)
     if articles:
         # Convert to dicts
         article_dicts = [await _convert_to_article_dto(article) for article in articles]
-        # Cache the dicts
-        await set_cache(cache_key, article_dicts, CACHE_TTL["home"])
+        # Cache the dicts using new cache API
+        await set_cache(
+            CACHE_KEYS["articles_home"], 
+            article_dicts, 
+            app_id=app_id, 
+            ttl=CACHE_TTL["home"],
+            page=page,
+            page_size=page_size
+        )
         return article_dicts
     
     return []
     
 async def increment_article_views(article_id: str, app_id: Optional[str] = None):
     await article_repo.increment_article_views(article_id)
-    # Clear cache for all app_id variants or specific app_id
-    if app_id:
-        cache_key = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}:app_{app_id}"
-        await delete_cache_pattern(cache_key)
-    else:
-        # Clear all app_id variants for this article
-        cache_key_pattern = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}*"
-        await delete_cache_pattern(cache_key_pattern)
+    await clear_affected_caches(operation="view", app_id=app_id, article_id=article_id)
 
 async def increment_article_dislikes(article_id: str, app_id: Optional[str] = None):
     await article_repo.increment_article_dislikes(article_id)
-    # Clear cache for all app_id variants or specific app_id
-    if app_id:
-        cache_key = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}:app_{app_id}"
-        await delete_cache_pattern(cache_key)
-    else:
-        # Clear all app_id variants for this article
-        cache_key_pattern = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}*"
-        await delete_cache_pattern(cache_key_pattern)
+    await clear_affected_caches(operation="dislike", app_id=app_id, article_id=article_id)
 
 async def increment_article_likes(article_id: str, app_id: Optional[str] = None):
     await article_repo.increment_article_likes(article_id)
-    # Clear cache for all app_id variants or specific app_id
-    if app_id:
-        cache_key = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}:app_{app_id}"
-        await delete_cache_pattern(cache_key)
-    else:
-        # Clear all app_id variants for this article
-        cache_key_pattern = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}*"
-        await delete_cache_pattern(cache_key_pattern)
+    await clear_affected_caches(operation="like", app_id=app_id, article_id=article_id)
 
 async def decrement_article_likes(article_id: str, app_id: Optional[str] = None):
     await article_repo.decrement_article_likes(article_id)
-    # Clear cache for all app_id variants or specific app_id
-    if app_id:
-        cache_key = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}:app_{app_id}"
-        await delete_cache_pattern(cache_key)
-    else:
-        # Clear all app_id variants for this article
-        cache_key_pattern = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}*"
-        await delete_cache_pattern(cache_key_pattern)
+    await clear_affected_caches(operation="unlike", app_id=app_id, article_id=article_id)
 
 async def decrement_article_dislikes(article_id: str, app_id: Optional[str] = None):
     await article_repo.decrement_article_dislikes(article_id)
-    # Clear cache for all app_id variants or specific app_id
-    if app_id:
-        cache_key = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}:app_{app_id}"
-        await delete_cache_pattern(cache_key)
-    else:
-        # Clear all app_id variants for this article
-        cache_key_pattern = f"{CACHE_KEYS['article_detail'].format(article_id=article_id)}*"
-        await delete_cache_pattern(cache_key_pattern)
+    await clear_affected_caches(operation="undislike", app_id=app_id, article_id=article_id)
 
 # async def like_article(article_id: str, user_id: str) -> bool:
 #     """Like an article. Returns True if successful, False if already liked."""
@@ -397,8 +467,15 @@ async def decrement_article_dislikes(article_id: str, app_id: Optional[str] = No
 #         return False
 
 async def get_articles_by_author(author_id: str, page: int = 1, page_size: int = 20, app_id: Optional[str] = None) -> List[dict]:
-    cache_key = f"articles:author:{author_id}:page_{page}_size_{page_size}:app_{app_id or 'none'}"
-    cached_articles = await get_cache(cache_key)
+    # Try to get from cache using new cache API
+    cached_articles = await get_cache(
+        CACHE_KEYS["articles_author"], 
+        app_id=app_id, 
+        author_id=author_id,
+        page=page, 
+        page_size=page_size
+    )
+    
     if cached_articles:
         print(f"✍️ Redis Cache HIT for author {author_id} articles")
         return cached_articles
@@ -412,8 +489,16 @@ async def get_articles_by_author(author_id: str, page: int = 1, page_size: int =
     if articles:
         # Convert to dicts
         article_dicts = [await _convert_to_article_dto(article) for article in articles]
-        # Cache the dicts
-        await set_cache(cache_key, article_dicts,ttl=CACHE_TTL["user_articles"])
+        # Cache the dicts using new cache API
+        await set_cache(
+            CACHE_KEYS["articles_author"], 
+            article_dicts, 
+            app_id=app_id, 
+            ttl=CACHE_TTL["author"],
+            author_id=author_id,
+            page=page,
+            page_size=page_size
+        )
         return article_dicts
     
     return []
@@ -508,9 +593,14 @@ async def get_articles_by_author_with_pagination(author_id: str, page: int = 1, 
         }
 
 async def get_popular_articles(page: int = 1, page_size: int = 10, app_id: Optional[str] = None) -> List[dict]:
-    cache_key = generate_cache_key(CACHE_KEYS["articles_popular"], page=page, page_size=page_size, app_id=app_id or 'none')
+    # Try to get from cache using new cache API
+    cached_articles = await get_cache(
+        CACHE_KEYS["articles_popular"], 
+        app_id=app_id, 
+        page=page, 
+        page_size=page_size
+    )
     
-    cached_articles = await get_cache(cache_key)
     if cached_articles:
         # Return cached dict data directly
         return cached_articles
@@ -587,8 +677,15 @@ async def get_popular_articles(page: int = 1, page_size: int = 10, app_id: Optio
         # Convert to dicts
         article_dicts = [await _convert_to_article_dto(article) for article in result]
         
-        # Cache the dicts
-        await set_cache(cache_key, article_dicts, CACHE_TTL["popular"])
+        # Cache the dicts using new cache API
+        await set_cache(
+            CACHE_KEYS["articles_popular"], 
+            article_dicts, 
+            app_id=app_id, 
+            ttl=CACHE_TTL["popular"],
+            page=page,
+            page_size=page_size
+        )
         
         return article_dicts
         
@@ -614,12 +711,9 @@ async def get_summary(app_id: Optional[str] = None) -> Dict:
 
     Note: For simplicity we fetch up to 1000 most recent articles.
     """
-    # Check Redis cache first with app_id-specific key
-    cache_key = f"homepage:statistics"
-    if app_id:
-        cache_key = f"homepage:statistics:app_{app_id}"
+    # Check Redis cache first using new cache API
+    cached_stats = await get_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)
     
-    cached_stats = await get_cache(cache_key)
     if cached_stats:
         print(f"📊 Redis Cache HIT for statistics (app_id: {app_id or 'all'})")
         return cached_stats
@@ -645,8 +739,8 @@ async def get_summary(app_id: Optional[str] = None) -> Dict:
             "authors": authors,
         }
         
-        # Cache the results for 3 minutes (180 seconds)
-        await set_cache(cache_key, stats_data, ttl=180)
+        # Cache the results using new cache API
+        await set_cache(CACHE_KEYS["homepage_statistics"], stats_data, app_id=app_id, ttl=180)
         print(f"📊 Redis Cache SET for statistics (app_id: {app_id or 'all'})")
         
         return stats_data
@@ -666,9 +760,9 @@ async def get_total_articles_count(app_id: Optional[str] = None):
 
 async def get_categories(app_id: Optional[str] = None) -> List[Dict]:
     """Get all available categories and their article counts with caching."""
-    # Check Redis cache first
-    cache_key = f"homepage:categories:app_{app_id or 'none'}"
-    cached_categories = await get_cache(cache_key)
+    # Check Redis cache first using new cache API
+    cached_categories = await get_cache(CACHE_KEYS["homepage_categories"], app_id=app_id)
+    
     if cached_categories:
         print("🏷️ Redis Cache HIT for categories")
         return cached_categories
@@ -729,8 +823,8 @@ async def get_categories(app_id: Optional[str] = None) -> List[Dict]:
                 {"name": "Lifestyle", "count": 5}
             ]
         
-        # Cache the results for 3 minutes (180 seconds)
-        await set_cache(cache_key, categories_result, ttl=180)
+        # Cache the results using new cache API
+        await set_cache(CACHE_KEYS["homepage_categories"], categories_result, app_id=app_id, ttl=180)
         print("🏷️ Redis Cache SET for categories")
         
         return categories_result
