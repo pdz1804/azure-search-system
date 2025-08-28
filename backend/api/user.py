@@ -29,9 +29,26 @@ def require_admin(current_user: dict = Depends(get_current_user)):
     return current_user
 
 @users.get("/")
-async def list_users(app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
-    users_list = await user_service.list_users(app_id=app_id)
-    return {"success": True, "data": users_list}
+async def list_users(
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results"),
+    featured: Optional[bool] = Query(False, description="Filter for featured users only"),
+    page: Optional[int] = Query(1, description="Page number"),
+    limit: Optional[int] = Query(20, description="Number of users per page")
+):
+    print(f"👥 [API] /users endpoint called with featured={featured}, app_id={app_id}, page={page}, limit={limit}")
+    
+    if featured:
+        # Use the featured users service with caching
+        print(f"👥 [API] Using featured users service with caching")
+        users_result = await user_service.list_users_with_cache(page=page, page_size=limit, featured=True, app_id=app_id)
+        print(f"👥 [API] Featured users service returned {len(users_result.get('data', []))} users")
+        return users_result
+    else:
+        # Use the basic list users service
+        print(f"👥 [API] Using basic list users service")
+        users_list = await user_service.list_users(app_id=app_id)
+        print(f"👥 [API] Basic service returned {len(users_list)} users")
+        return {"success": True, "data": users_list}
 
 @users.get("/{id}")
 async def get_user_by_id(id: str, app_id: Optional[str] = Query(None, description="Application ID for filtering results")):

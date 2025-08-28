@@ -41,7 +41,7 @@ const Home = () => {
 				const [statsResult, categoriesResult, authorsResult] = await Promise.allSettled([
 					articleApi.getStatistics().finally(() => setStatsLoading(false)),
 					articleApi.getCategories().finally(() => setCategoriesLoading(false)),
-					userApi.getAllUsers(1, 7).finally(() => setAuthorsLoading(false))
+					userApi.getAllUsers(1, 7, true).finally(() => setAuthorsLoading(false)) // Use featured=true to get featured authors
 				]);
 
 				// Handle statistics result
@@ -83,6 +83,21 @@ const Home = () => {
 					const authorsData = (authorsResult.value.data?.items || authorsResult.value.data || []).slice(0, 7);
 					setFeaturedAuthors(authorsData);
 					console.log('Authors loaded:', authorsData.length);
+					console.log('Featured authors data:', authorsData.map(a => ({
+						name: a.full_name || a.name,
+						articles: a.articles_count || 0,
+						views: a.total_views || 0,
+						id: a.id || a.user_id
+					})));
+					
+					// Debug: Check raw data structure
+					console.log('Raw featured authors data:', authorsData.slice(0, 3).map(a => ({
+						full_name: a.full_name,
+						name: a.name,
+						articles_count: a.articles_count,
+						total_views: a.total_views,
+						all_fields: Object.keys(a)
+					})));
 				} else if (authorsResult.status === 'rejected') {
 					console.warn('Failed to load authors:', authorsResult.reason);
 				}

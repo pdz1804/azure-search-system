@@ -202,7 +202,7 @@ class RecommendationService:
         
         try:
             # Fetch the current article using repository to avoid circular dependency
-            article = await get_article_by_id_repo(article_id)
+            article = await get_article_by_id_repo(article_id, app_id=app_id)
             if not article:
                 print(f"❌ Article {article_id} not found")
                 return [], False
@@ -256,7 +256,7 @@ class RecommendationService:
             print(f"❌ Error getting recommendations for article {article_id}: {e}")
             return [], False
 
-    async def fetch_article_details_for_recommendations(self, recommendations: List[Dict]) -> List[Dict]:
+    async def fetch_article_details_for_recommendations(self, recommendations: List[Dict], app_id: Optional[str] = None) -> List[Dict]:
         """
         Fetch full article details for lightweight recommendation objects.
         
@@ -295,7 +295,7 @@ class RecommendationService:
             score = rec.get('score', 0.0)
             
             try:
-                article_details = await get_article_by_id_repo(article_id)
+                article_details = await get_article_by_id_repo(article_id, app_id=app_id)
                 if article_details:
                     article_details['recommendation_score'] = score
                     detailed_recommendations.append(article_details)

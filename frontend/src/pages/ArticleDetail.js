@@ -59,7 +59,10 @@ const ArticleDetail = () => {
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
+  const [dislikeLoading, setDislikeLoading] = useState(false);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
   const [reactionType, setReactionType] = useState('none');
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [showMoreRecommendations, setShowMoreRecommendations] = useState(false);
@@ -71,12 +74,43 @@ const ArticleDetail = () => {
   const [recommendedAuthors, setRecommendedAuthors] = useState([]);
   const [recommendationCountdown, setRecommendationCountdown] = useState(null);
 
-  // Extract recommendations from article data - backend now provides detailed recommendations
-  const recommendations = article?.recommendations || {};
-  const top5Recs = recommendations.top5 || [];
-  const more5Recs = recommendations.more5 || [];
-  const totalRecommendations = recommendations.total || 0;
-  const wasRefreshed = recommendations.was_refreshed || false;
+  // Memoized recommendation processing to avoid infinite loops
+  const processedRecommendations = React.useMemo(() => {
+    const backendRecommendations = article?.recommended || article?.recommendations || [];
+    
+    if (!Array.isArray(backendRecommendations)) {
+      return [];
+    }
+    
+    // Check if we have full article objects or just ID/score objects
+    const processed = backendRecommendations.map(rec => {
+      // If it's just an ID/score object, we can't display it properly
+      if (rec.article_id && !rec.title) {
+        console.warn('Recommendation contains only ID, not full article data:', rec);
+        return null;
+      }
+      // If it's a full article object, use it as is
+      return rec;
+    }).filter(Boolean); // Remove null entries
+    
+    console.log('Processing recommendations:', processed.length, 'valid recommendations');
+    return processed;
+  }, [article?.recommended, article?.recommendations]);
+
+  const recommendations = React.useMemo(() => {
+    return {
+      top5: processedRecommendations.slice(0, 5),
+      more5: processedRecommendations.slice(5, 10),
+      total: processedRecommendations.length,
+      was_refreshed: processedRecommendations.length > 0,
+      last_updated: new Date().toISOString()
+    };
+  }, [processedRecommendations]);
+    
+  const top5Recs = recommendations.top5;
+  const more5Recs = recommendations.more5;
+  const totalRecommendations = recommendations.total;
+  const wasRefreshed = recommendations.was_refreshed;
   const lastUpdated = recommendations.last_updated;
 
   // Format countdown display
@@ -243,23 +277,56 @@ const ArticleDetail = () => {
   // No separate fetching needed - they come with the article data
 
   useEffect(() => {
-    // Load recommended authors: top 5 from the authors that this article's author follows
+    // Load popular authors: top 5 authors with most followers/articles/views in current app (excluding current article author)
     const loadRecommendedAuthors = async () => {
       try {
         if (!article?.author_id) return;
-        // We don't have an API to list followings; approximate by loading users and picking top followers
+        
         const usersResp = await userApi.getAllUsers(1, 100);
         if (usersResp.success) {
           const items = usersResp.data?.items || usersResp.data || [];
-          const top = [...items].sort((a, b) => (b.followers || 0) - (a.followers || 0)).slice(0, 5);
+          console.log('Recommended authors - raw user data:', items.slice(0, 2)); // Debug first 2 users
+          console.log('Total users returned:', items.length);
+          
+          // Filter out the current article author and inactive users
+          const filteredUsers = items.filter(user => 
+            user.user_id !== article.author_id && user.is_active !== false
+          );
+          console.log('Users after filtering current author:', filteredUsers.length);
+          
+          // Sort by total_followers first, then by total_articles, then by total_views
+          const top = filteredUsers
+            .sort((a, b) => {
+              const aScore = (a.total_followers || 0) * 10000 + (a.total_articles || 0) * 100 + (a.total_views || 0);
+              const bScore = (b.total_followers || 0) * 10000 + (b.total_articles || 0) * 100 + (b.total_views || 0);
+              return bScore - aScore;
+            })
+            .slice(0, 5);
+            
+          console.log('Recommended authors - top 5:', top); // Debug top 5
+          console.log('Sample user structure:', items[0]); // Debug user structure
           setRecommendedAuthors(top);
         }
       } catch (e) {
-        // silent
+        console.error('Failed to load recommended authors:', e);
       }
     };
     loadRecommendedAuthors();
   }, [article?.author_id]);
+
+  // Debug logging only when article changes
+  useEffect(() => {
+    if (article) {
+      console.log('Article loaded:', {
+        id: article.id,
+        title: article.title,
+        hasContent: !!article.content,
+        hasAbstract: !!article.abstract,
+        hasRecommended: !!article.recommended,
+        recommendedCount: Array.isArray(article.recommended) ? article.recommended.length : 0
+      });
+    }
+  }, [article?.id, article?.recommended?.length]);
 
   const loadUserReactionStatus = async () => {
     try {
@@ -332,35 +399,48 @@ const ArticleDetail = () => {
     }
     
     try {
-    setActionLoading(true);
+      setLikeLoading(true);
       let response;
       
       if (reactionType === 'like') {
         response = await userApi.unlikeArticle(id);
         if (response.success) {
           setReactionType('none');
-          setArticle(prev => ({ ...prev, likes: Math.max(0, (prev?.likes || 0) - 1) }));
           message.success('Article unliked');
         }
       } else {
         // If currently disliked, remove dislike first
         if (reactionType === 'dislike') {
           await userApi.undislikeArticle(id);
-          setArticle(prev => ({ ...prev, dislikes: Math.max(0, (prev?.dislikes || 0) - 1) }));
         }
         
         response = await userApi.likeArticle(id);
         if (response.success) {
           setReactionType('like');
-          setArticle(prev => ({ ...prev, likes: (prev?.likes || 0) + 1 }));
           message.success('Article liked');
+        }
+      }
+      
+      // Refresh article data to get accurate like/dislike counts
+      if (response?.success) {
+        // Only refresh the article data, not the full fetch
+        try {
+          const articleResponse = await articleApi.getArticle(id);
+          if (articleResponse.success) {
+            setArticle(articleResponse.data);
+          }
+          await loadUserReactionStatus();
+        } catch (refreshError) {
+          console.error('Error refreshing article data:', refreshError);
+          // Fallback to full refresh if quick refresh fails
+          await fetchArticle();
         }
       }
     } catch (error) {
       console.error('Error handling like:', error);
       message.error('Failed to update like status');
     } finally {
-      setActionLoading(false);
+      setLikeLoading(false);
     }
   };
 
@@ -371,35 +451,48 @@ const ArticleDetail = () => {
     }
     
     try {
-      setActionLoading(true);
+      setDislikeLoading(true);
       let response;
       
       if (reactionType === 'dislike') {
         response = await userApi.undislikeArticle(id);
         if (response.success) {
           setReactionType('none');
-          setArticle(prev => ({ ...prev, dislikes: Math.max(0, (prev?.dislikes || 0) - 1) }));
           message.success('Article undisliked');
         }
       } else {
         // If currently liked, remove like first
         if (reactionType === 'like') {
           await userApi.unlikeArticle(id);
-          setArticle(prev => ({ ...prev, likes: Math.max(0, (prev?.likes || 0) - 1) }));
         }
         
         response = await userApi.dislikeArticle(id);
         if (response.success) {
           setReactionType('dislike');
-          setArticle(prev => ({ ...prev, dislikes: (prev?.dislikes || 0) + 1 }));
           message.success('Article disliked');
+        }
+      }
+      
+      // Refresh article data to get accurate like/dislike counts
+      if (response?.success) {
+        // Only refresh the article data, not the full fetch
+        try {
+          const articleResponse = await articleApi.getArticle(id);
+          if (articleResponse.success) {
+            setArticle(articleResponse.data);
+          }
+          await loadUserReactionStatus();
+        } catch (refreshError) {
+          console.error('Error refreshing article data:', refreshError);
+          // Fallback to full refresh if quick refresh fails
+          await fetchArticle();
         }
       }
     } catch (error) {
       console.error('Error handling dislike:', error);
       message.error('Failed to update dislike status');
     } finally {
-      setActionLoading(false);
+      setDislikeLoading(false);
     }
   };
 
@@ -408,7 +501,7 @@ const ArticleDetail = () => {
       message.warning('Please login to bookmark articles');
       return;
     }
-    setActionLoading(true);
+    setBookmarkLoading(true);
     try {
       if (isBookmarked) {
         const res = await userApi.unbookmarkArticle(id);
@@ -420,7 +513,7 @@ const ArticleDetail = () => {
     } catch {
       message.error('Failed to update bookmark status');
     } finally {
-      setActionLoading(false);
+      setBookmarkLoading(false);
     }
   };
 
@@ -430,21 +523,21 @@ const ArticleDetail = () => {
       return;
     }
     
-    setActionLoading(true);
+    setFollowLoading(true);
     try {
       if (isFollowing) {
-        await userApi.unfollowUser(article.author_id);
+        await userApi.unfollowUser(authorId);
         message.success('Unfollowed');
         setIsFollowing(false);
       } else {
-        await userApi.followUser(article.author_id);
+        await userApi.followUser(authorId);
         message.success('Followed');
         setIsFollowing(true);
       }
     } catch (error) {
       message.error('Failed to perform action');
     } finally {
-      setActionLoading(false);
+      setFollowLoading(false);
     }
   };
 
@@ -498,17 +591,27 @@ const ArticleDetail = () => {
     );
   }
 
-  console.log('Rendering article:', article);
+
 
   const calculateReadingTime = (content) => {
-    if (!content) return 0;
-    const words = content.split(/\s+/).length;
+    if (!content || typeof content !== 'string') return 1; // Default to 1 min if no content
+    const words = content.trim().split(/\s+/).filter(word => word.length > 0).length;
     const readingSpeed = 200; // Average words per minute
-    return Math.ceil(words / readingSpeed);
+    return Math.max(1, Math.ceil(words / readingSpeed)); // Minimum 1 minute
   };
+  
+  // Get content for reading time calculation (fallback to abstract if content is missing)
+  const contentForReading = article.content || article.abstract || '';
 
-  const likesCount = article.likes || 0;
-  const dislikesCount = article.dislikes || 0;
+  // Handle both backend field names for compatibility
+  const likesCount = article.likes || article.total_like || 0;
+  const dislikesCount = article.dislikes || article.total_dislike || 0;
+  const viewsCount = article.views || article.total_view || 0;
+  
+  // Extract author info from backend structure
+  const authorName = article.author_name || article.author?.name || 'Unknown Author';
+  const authorId = article.author_id || article.author?.id;
+  const authorAvatar = article.author_avatar_url || article.author?.avatar_url;
 
   // Custom components for markdown rendering
   const markdownComponents = {
@@ -610,11 +713,11 @@ const ArticleDetail = () => {
                   }}>
                     <Avatar 
                       size={48} 
-                      src={article.author_avatar_url}
+                      src={authorAvatar}
                       style={{ cursor: 'pointer' }}
-                      onClick={() => navigate(`/profile/${article.author_id}`)}
+                      onClick={() => navigate(`/profile/${authorId}`)}
                     >
-                      {article.author_name?.[0] || 'A'}
+                      {authorName?.[0] || 'A'}
                     </Avatar>
                     
                     <div style={{ flex: 1 }}>
@@ -625,24 +728,24 @@ const ArticleDetail = () => {
                           cursor: 'pointer',
                           color: '#1890ff'
                         }}
-                        onClick={() => navigate(`/profile/${article.author_id}`)}
+                        onClick={() => navigate(`/profile/${authorId}`)}
                       >
-                        {article.author_name}
+                        {authorName}
                       </Text>
                       <br />
                       <Space size={16}>
                         <Text type="secondary" style={{ fontSize: 14 }}>
                           <ClockCircleOutlined style={{ marginRight: 4 }} />
-                          {formatDate(article.created_at)}
+                          {formatDate(article.created_at || article.created_date)}
                         </Text>
                         <Text type="secondary" style={{ fontSize: 14 }}>
                           <EyeOutlined style={{ marginRight: 4 }} />
-                          {calculateReadingTime(article.content)} min read
+                          {calculateReadingTime(contentForReading)} min read
                         </Text>
-                        {article.views > 0 && (
+                        {viewsCount > 0 && (
                           <Text type="secondary" style={{ fontSize: 14 }}>
                             <EyeOutlined style={{ marginRight: 4 }} />
-                            {formatNumber(article.views)} views
+                            {formatNumber(viewsCount)} views
                           </Text>
                         )}
                       </Space>
@@ -650,18 +753,18 @@ const ArticleDetail = () => {
                   </div>
 
                   {/* Featured Image */}
-            {article.image && (
+                  {article.image && (
                     <div style={{ marginBottom: 16 }}>
                       <Image
-                src={article.image}
-                alt={article.title}
+                        src={article.image}
+                        alt={article.title}
                         style={{ 
                           width: '100%', 
                           maxHeight: 400, 
                           objectFit: 'cover',
                           borderRadius: 8
                         }}
-                        fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
+                        fallback="https://articleweb.blob.core.windows.net/images/blog_default.jpg"
                       />
                     </div>
                   )}
@@ -693,7 +796,7 @@ const ArticleDetail = () => {
                     type={reactionType === 'like' ? 'primary' : 'default'}
                     icon={<HeartOutlined />}
                     onClick={handleLike}
-                    loading={actionLoading}
+                    loading={likeLoading}
                     style={{ 
                       borderRadius: 20,
                       height: 40,
@@ -708,7 +811,7 @@ const ArticleDetail = () => {
                     type={reactionType === 'dislike' ? 'primary' : 'default'}
                     icon={<DislikeOutlined />}
                     onClick={handleDislike}
-                    loading={actionLoading}
+                    loading={dislikeLoading}
                     style={{ 
                       borderRadius: 20,
                       height: 40,
@@ -723,7 +826,7 @@ const ArticleDetail = () => {
                     type={isBookmarked ? 'primary' : 'default'}
                     icon={<BookOutlined />}
                     onClick={toggleBookmark}
-                    loading={actionLoading}
+                    loading={bookmarkLoading}
                     style={{ 
                       borderRadius: 20,
                       height: 40,
@@ -739,7 +842,7 @@ const ArticleDetail = () => {
                     type={isFollowing ? "default" : "primary"}
                     icon={isFollowing ? <UserDeleteOutlined /> : <UserAddOutlined />}
                     onClick={handleFollow}
-                    loading={actionLoading}
+                    loading={followLoading}
                       style={{ 
                         borderRadius: 20,
                         height: 40,
@@ -875,11 +978,24 @@ const ArticleDetail = () => {
                                   <Text strong style={{ fontSize: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{rec.title}</Text>
                                 </div>
                                 <div style={{ marginTop: 6 }}>
-                                  <Text type="secondary" style={{ fontSize: 12 }}><UserOutlined /> {rec.author}</Text>
+                                  <Text type="secondary" style={{ fontSize: 12 }}><UserOutlined /> {rec.author?.name || rec.author || 'Unknown Author'}</Text>
                                 </div>
                                 <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
-                                  <Button type="primary" size="small" onClick={() => navigate(`/articles/${rec.id}`)}>Read</Button>
-                                  <Button size="small" shape="default" onClick={() => handleBookmarkRec(rec.id)} style={{ marginLeft: 4 }}>
+                                  <Button type="primary" size="small" onClick={() => {
+                                    const recId = rec.id || rec.article_id;
+                                    console.log('Navigating to recommendation:', { rec, recId });
+                                    if (recId) {
+                                      navigate(`/articles/${recId}`);
+                                    } else {
+                                      console.error('No ID found for recommendation:', rec);
+                                    }
+                                  }}>Read</Button>
+                                  <Button size="small" shape="default" onClick={() => {
+                                    const recId = rec.id || rec.article_id;
+                                    if (recId) {
+                                      handleBookmarkRec(recId);
+                                    }
+                                  }} style={{ marginLeft: 4 }}>
                                     <BookOutlined />
                                   </Button>
                                 </div>
@@ -925,11 +1041,19 @@ const ArticleDetail = () => {
                               <Text strong style={{ fontSize: 14 }}>{rec.title}</Text>
                               <div style={{ marginTop: 6 }}>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
-                                  <UserOutlined /> {rec.author || 'Unknown Author'}
+                                  <UserOutlined /> {rec.author?.name || rec.author || 'Unknown Author'}
                                 </Text>
                               </div>
                               <div style={{ marginTop: 8 }}>
-                                <Button type="primary" size="small" onClick={() => navigate(`/articles/${rec.id}`)}>
+                                <Button type="primary" size="small" onClick={() => {
+                                  const recId = rec.id || rec.article_id;
+                                  console.log('Navigating to modal recommendation:', { rec, recId });
+                                  if (recId) {
+                                    navigate(`/articles/${recId}`);
+                                  } else {
+                                    console.error('No ID found for modal recommendation:', rec);
+                                  }
+                                }}>
                                   Read
                                 </Button>
                               </div>
@@ -947,7 +1071,7 @@ const ArticleDetail = () => {
                   title={
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <UserOutlined style={{ color: '#1890ff' }} />
-                      <span>Recommended Authors</span>
+                      <span>Popular Authors</span>
                     </div>
                   }
                   style={{ 
@@ -967,13 +1091,13 @@ const ArticleDetail = () => {
                           onClick={() => navigate(`/profile/${a.id}`)}
                         >
                           <UserOutlined style={{ marginRight: 6 }} />
-                          {a.full_name}
+                          {a.full_name || a.name || 'Unknown Author'}
                         </Tag>
                       ))}
                     </div>
                   ) : (
                     <div style={{ textAlign: 'center', padding: '8px', color: '#999' }}>
-                      No recommended authors
+                      No popular authors found
                     </div>
                   )}
                 </Card>

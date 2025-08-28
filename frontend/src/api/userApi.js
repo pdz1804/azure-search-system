@@ -1,6 +1,57 @@
 import { apiClient } from './config';
 import { APP_ID } from '../config/appConfig';
 
+// Helper function to normalize user data from backend to frontend format
+const normalizeUserData = (user) => {
+  if (!user) return user;
+  
+  const normalized = { ...user };
+  
+  // Map backend field names to frontend expectations
+  if (user.user_id && !user.id) {
+    normalized.id = user.user_id;
+  }
+  
+  if (user.full_name && !user.name) {
+    normalized.name = user.full_name;
+  }
+  
+  // Ensure we have both fields for compatibility
+  if (user.full_name && !normalized.full_name) {
+    normalized.full_name = user.full_name;
+  }
+  
+  if (user.name && !normalized.full_name) {
+    normalized.full_name = user.name;
+  }
+  
+  // Handle followers/following counts
+  if (user.total_followers !== undefined && user.num_followers === undefined) {
+    normalized.num_followers = user.total_followers;
+  }
+  
+  if (user.total_following !== undefined && user.num_following === undefined) {
+    normalized.num_following = user.total_following;
+  }
+  
+  // Handle article statistics
+  if (user.articles_count !== undefined) {
+    normalized.articles_count = user.articles_count;
+  }
+  
+  if (user.total_views !== undefined) {
+    normalized.total_views = user.total_views;
+  }
+  
+  return normalized;
+};
+
+// Helper function to normalize user arrays
+const normalizeUserArray = (users) => {
+  if (!Array.isArray(users)) return users;
+  return users.map(normalizeUserData);
+};
+
 export const userApi = {
   // Get current user info (legacy method)
   getMe: async () => {
@@ -12,7 +63,10 @@ export const userApi = {
       const response = await apiClient.get(`/users/${userId}`, {
         params: { app_id: APP_ID }
       });
-      return response.data;
+      
+      let userData = response.data?.data || response.data;
+      
+      return normalizeUserData(userData);
     } catch (error) {
       throw error;
     }
@@ -30,6 +84,13 @@ export const userApi = {
           app_id: APP_ID
         }
       });
+      
+      // Backend returns { success: true, data: [...] }
+      if (response.data && response.data.success && response.data.data) {
+        const users = normalizeUserArray(response.data.data);
+        return { ...response.data, data: users };
+      }
+      
       return response.data;
     } catch (error) {
       console.error('AI search users error:', error);
@@ -43,6 +104,14 @@ export const userApi = {
       const response = await apiClient.get(`/users/${id}`, {
         params: { app_id: APP_ID }
       });
+      
+      // Backend returns { success: true, data: { user_id, full_name, ... } }
+      // Frontend expects { id, full_name, ... }
+      if (response.data && response.data.success && response.data.data) {
+        const userData = normalizeUserData(response.data.data);
+        return { success: true, data: userData };
+      }
+      
       return response.data;
     } catch (error) {
       throw error;
@@ -55,9 +124,12 @@ export const userApi = {
       const response = await apiClient.get(`/users/${userId}`, {
         params: { app_id: APP_ID }
       });
+      
+      let userData = response.data?.data || response.data;
+      
       return {
         success: true,
-        data: response.data?.data || response.data
+        data: normalizeUserData(userData)
       };
     } catch (error) {
       return {
@@ -220,6 +292,13 @@ export const userApi = {
       const response = await apiClient.get('/users', {
         params: { page, limit, featured, app_id: APP_ID }
       });
+      
+      // Backend returns { success: true, data: [...] }
+      if (response.data && response.data.success && response.data.data) {
+        const users = normalizeUserArray(response.data.data);
+        return { ...response.data, data: users };
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Get all users error:', error);
@@ -233,6 +312,13 @@ export const userApi = {
       const response = await apiClient.get('/users/admin/all', {
         params: { page, limit, app_id: APP_ID }
       });
+      
+      // Backend returns { success: true, data: [...] }
+      if (response.data && response.data.success && response.data.data) {
+        const users = normalizeUserArray(response.data.data);
+        return { ...response.data, data: users };
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Get all users admin error:', error);

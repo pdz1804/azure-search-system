@@ -34,11 +34,27 @@ const ArticleCard = ({
   onDislike,
   className = ''
 }) => {
+  
+  // Debug logging to see what fields are available
+  if (process.env.NODE_ENV === 'development') {
+    console.log('ArticleCard received article:', {
+      id: article.id || article.article_id,
+      title: article.title,
+      image: article.image,
+      content: article.content,
+      abstract: article.abstract,
+      author_name: article.author_name,
+      author: article.author,
+      created_at: article.created_at,
+      created_date: article.created_date
+    });
+  }
+  
   const navigate = useNavigate();
   const { user, canEditArticle } = useAuth();
   const [userReaction, setUserReaction] = useState('none');
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [likesCount, setLikesCount] = useState(article.likes || 0);
+  const [likesCount, setLikesCount] = useState(article.likes || article.total_like || 0);
   const [reactionLoading, setReactionLoading] = useState(false);
   const [statusLoaded, setStatusLoaded] = useState(false);
 
@@ -47,7 +63,7 @@ const ArticleCard = ({
     if (user && !statusLoaded) {
       loadUserReactionStatus();
     }
-  }, [user, article.id, statusLoaded]);
+  }, [user, article.id || article.article_id, statusLoaded]);
 
   // Load user's reaction status from user data (no API call)
   const loadUserReactionStatus = async () => {
@@ -57,15 +73,16 @@ const ArticleCard = ({
       const userDislikedArticles = user?.disliked_articles || [];
       const userBookmarkedArticles = user?.bookmarked_articles || [];
       
-      const isLiked = userLikedArticles.includes(article.id);
-      const isDisliked = userDislikedArticles.includes(article.id);
-      const isBookmarked = userBookmarkedArticles.includes(article.id);
+          const articleId = article.id || article.article_id;
+    const isLiked = userLikedArticles.includes(articleId);
+    const isDisliked = userDislikedArticles.includes(articleId);
+    const isBookmarked = userBookmarkedArticles.includes(articleId);
       
       setUserReaction(isLiked ? 'like' : isDisliked ? 'dislike' : 'none');
       setIsBookmarked(isBookmarked);
       setStatusLoaded(true);
       
-      console.log(`Article ${article.id} status from user data:`, {
+      console.log(`Article ${article.id || article.article_id} status from user data:`, {
         isLiked,
         isDisliked,
         isBookmarked
@@ -78,19 +95,44 @@ const ArticleCard = ({
 
   // Calculate reading time
   const calculateReadingTime = (content) => {
+    if (!content || typeof content !== 'string') return 1; // Default to 1 min if no content
     const wordsPerMinute = 200;
-    const words = content?.split(' ').length || 0;
-    return Math.ceil(words / wordsPerMinute);
+    const words = content.trim().split(/\s+/).filter(word => word.length > 0).length;
+    return Math.max(1, Math.ceil(words / wordsPerMinute)); // Minimum 1 minute
   };
+  
+  // Get content for reading time calculation (fallback to abstract if content is missing)
+  const contentForReading = article.content || article.abstract || '';
+  
+  // Debug reading time calculation
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Reading time calculation:', {
+      title: article.title,
+      hasContent: !!article.content,
+      hasAbstract: !!article.abstract,
+      contentForReading: contentForReading?.substring(0, 100) + '...',
+      contentLength: contentForReading?.length,
+      wordCount: contentForReading?.trim().split(/\s+/).filter(word => word.length > 0).length,
+      calculatedTime: calculateReadingTime(contentForReading)
+    });
+  }
 
   const handleClick = () => {
-    navigate(`/articles/${article.id}`);
+    const articleId = article.id || article.article_id;
+    if (articleId) {
+      navigate(`/articles/${articleId}`);
+    } else {
+      console.error('Article ID not found:', article);
+    }
   };
 
   const handleAuthorClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    navigate(`/profile/${article.author_id}`);
+    const authorId = article.author_id || article.author?.id;
+    if (authorId) {
+      navigate(`/profile/${authorId}`);
+    }
   };
 
   const handleEdit = (e) => {
@@ -118,14 +160,15 @@ const ArticleCard = ({
     try {
       setReactionLoading(true);
       
+      const articleId = article.id || article.article_id;
       if (userReaction === 'like') {
-        const response = await userApi.unlikeArticle(article.id);
+        const response = await userApi.unlikeArticle(articleId);
         if (response.success) {
           setUserReaction('none');
           setLikesCount(prev => prev - 1);
         }
       } else {
-        const response = await userApi.likeArticle(article.id);
+        const response = await userApi.likeArticle(articleId);
         if (response.success) {
           setUserReaction('like');
           setLikesCount(prev => prev + 1);
@@ -133,7 +176,7 @@ const ArticleCard = ({
       }
       
       // Call parent handler if provided
-      onLike && onLike(article.id);
+      onLike && onLike(articleId);
     } catch (error) {
       toast.error('Failed to update like status');
     } finally {
@@ -151,7 +194,8 @@ const ArticleCard = ({
       return;
     }
 
-    onDislike && onDislike(article.id);
+    const articleId = article.id || article.article_id;
+    onDislike && onDislike(articleId);
   };
 
   // Handle bookmark toggle
@@ -165,14 +209,15 @@ const ArticleCard = ({
     }
 
     try {
+      const articleId = article.id || article.article_id;
       if (isBookmarked) {
-        const response = await userApi.unbookmarkArticle(article.id);
+        const response = await userApi.unbookmarkArticle(articleId);
         if (response.success) {
           setIsBookmarked(false);
           toast.success('Bookmark removed');
         }
       } else {
-        const response = await userApi.bookmarkArticle(article.id);
+        const response = await userApi.bookmarkArticle(articleId);
         if (response.success) {
           setIsBookmarked(true);
           toast.success('Article bookmarked!');
@@ -245,14 +290,14 @@ const ArticleCard = ({
               {showAuthor && (
                 <div className="flex items-center space-x-3" onClick={handleAuthorClick}>
                   <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium cursor-pointer">
-                    {(article.author_name || article.author?.full_name)?.charAt(0).toUpperCase() || <UserIcon className="w-5 h-5" />}
+                    {(article.author_name || article.author?.name || article.author?.full_name)?.charAt(0).toUpperCase() || <UserIcon className="w-5 h-5" />}
                   </div>
                   <div>
                     <p className="font-medium text-gray-900 cursor-pointer hover:text-blue-600">
-                      {article.author_name || article.author?.full_name || 'Unknown Author'}
+                      {article.author_name || article.author?.name || article.author?.full_name || 'Unknown Author'}
                     </p>
                     <p className="text-sm text-gray-500">
-                      {article.created_at ? formatDistanceToNow(new Date(article.created_at), { addSuffix: true }) : 'Recently'}
+                      {(article.created_date || article.created_at) ? formatDistanceToNow(new Date(article.created_date || article.created_at), { addSuffix: true }) : 'Recently'}
                     </p>
                   </div>
                 </div>
@@ -261,11 +306,11 @@ const ArticleCard = ({
               <div className="flex items-center space-x-6 text-sm text-gray-500">
                 <span className="flex items-center">
                   <ClockIcon className="w-4 h-4 mr-1" />
-                  {calculateReadingTime(article.content)} min
+                  {calculateReadingTime(contentForReading)} min
                 </span>
                 <span className="flex items-center">
                   <EyeIcon className="w-4 h-4 mr-1" />
-                  {formatNumber(article.views || 0)}
+                  {formatNumber(article.views || article.total_view || 0)}
                 </span>
                 <span className="flex items-center">
                   <HeartIcon className="w-4 h-4 mr-1" />
@@ -398,11 +443,11 @@ const ArticleCard = ({
               <div className="flex items-center space-x-4 text-xs text-gray-500">
                 <span className="flex items-center">
                   <ClockIcon className="w-3 h-3 mr-1" />
-                  {calculateReadingTime(article.content)} min
+                  {calculateReadingTime(contentForReading)} min
                 </span>
                 <span className="flex items-center">
                   <EyeIcon className="w-3 h-3 mr-1" />
-                  {formatNumber(article.views || 0)}
+                  {formatNumber(article.views || article.total_view || 0)}
                 </span>
                 <span className="flex items-center">
                   <HeartIcon className="w-3 h-3 mr-1" />
@@ -414,12 +459,12 @@ const ArticleCard = ({
           
           {/* Image */}
           <div className="w-48 h-32 flex-shrink-0">
-            <LazyLoadImage
+            <img
               src={article.image || 'https://articleweb.blob.core.windows.net/images/blog_default.jpg'}
               alt={article.title}
               className="w-full h-full object-cover"
-              effect="opacity"
               onError={(e) => {
+                console.log('Image failed to load:', article.image);
                 e.target.src = 'https://articleweb.blob.core.windows.net/images/blog_default.jpg';
               }}
             />
@@ -492,12 +537,12 @@ const ArticleCard = ({
       <div onClick={handleClick} className="block cursor-pointer flex-1 flex flex-col">
         {/* Image */}
         <div className="aspect-video overflow-hidden">
-          <LazyLoadImage
+          <img
             src={article.image || 'https://articleweb.blob.core.windows.net/images/blog_default.jpg'}
             alt={article.title}
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-            effect="opacity"
             onError={(e) => {
+              console.log('Grid image failed to load:', article.image);
               e.target.src = 'https://articleweb.blob.core.windows.net/images/blog_default.jpg';
             }}
           />
@@ -537,14 +582,14 @@ const ArticleCard = ({
             {showAuthor && (
               <div className="flex items-center space-x-3 mb-4" onClick={handleAuthorClick}>
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium cursor-pointer">
-                  {(article.author_name || article.author?.full_name)?.charAt(0).toUpperCase() || <UserIcon className="w-4 h-4" />}
+                  {(article.author_name || article.author?.name || article.author?.full_name)?.charAt(0).toUpperCase() || <UserIcon className="w-4 h-4" />}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600">
-                    {article.author_name || article.author?.full_name || 'Unknown Author'}
+                    {article.author_name || article.author?.name || article.author?.full_name || 'Unknown Author'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {article.created_at ? formatDistanceToNow(new Date(article.created_at), { addSuffix: true }) : 'Recently'}
+                    {(article.created_date || article.created_at) ? formatDistanceToNow(new Date(article.created_date || article.created_at), { addSuffix: true }) : 'Recently'}
                   </p>
                 </div>
               </div>
@@ -555,11 +600,11 @@ const ArticleCard = ({
               <div className="flex items-center space-x-3">
                 <span className="flex items-center">
                   <ClockIcon className="w-3 h-3 mr-1" />
-                  {calculateReadingTime(article.content)} min
+                  {calculateReadingTime(contentForReading)} min
                 </span>
                 <span className="flex items-center">
                   <EyeIcon className="w-3 h-3 mr-1" />
-                  {formatNumber(article.views || 0)}
+                  {formatNumber(article.views || article.total_view || 0)}
                 </span>
                 <span className="flex items-center">
                   <HeartIcon className="w-3 h-3 mr-1" />
@@ -626,7 +671,7 @@ const ArticleCard = ({
           </div>
           
           <span className="text-xs text-gray-500">
-            {formatDate(article.created_at)}
+            {formatDate(article.created_date || article.created_at)}
           </span>
         </div>
       )}
