@@ -15,6 +15,7 @@ No direct DB access happens here; use the repository layer.
 from datetime import datetime
 from typing import Dict, List, Optional
 import uuid
+import math
 from backend.model.dto.article_dto import AuthorDTO
 from backend.repositories import article_repo
 from backend.services import user_service
@@ -277,6 +278,10 @@ async def create_article(doc: dict, app_id: Optional[str] = None) -> dict:
     return await _convert_to_article_detail_dto(art, app_id=app_id)
 
 async def get_article_by_id(article_id: str, app_id: Optional[str] = None) -> Optional[dict]:
+    return await article_repo.get_article_by_id(article_id, app_id=app_id)
+
+
+async def get_article_detail(article_id: str, app_id: Optional[str] = None) -> Optional[dict]:
     """
     Get article by ID with optional app_id filtering.
     
@@ -520,16 +525,23 @@ async def get_total_articles_count_by_author(author_id: str, app_id: Optional[st
 async def list_articles_with_pagination(page: int = 1, page_size: int = 20, app_id: Optional[str] = None) -> dict:
     """Get articles with pagination metadata."""
     try:
-        # Get articles from existing service function
-        articles_data = await list_articles(page=page, page_size=page_size, app_id=app_id)
+        # Get articles data with pagination info from repository
+        result = await article_repo.list_articles(page, page_size, app_id=app_id)
         
-        # Get total count
-        total_items = await get_total_articles_count(app_id=app_id)
-        total_pages = (total_items + page_size - 1) // page_size  # Ceiling division
+        # Extract articles and pagination info
+        articles = result.get("items", []) if isinstance(result, dict) else result
+        total_items = result.get("totalItems", 0) if isinstance(result, dict) else 0
+        total_pages = result.get("totalPages", 1) if isinstance(result, dict) else 1
+        
+        # Convert to DTOs
+        if articles:
+            article_dicts = [await _convert_to_article_dto(article) for article in articles]
+        else:
+            article_dicts = []
         
         return {
             "success": True,
-            "data": articles_data,
+            "data": article_dicts,
             "pagination": {
                 "page": page,
                 "page_size": page_size,
@@ -548,16 +560,68 @@ async def list_articles_with_pagination(page: int = 1, page_size: int = 20, app_
 async def get_popular_articles_with_pagination(page: int = 1, page_size: int = 10, app_id: Optional[str] = None) -> dict:
     """Get popular articles with pagination metadata."""
     try:
-        # Get popular articles from existing service function
-        popular_articles = await get_popular_articles(page, page_size, app_id=app_id)
+        # For popular articles, we need to get all active articles first to sort by popularity
+        # then apply pagination. This is because popularity is calculated at runtime.
         
-        # Get total count for popular articles calculation
-        total_items = await get_total_articles_count(app_id=app_id)
-        total_pages = (total_items + page_size - 1) // page_size
+        # Get all active articles to calculate popularity scores
+        all_articles_result = await article_repo.list_articles(page=1, page_size=1000, app_id=app_id)
+        
+        # Extract articles from repository result
+        if isinstance(all_articles_result, dict):
+            all_articles = all_articles_result.get("items", [])
+            total_active_articles = all_articles_result.get("totalItems", 0)
+        else:
+            all_articles = all_articles_result if all_articles_result else []
+            total_active_articles = len(all_articles)
+        
+        if not all_articles:
+            return {
+                "success": True,
+                "data": [],
+                "pagination": {
+                    "page": page,
+                    "page_size": page_size,
+                    "total": 0,
+                    "total_results": 0
+                }
+            }
+        
+        # Calculate popularity scores
+        now = datetime.utcnow()
+        for article in all_articles:
+            views = int(article.get("views", 0))
+            likes = int(article.get("likes", 0))
+            created_at = article.get("created_at")
+            
+            if isinstance(created_at, str):
+                try:
+                    created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                except:
+                    created_at = now
+            elif not isinstance(created_at, datetime):
+                created_at = now
+                
+            days_old = (now - created_at).days
+            time_factor = max(0.1, 1 - (days_old / 30))  # Decay over 30 days
+            popularity_score = (views * 0.3 + likes * 0.7) * time_factor
+            article["popularity_score"] = popularity_score
+        
+        # Sort by popularity score descending
+        sorted_articles = sorted(all_articles, key=lambda x: x.get("popularity_score", 0), reverse=True)
+        
+        # Apply pagination to sorted results
+        total_items = len(sorted_articles)
+        total_pages = math.ceil(total_items / page_size) if total_items > 0 else 1
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_articles = sorted_articles[start_idx:end_idx]
+        
+        # Convert to DTOs
+        article_dicts = [await _convert_to_article_dto(article) for article in paginated_articles]
         
         return {
             "success": True,
-            "data": popular_articles,
+            "data": article_dicts,
             "pagination": {
                 "page": page,
                 "page_size": page_size,
@@ -576,16 +640,23 @@ async def get_popular_articles_with_pagination(page: int = 1, page_size: int = 1
 async def get_articles_by_author_with_pagination(author_id: str, page: int = 1, page_size: int = 20, app_id: Optional[str] = None) -> dict:
     """Get articles by author with pagination metadata."""
     try:
-        # Get articles by author from existing service function
-        articles_list = await get_articles_by_author(author_id, page - 1, page_size, app_id=app_id)
+        # Get articles by author from repository (1-indexed)
+        articles_result = await article_repo.get_article_by_author(author_id, page, page_size, app_id=app_id)
         
-        # Get total count for this author
-        total_items = await get_total_articles_count_by_author(author_id, app_id=app_id)
-        total_pages = (total_items + page_size - 1) // page_size
+        # Extract articles and pagination info from repository result
+        articles = articles_result.get("items", []) if isinstance(articles_result, dict) else articles_result
+        total_items = articles_result.get("totalItems", 0) if isinstance(articles_result, dict) else 0
+        total_pages = articles_result.get("totalPages", 1) if isinstance(articles_result, dict) else 1
+        
+        # Convert to DTOs
+        if articles:
+            article_dicts = [await _convert_to_article_dto(article) for article in articles]
+        else:
+            article_dicts = []
         
         return {
             "success": True,
-            "data": articles_list,
+            "data": article_dicts,
             "pagination": {
                 "page": page,
                 "page_size": page_size,
@@ -717,7 +788,7 @@ async def search_response_articles(data: Dict, app_id: Optional[str] = None) -> 
 async def get_summary(app_id: Optional[str] = None) -> Dict:
     """Aggregate basic articles summary for dashboards with caching.
 
-    Note: For simplicity we fetch up to 1000 most recent articles.
+    Optimized version using efficient database count queries instead of fetching all articles.
     """
     # Check Redis cache first using new cache API
     cached_stats = await get_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)
@@ -729,22 +800,14 @@ async def get_summary(app_id: Optional[str] = None) -> Dict:
     print(f"📊 Redis Cache MISS for statistics (app_id: {app_id or 'all'}) - Loading from DB...")
     
     try:
-        data = await article_repo.list_articles(page=1, page_size=1000, app_id=app_id)
-        items = data.get("items", []) if isinstance(data, dict) else data
-        total = len(items)
-        published = len([a for a in items if a.get("status") == "published"])
-        drafts = len([a for a in items if a.get("status") == "draft"])
-        total_views = sum(int(a.get("views", 0)) for a in items)
-        total_likes = sum(int(a.get("likes", 0)) for a in items)
-        authors = len({a.get("author_id") for a in items if a.get("author_id")})
+        # Use efficient count queries instead of fetching all articles
+        count_stats = await article_repo.get_article_summary_counts(app_id=app_id)
+        aggregation_stats = await article_repo.get_article_summary_aggregations(app_id=app_id)
         
+        # Combine the results
         stats_data = {
-            "total_articles": total,
-            "published_articles": published,
-            "draft_articles": drafts,
-            "total_views": total_views,
-            "total_likes": total_likes,
-            "authors": authors,
+            **count_stats,
+            **aggregation_stats,
         }
         
         # Cache the results using new cache API
@@ -752,7 +815,8 @@ async def get_summary(app_id: Optional[str] = None) -> Dict:
         print(f"📊 Redis Cache SET for statistics (app_id: {app_id or 'all'})")
         
         return stats_data
-    except Exception:
+    except Exception as e:
+        print(f"❌ Error in get_summary: {e}")
         return {
             "total_articles": 0,
             "published_articles": 0,

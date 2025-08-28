@@ -15,11 +15,14 @@ async def get_users():
 async def get_list_user(app_id: Optional[str] = None):
     users = await get_users()
     
-    # Note: Users don't have app_id directly, but we can filter users who have articles in the specified app
-    # For now, we'll return all users since users are shared across apps, but in the service layer
-    # we'll filter their stats by app_id
-    query = "SELECT * FROM c"
-    parameters = []
+    # Filter users by app_id if provided
+    if app_id:
+        query = "SELECT * FROM c WHERE c.app_id = @app_id"
+        parameters = [{"name": "@app_id", "value": app_id}]
+    else:
+        query = "SELECT * FROM c"
+        parameters = []
+        
     results = []
     async for item in users.query_items(
         query=query,
@@ -246,14 +249,20 @@ async def unbookmark_article(user_id: str, article_id: str) -> bool:
         return False
 
 
-async def get_users_by_ids(user_ids: list) -> list:
+async def get_users_by_ids(user_ids: list, app_id: Optional[str] = None) -> list:
     users = await get_users()
     if not user_ids:
         return []
+
     ids_placeholders = ", ".join([f"@id{i}" for i in range(len(user_ids))])
     parameters = [{"name": f"@id{i}", "value": id_} for i, id_ in enumerate(user_ids)]
 
     query = f"SELECT * FROM c WHERE c.id IN ({ids_placeholders}) AND c.is_active = true"
+    
+    # Add app_id filtering if provided
+    if app_id:
+        query += " AND c.app_id = @app_id"
+        parameters.append({"name": "@app_id", "value": app_id})
 
     results = []
     async for doc in users.query_items(query=query, parameters=parameters):

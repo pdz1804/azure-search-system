@@ -10,6 +10,7 @@ from backend.utils import get_current_user, require_owner_or_role, require_role
 from backend.services.article_service import (
     get_article_by_id,
     create_article,
+    get_article_detail,
     list_articles,
     update_article,
     delete_article,
@@ -299,7 +300,7 @@ async def get_articles_by_category(
 async def get_one(article_id: str, app_id: Optional[str] = Query(None, description="Application ID for multi-tenant filtering")):
     try:
         # Get article detail with auto-generation of recommendations if needed
-        art = await get_article_by_id(article_id, app_id)
+        art = await get_article_detail(article_id, app_id)
         if not art:
             return JSONResponse(status_code=404, content={"success": False, "data": None})
         

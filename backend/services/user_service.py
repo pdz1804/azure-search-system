@@ -7,6 +7,7 @@ article related counters to the article service where appropriate.
 
 from datetime import datetime
 import uuid
+import math
 from fastapi import HTTPException
 from typing import Any, Dict, List, Optional
 from ai_search import app
@@ -169,7 +170,7 @@ async def list_users_with_pagination(
         
         # Apply pagination
         total_items = len(users_data)
-        total_pages = (total_items + page_size - 1) // page_size
+        total_pages = math.ceil(total_items / page_size) if total_items > 0 else 1
         start_idx = (page - 1) * page_size
         end_idx = start_idx + page_size
         paginated_users = users_data[start_idx:end_idx]
@@ -239,7 +240,7 @@ async def create_user(doc: dict, app_id: Optional[str] = None) -> dict:
 
 
 async def get_user_by_id(user_id: str, app_id: Optional[str] = None) -> Optional[dict]:
-    user = await user_repo.get_user_by_id(user_id)
+    user = await user_repo.get_user_by_id(user_id, app_id=app_id)  # ✅ Truyền app_id
     if user:
         user_detail = await _convert_to_user_detail_dto(user, app_id=app_id)
         
@@ -381,43 +382,44 @@ async def search_response_users(data: Dict) -> List[dict]:
     return [await _convert_to_user_dto(user) for user in users]
 
 
-# async def delete_user(user_id: str, app_id: Optional[str] = None) -> bool:
-#     """Delete a user and all associated data (admin only)"""
-#     try:
-#         # Get user with app_id filtering for security
-#         user = await user_repo.get_user_by_id(user_id, app_id)
-#         if not user:
-#             print(f"❌ User {user_id} not found or app_id mismatch for deletion")
-#             return False
+async def delete_user(user_id: str, app_id: Optional[str] = None) -> bool:
+    """Delete a user and all associated data (admin only)"""
+    try:
+        # Get user with app_id filtering for security
+        user = await user_repo.get_user_by_id(user_id, app_id)
+        if not user:
+            print(f"❌ User {user_id} not found or app_id mismatch for deletion")
+            return False
         
-#         # Check if user has articles
-#         user_articles = await article_repo.get_article_by_author(user_id, page=0, page_size=1000, app_id=app_id)
-#         if user_articles:
-#             articles_list = user_articles.get("items", []) if isinstance(user_articles, dict) else user_articles
-#             if articles_list and len(articles_list) > 0:
-#                 print(f"⚠️ User {user_id} has {len(articles_list)} articles. Deleting user will also delete their articles.")
+        # Check if user has articles
+        user_articles = await article_repo.get_article_by_author(user_id, page=0, page_size=1000, app_id=app_id)
+        if user_articles:
+            articles_list = user_articles.get("items", []) if isinstance(user_articles, dict) else user_articles
+            if articles_list and len(articles_list) > 0:
+                print(f"⚠️ User {user_id} has {len(articles_list)} articles. Deleting user will also delete their articles.")
                 
-#                 # Delete all user's articles
-#                 for article in articles_list:
-#                     try:
-#                         await article_repo.delete_article(article.get("id"))
-#                         await user_service.delete_reaction(article.get("id"), app_id)
-#                     except Exception as e:
-#                         print(f"⚠️ Failed to delete article {article.get('id')}: {e}")
+                # Delete all user's articles
+                for article in articles_list:
+                    try:
+                        await article_repo.delete_article(article.get("id"))
+                    except Exception as e:
+                        print(f"⚠️ Failed to delete article {article.get('id')}: {e}")
         
-#         # Delete user from repository
-#         await user_repo.delete_user(user_id)
+        # Delete user from repository
+        await user_repo.delete_user(user_id)
         
-#         # Clear affected caches
-#         await delete_cache_pattern("users*")
-#         await delete_cache_pattern("articles*")
+        # Clear affected caches
+        await delete_cache(CACHE_KEYS["user_detail"], user_id=user_id, app_id=app_id) 
+        await delete_cache_pattern(CACHE_KEYS["authors"] + "*"+app_id)
+        await delete_cache_pattern(CACHE_KEYS["articles_home"] + "*", app_id=app_id)
+        await delete_cache_pattern(CACHE_KEYS["articles_popular"] + "*", app_id=app_id)
+
+        print(f"✅ User {user_id} deleted successfully")
+        return True
         
-#         print(f"✅ User {user_id} deleted successfully")
-#         return True
-        
-#     except Exception as e:
-#         print(f"❌ Error deleting user {user_id}: {e}")
-#         return False
+    except Exception as e:
+        print(f"❌ Error deleting user {user_id}: {e}")
+        return False
 
 
 # Remove old function that used the old user_dto class

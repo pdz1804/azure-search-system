@@ -22,6 +22,7 @@ import json
 import asyncio
 import unicodedata
 import re
+import math
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Any, List, Optional, Tuple
 from difflib import SequenceMatcher
@@ -503,7 +504,7 @@ class BackendSearchService:
                         "page_index": page_index,
                         "page_size": page_size,
                         "total_results": total_results,
-                        "total_pages": (total_results + page_size - 1) // page_size,
+                        "total_pages": math.ceil(total_results / page_size) if total_results > 0 else 1,
                         "has_next": end_idx < total_results,
                         "has_previous": page_index > 0
                     },
@@ -794,7 +795,7 @@ class BackendSearchService:
                         "page_index": page_index,
                         "page_size": page_size,
                         "total_results": total_results,
-                        "total_pages": (total_results + page_size - 1) // page_size,
+                        "total_pages": math.ceil(total_results / page_size) if total_results > 0 else 1,
                         "has_next": end_idx < total_results,
                         "has_previous": page_index > 0
                     },
