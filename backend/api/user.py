@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 from pydantic import BaseModel
@@ -28,32 +28,37 @@ def require_admin(current_user: dict = Depends(get_current_user)):
         )
     return current_user
 
-@users.get("/")
-async def list_users(
-    app_id: Optional[str] = Query(None, description="Application ID for filtering results"),
-    featured: Optional[bool] = Query(False, description="Filter for featured users only"),
-    page: Optional[int] = Query(1, description="Page number"),
-    limit: Optional[int] = Query(20, description="Number of users per page")
-):
-    print(f"👥 [API] /users endpoint called with featured={featured}, app_id={app_id}, page={page}, limit={limit}")
+# @users.get("/")
+# async def list_users(
+#     app_id: Optional[str] = Query(None, description="Application ID for filtering results"),
+#     featured: Optional[bool] = Query(False, description="Filter for featured users only"),
+#     page: Optional[int] = Query(1, description="Page number"),
+#     limit: Optional[int] = Query(20, description="Number of users per page")
+# ):
+#     print(f"👥 [API] /users endpoint called with featured={featured}, app_id={app_id}, page={page}, limit={limit}")
     
-    if featured:
-        # Use the featured users service with caching
-        print(f"👥 [API] Using featured users service with caching")
-        users_result = await user_service.list_users_with_cache(page=page, page_size=limit, featured=True, app_id=app_id)
-        print(f"👥 [API] Featured users service returned {len(users_result.get('data', []))} users")
-        return users_result
-    else:
-        # Use the basic list users service
-        print(f"👥 [API] Using basic list users service")
-        users_list = await user_service.list_users(app_id=app_id)
-        print(f"👥 [API] Basic service returned {len(users_list)} users")
-        return {"success": True, "data": users_list}
+#     if featured:
+#         # Use the featured users service with caching
+#         print(f"👥 [API] Using featured users service with caching")
+#         users_result = await user_service.list_users_with_cache(page=page, page_size=limit, featured=True, app_id=app_id)
+#         print(f"👥 [API] Featured users service returned {len(users_result.get('data', []))} users")
+#         return users_result
+#     else:
+#         # Use the basic list users service
+#         print(f"👥 [API] Using basic list users service")
+#         users_list = await user_service.list_users(app_id=app_id)
+#         print(f"👥 [API] Basic service returned {len(users_list)} users")
+#         return {"success": True, "data": users_list}
 
 @users.get("/{id}")
-async def get_user_by_id(id: str, app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
+async def get_user_by_id(
+    id: str, 
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results"),
+):
     # Use service layer to get user detail with statistics
     try:
+        # Prioritize X-App-ID header over query parameter
+
         user = await user_service.get_user_by_id(id, app_id=app_id)
         if not user:
             return JSONResponse(status_code=404, content={"success": False, "data": None})
@@ -90,14 +95,21 @@ async def check_follow_status(user_id: str, current_user: dict = Depends(get_cur
     return {"success": True, "data": {"is_following": is_following}}
 
 @users.post("/reactions/{article_id}/{status}")
-async def get_article_reactions(article_id: str, status: str, current_user: dict = Depends(get_current_user)):
+async def get_article_reactions(
+    article_id: str, 
+    status: str, 
+    current_user: dict = Depends(get_current_user),
+    app_id: Optional[str] = Query(None, description="Application ID for cache invalidation"),
+):
     user_id = current_user["id"]
+    # Prioritize X-App-ID header over query parameter
+    
     match status:
         case Status.LIKE:
-            await user_service.like_article(user_id, article_id)
+            await user_service.like_article(user_id, article_id, app_id=app_id)
             return {"success": True, "data": {"action": "like"}}
         case Status.DISLIKE:
-            await user_service.dislike_article(user_id, article_id)
+            await user_service.dislike_article(user_id, article_id, app_id=app_id)
             return {"success": True, "data": {"action": "dislike"}}
         case Status.BOOKMARK:
             await user_service.bookmark_article(user_id, article_id)
@@ -106,14 +118,20 @@ async def get_article_reactions(article_id: str, status: str, current_user: dict
             return JSONResponse(status_code=400, content={"success": False, "data": {"error": "Invalid status"}})
 
 @users.delete("/unreactions/{article_id}/{status}")
-async def unreactions(article_id: str, status: str, current_user: dict = Depends(get_current_user)):
+async def unreactions(
+    article_id: str, 
+    status: str, 
+    current_user: dict = Depends(get_current_user),
+    app_id: Optional[str] = Query(None, description="Application ID for cache invalidation"),
+):
     user_id = current_user["id"]
+    # Prioritize X-App-ID header over query parameter    
     match status:
         case Status.LIKE:
-            await user_service.unlike_article(user_id, article_id)
+            await user_service.unlike_article(user_id, article_id, app_id=app_id)
             return {"success": True, "data": {"action": "unlike"}}
         case Status.DISLIKE:
-            await user_service.undislike_article(user_id, article_id)
+            await user_service.undislike_article(user_id, article_id, app_id=app_id)
             return {"success": True, "data": {"action": "undislike"}}
         case Status.BOOKMARK:
             await user_service.unbookmark_article(user_id, article_id)
@@ -148,10 +166,13 @@ async def get_bookmarked_articles(current_user: dict = Depends(get_current_user)
 async def update_user(
     user_id: str, 
     update_data: UpdateUserRequest,
-    admin_user: dict = Depends(require_admin)
+    admin_user: dict = Depends(require_admin),
+    app_id: Optional[str] = Query(None, description="Application ID for cache invalidation"),
 ):
     """Update user role and status (admin only)"""
     try:
+        # Prioritize X-App-ID header over query parameter
+        
         # Validate role if provided
         if update_data.role and update_data.role not in [Role.ADMIN, Role.WRITER, Role.USER]:
             raise HTTPException(
@@ -167,7 +188,7 @@ async def update_user(
             )
         
         # Update user
-        updated_user = await user_service.update_user(user_id, update_data.dict(exclude_unset=True))
+        updated_user = await user_service.update_user(user_id, update_data.dict(exclude_unset=True), app_id=app_id)
         if not updated_user:
             raise HTTPException(status_code=404, detail="User not found")
         
@@ -189,11 +210,11 @@ async def get_all_users_admin(
 ):
     """Get all users for admin dashboard with full details"""
     try:
+        
         # Use service layer pagination function
-        from backend.services.user_service import list_users_with_pagination_admin
-        result = await list_users_with_pagination_admin(
+        result = await user_service.list_users_with_pagination(
             page=page,
-            limit=limit,
+            page_size=limit,
             app_id=app_id
         )
         
@@ -207,16 +228,15 @@ async def get_all_users_admin(
 async def get_all_users(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
-    featured: bool = Query(False, description="Get only featured users"),
-    app_id: Optional[str] = Query(None, description="Application ID for filtering results")
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results"),
 ):
-    """Get all users with pagination and optional featured filter."""
+    """Get all users with pagination."""
     try:
-        from backend.services.user_service import list_users_with_cache
-        result = await list_users_with_cache(
+        
+        # Use service layer pagination function
+        result = await user_service.list_users_with_pagination(
             page=page, 
             page_size=limit, 
-            featured=featured, 
             app_id=app_id
         )
         return result

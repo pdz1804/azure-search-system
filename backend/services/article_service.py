@@ -401,7 +401,7 @@ async def list_articles(page: int, page_size: int, app_id: Optional[str] = None)
     
 async def increment_article_views(article_id: str, app_id: Optional[str] = None):
     await article_repo.increment_article_views(article_id)
-    await clear_affected_caches(operation="view", app_id=app_id, article_id=article_id)
+    # await clear_affected_caches(operation="view", app_id=app_id, article_id=article_id)
 
 async def increment_article_dislikes(article_id: str, app_id: Optional[str] = None):
     await article_repo.increment_article_dislikes(article_id)

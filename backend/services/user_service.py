@@ -11,7 +11,10 @@ from fastapi import HTTPException
 from typing import Any, Dict, List, Optional
 from backend.repositories import article_repo, user_repo
 from backend.services import article_service
-from backend.services.cache_service import CACHE_KEYS, delete_cache_pattern, get_cache, set_cache
+from backend.services.cache_service import (
+    get_cache, set_cache, delete_cache, delete_cache_pattern, 
+    CACHE_KEYS, CACHE_TTL
+)
 from backend.utils import hash_password, verify_password
 
 
@@ -73,128 +76,12 @@ async def _convert_to_user_detail_dto(user: dict, app_id: Optional[str] = None) 
     }
 
 
-async def list_users_with_pagination_admin(page: int = 1, limit: int = 20, app_id: Optional[str] = None) -> dict:
-    """Get all users for admin dashboard with pagination."""
-    try:
-        users_data = await list_users(app_id=app_id)
-        
-        if not users_data:
-            return {
-                "success": True,
-                "data": [],
-                "pagination": {
-                    "page": page,
-                    "limit": limit,
-                    "total": 0,
-                    "total_results": 0
-                }
-            }
-        
-        # Apply pagination
-        total_items = len(users_data)
-        total_pages = (total_items + limit - 1) // limit
-        start_idx = (page - 1) * limit
-        end_idx = start_idx + limit
-        paginated_users = users_data[start_idx:end_idx]
-        
-        return {
-            "success": True,
-            "data": paginated_users,
-            "pagination": {
-                "page": page,
-                "limit": limit,
-                "total": total_pages,
-                "total_results": total_items
-            }
-        }
-    except Exception as e:
-        print(f"Error fetching users for admin with pagination: {e}")
-        return {
-            "success": False,
-            "data": {"error": str(e)}
-        }
-
-
-async def list_users_with_cache(page: int = 1, page_size: int = 20, featured: bool = False, app_id: Optional[str] = None) -> dict:
-    """Get all users with pagination and caching support."""
-    # Check Redis cache first
-    cache_key = f"authors:page_{page}_limit_{page_size}_featured_{featured}_app_{app_id or 'none'}"
-    cached_authors = await get_cache(cache_key)
-    if cached_authors:
-        print("👥 Redis Cache HIT for authors")
-        return cached_authors
-    
-    print("👥 Redis Cache MISS for authors - Loading from DB...")
-    try:
-        users_data = await list_users(app_id=app_id)
-        
-        if not users_data:
-            result = {
-                "success": True,
-                "data": [],
-                "pagination": {
-                    "page": page,
-                    "limit": page_size,
-                    "total": 0,  # total pages
-                    "total_results": 0  # total result count
-                }
-            }
-            return result
-        
-        # Filter featured users if requested
-        if featured:
-            print(f"👥 [FEATURED USERS] Filtering {len(users_data)} total users for featured status...")
-            
-            # STRICT FILTERING: Only show users with articles > 0
-            active_users = [u for u in users_data if u.get("articles_count", 0) > 0]
-            print(f"👥 [FEATURED USERS] Found {len(active_users)} users with articles > 0")
-            
-            if active_users:
-                # Sort by articles count (descending) to show most active authors first
-                active_users.sort(key=lambda u: u.get("articles_count", 0), reverse=True)
-                users_data = active_users
-                print(f"👥 [FEATURED USERS] Sorted by articles count. Top user: {active_users[0].get('full_name', 'Unknown')} with {active_users[0].get('articles_count', 0)} articles")
-                print(f"👥 [FEATURED USERS] All featured users: {[(u.get('full_name', 'Unknown'), u.get('articles_count', 0)) for u in active_users[:5]]}")
-            else:
-                # NO FALLBACK: If no users with articles, return empty list
-                users_data = []
-                print("👥 [FEATURED USERS] No users with articles found, returning empty list")
-        
-        # Apply pagination
-        total_items = len(users_data)
-        total_pages = (total_items + page_size - 1) // page_size  # Ceiling division
-        start_idx = (page - 1) * page_size
-        end_idx = start_idx + page_size
-        paginated_users = users_data[start_idx:end_idx]
-        
-        result = {
-            "success": True,
-            "data": paginated_users,
-            "pagination": {
-                "page": page,
-                "limit": page_size,
-                "total": total_pages,  # total pages
-                "total_results": total_items  # total result count
-            }
-        }
-        
-        print(f"👥 [USERS SERVICE DEBUG] Returning pagination: {result['pagination']}")
-        print(f"👥 [USERS SERVICE DEBUG] total_items={total_items}, total_pages={total_pages}, limit={page_size}")
-        
-        # Cache the results for 3 minutes (180 seconds)
-        await set_cache(cache_key, result, ttl=180)
-        print("👥 Redis Cache SET for authors")
-        
-        return result
-    except Exception as e:
-        print(f"Error fetching users with cache: {e}")
-        return {
-            "success": False,
-            "data": {"error": str(e)}
-        }
-
-
 async def list_users(app_id: Optional[str] = None) -> List[dict]:
+    """
+    Base function: Get all users with basic stats enrichment
+    - No pagination, no caching
+    - Used as foundation for other functions
+    """
     users = await user_repo.get_list_user(app_id=app_id)
     if not users:
         return []
@@ -218,11 +105,94 @@ async def list_users(app_id: Optional[str] = None) -> List[dict]:
     
     print(f"👥 [LIST USERS] Processed {len(user_dicts)} users. Sample stats: {[(u.get('full_name', 'Unknown'), u.get('articles_count', 0), u.get('total_views', 0)) for u in user_dicts[:3]]}")
     
-    # Debug: Check if articles_count field is properly set
-    for i, user in enumerate(user_dicts[:3]):
-        print(f"👥 [LIST USERS] User {i+1}: {user.get('full_name', 'Unknown')} - articles_count: {user.get('articles_count', 'MISSING')}, total_views: {user.get('total_views', 'MISSING')}")
-    
     return user_dicts
+
+
+async def list_users_with_pagination(
+    page: int = 1, 
+    page_size: int = 20, 
+    app_id: Optional[str] = None
+) -> dict:
+    """
+    Simple paginated user listing with cache support
+    
+    Args:
+        page: Page number (1-based)
+        page_size: Items per page
+        app_id: Filter by application ID
+        
+    Returns:
+        Dict with success, data (list of users), and pagination info
+    """
+    
+    # Check cache first
+    cached_result = await get_cache(
+        CACHE_KEYS["authors"], 
+        app_id=app_id, 
+        page=page, 
+        page_size=page_size
+    )
+    
+    if cached_result:
+        print("👥 Redis Cache HIT for users pagination")
+        return cached_result
+    
+    print("👥 Redis Cache MISS for users pagination - Loading from DB...")
+    
+    try:
+        # Get base users data
+        users_data = await list_users(app_id=app_id)
+        
+        if not users_data:
+            result = {
+                "success": True,
+                "data": [],
+                "pagination": {
+                    "page": page,
+                    "page_size": page_size,
+                    "total": 0,
+                    "total_results": 0
+                }
+            }
+            return result
+        
+        # Apply pagination
+        total_items = len(users_data)
+        total_pages = (total_items + page_size - 1) // page_size
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_users = users_data[start_idx:end_idx]
+        
+        result = {
+            "success": True,
+            "data": paginated_users,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total": total_pages,
+                "total_results": total_items
+            }
+        }
+        
+        # Cache the result
+        await set_cache(
+            CACHE_KEYS["authors"], 
+            result, 
+            app_id=app_id, 
+            ttl=CACHE_TTL["authors"],
+            page=page,
+            page_size=page_size
+        )
+        print("👥 Redis Cache SET for users pagination")
+        
+        return result
+        
+    except Exception as e:
+        print(f"Error fetching users with pagination: {e}")
+        return {
+            "success": False,
+            "data": {"error": str(e)}
+        }
 
 async def login(email: str, password: str) -> Optional[dict]:
     user = await user_repo.get_by_email(email)
@@ -248,17 +218,44 @@ async def create_user(doc: dict, app_id: Optional[str] = None) -> dict:
     
     user = await user_repo.insert(doc)
     
+    # Clear users list cache after creating new user
+    await delete_cache_pattern(CACHE_KEYS["authors"] + "*"+ app_id)
+    print("👥 Cleared users cache after creating new user")
+    
     # Convert to UserDetailDTO format before returning
     return await _convert_to_user_detail_dto(user, app_id=app_id)
 
+
 async def get_user_by_id(user_id: str, app_id: Optional[str] = None) -> Optional[dict]:
+    """Get user by ID with cache support"""
+    
+    # Check cache first
+    cached_user = await get_cache(CACHE_KEYS["user_detail"], user_id=user_id, app_id=app_id)
+    if cached_user:
+        print(f"👤 Redis Cache HIT for user {user_id}")
+        return cached_user
+    
+    print(f"👤 Redis Cache MISS for user {user_id} - Loading from DB...")
+    
     user = await user_repo.get_user_by_id(user_id)
     if user:
-        return await _convert_to_user_detail_dto(user, app_id=app_id)
+        user_detail = await _convert_to_user_detail_dto(user, app_id=app_id)
+        
+        # Cache the result
+        await set_cache(
+            CACHE_KEYS["user_detail"], 
+            user_detail, 
+            user_id=user_id, 
+            app_id=app_id,
+            ttl=CACHE_TTL["user_detail"]
+        )
+        print(f"👤 Redis Cache SET for user {user_id}")
+        
+        return user_detail
     return None
 
 
-async def update_user(user_id: str, update_data: dict) -> Optional[dict]:
+async def update_user(user_id: str, update_data: dict, app_id: Optional[str] = None) -> Optional[dict]:
     """Update user information (role, status, etc.)"""
     try:
         # Get existing user
@@ -269,11 +266,12 @@ async def update_user(user_id: str, update_data: dict) -> Optional[dict]:
         # Update user data
         updated_user = await user_repo.update_user(user_id, update_data)
         
-        # Clear any related caches
-        await delete_cache_pattern("authors:*")
+        # Clear related caches using new cache API with app_id
+        await delete_cache(CACHE_KEYS["user_detail"], user_id=user_id, app_id=app_id)  # Clear specific user cache
+        await delete_cache_pattern(CACHE_KEYS["authors"] + "*"+app_id)  # Clear authors list cache
         
         # Convert to UserDetailDTO format before returning
-        return await _convert_to_user_detail_dto(updated_user)
+        return await _convert_to_user_detail_dto(updated_user, app_id=app_id)
     except Exception as e:
         print(f"Error in update_user service: {e}")
         raise
@@ -288,46 +286,40 @@ async def check_follow_status(follower_id: str, followee_id: str) -> bool:
     """Check if follower_id is following followee_id"""
     return await user_repo.check_follow_status(follower_id, followee_id)
 
-async def like_article(user_id: str, article_id: str):
+async def like_article(user_id: str, article_id: str, app_id: Optional[str] = None):
     is_liked = await check_article_status(user_id, article_id)
     if is_liked and is_liked.get("reaction_type") == "none":
         await user_repo.like_article(user_id, article_id)
         await article_repo.increment_article_likes(article_id)
-        cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
-        await delete_cache_pattern(cache_key)
-        await delete_cache_pattern("articles:home*")
-        await delete_cache_pattern("articles:recent*")
+        await delete_cache(CACHE_KEYS["article_detail"], article_id=article_id, app_id=app_id)
+        await delete_cache_pattern(CACHE_KEYS["articles_home"] + "*", app_id=app_id)
+        await delete_cache_pattern(CACHE_KEYS["articles_popular"] + "*", app_id=app_id)
 
 
-async def unlike_article(user_id: str, article_id: str):
+async def unlike_article(user_id: str, article_id: str, app_id: Optional[str] = None):
     is_unliked = await check_article_status(user_id, article_id)
     if is_unliked["reaction_type"] == "like":
         await user_repo.unlike_article(user_id, article_id)
         await article_repo.decrement_article_likes(article_id)
-        cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
-        await delete_cache_pattern(cache_key)
-        await delete_cache_pattern("articles:home*")
-        await delete_cache_pattern("articles:recent*")
+        await delete_cache(CACHE_KEYS["article_detail"], article_id=article_id, app_id=app_id)
+        await delete_cache_pattern(CACHE_KEYS["articles_home"] + "*", app_id=app_id)
+        await delete_cache_pattern(CACHE_KEYS["articles_popular"] + "*", app_id=app_id)
 
-async def dislike_article(user_id: str, article_id: str):
+async def dislike_article(user_id: str, article_id: str, app_id: Optional[str] = None):
     is_disliked = await check_article_status(user_id, article_id)
     if is_disliked and is_disliked.get("reaction_type") == "none":
         await user_repo.dislike_article(user_id, article_id)
         await article_service.increment_article_dislikes(article_id)
-        cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
-        await delete_cache_pattern(cache_key)
-        await delete_cache_pattern("articles:home*")
-        await delete_cache_pattern("articles:recent*")
+        await delete_cache(CACHE_KEYS["article_detail"], article_id=article_id, app_id=app_id)
+        await delete_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)
 
-async def undislike_article(user_id: str, article_id: str):
+async def undislike_article(user_id: str, article_id: str, app_id: Optional[str] = None):
     is_disliked = await check_article_status(user_id, article_id)
     if is_disliked["reaction_type"] == "dislike":
         await user_repo.undislike_article(user_id, article_id)
         await article_service.decrement_article_dislikes(article_id)
-        cache_key = CACHE_KEYS["article_detail"].format(article_id=article_id)
-        await delete_cache_pattern(cache_key)
-        await delete_cache_pattern("articles:home*")
-        await delete_cache_pattern("articles:recent*")
+        await delete_cache(CACHE_KEYS["article_detail"], article_id=article_id, app_id=app_id)
+        await delete_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)
 
 async def bookmark_article(user_id: str, article_id: str):
     await user_repo.bookmark_article(user_id, article_id)
@@ -361,14 +353,14 @@ async def get_user_followers(user_id: str) -> list:
         raise HTTPException(status_code=404, detail="User not found")
     return user.get("followers", [])
 
-async def delete_reaction(article_id: str) -> bool:
-    users = await user_repo.get_list_user()
+async def delete_reaction(article_id: str, app_id: Optional[str] = None) -> bool:
+    users = await user_repo.get_list_user(app_id=app_id)
     for user in users:
         user_id = user.get("id")
         if article_id in user.get("liked_articles", []):
-            await unlike_article(user_id, article_id)
+            await unlike_article(user_id, article_id, app_id=app_id)
         if article_id in user.get("disliked_articles", []):
-            await undislike_article(user_id, article_id)
+            await undislike_article(user_id, article_id, app_id=app_id)
 
         # also remove from bookmarks to avoid stale references
         if article_id in user.get('bookmarked_articles', []):

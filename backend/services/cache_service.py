@@ -9,9 +9,11 @@ CACHE_KEYS = {
     "articles_popular": "articles:popular",
     "article_detail": "article:detail:{article_id}",
     "user_articles": "user:articles:{user_id}",
+    "user_detail": "user:detail:{user_id}",
     "homepage_statistics": "homepage:statistics",
     "homepage_categories": "homepage:categories",
-    "articles_author": "articles:author:{author_id}"
+    "articles_author": "articles:author:{author_id}",
+    "authors": "authors"
 }
 
 # Cache TTL (Time To Live) in seconds
@@ -21,9 +23,11 @@ CACHE_TTL = {
     "recent": 180,  # 3 minutes
     "detail": 900,  # 15 minutes
     "user_articles": 240,  # 4 minutes
+    "user_detail": 600,  # 10 minutes
     "statistics": 180,  # 3 minutes
     "categories": 300,  # 5 minutes
-    "author": 240  # 4 minutes
+    "author": 240,  # 4 minutes
+    "authors": 180  # 3 minutes
 }
 
 def build_cache_key(base_key: str, app_id: Optional[str] = None, **params) -> str:
