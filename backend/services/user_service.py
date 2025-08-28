@@ -223,6 +223,7 @@ async def create_user(doc: dict, app_id: Optional[str] = None) -> dict:
     doc["role"] = doc.get("role", "user")
     doc["created_at"] = datetime.utcnow().isoformat()
     doc["id"] = uuid.uuid4().hex
+    doc["is_active"] = True
     
     # Add app_id to user document if provided
     if app_id:
