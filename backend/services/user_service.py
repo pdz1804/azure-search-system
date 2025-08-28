@@ -6,6 +6,7 @@ article related counters to the article service where appropriate.
 """
 
 from datetime import datetime
+import re
 import uuid
 import math
 from fastapi import HTTPException
@@ -209,6 +210,8 @@ async def list_users_with_pagination(
 async def login(email: str, password: str) -> Optional[dict]:
     user = await user_repo.get_by_email(email)
     if not user or not verify_password(password, user.get("password", "")):
+        return None
+    if user.get("is_active") is False:
         return None
     
     return user
