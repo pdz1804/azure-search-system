@@ -18,10 +18,8 @@ from backend.services.article_service import (
     increment_article_views
 )
 from backend.services.tag_service import tag_service
-from backend.services.cache_service import get_cache, set_cache, CACHE_TTL
 from backend.services.search_service import search_service
 from backend.services.recommendation_service import get_recommendation_service
-from backend.database.cosmos import get_articles_container
 
 load_dotenv()
 BASE_URL = os.getenv("BASE_URL")
@@ -111,29 +109,13 @@ async def get_articles(
         current_page_size = page_size or limit or 20
         current_status = status or "published"
         
-        # Get articles from service (returns List[dict])
-        articles_data = await list_articles(page=current_page, page_size=current_page_size, app_id=app_id)
-        
-        # articles_data is already list of dicts
-        articles_dict = articles_data
-        
-        # Calculate total pages - get total count from database
-        from backend.services.article_service import get_total_articles_count
-        total_items = await get_total_articles_count(app_id=app_id)
-        total_pages = (total_items + current_page_size - 1) // current_page_size  # Ceiling division
-        
-        # Return in expected format
-        result = {
-            "success": True,
-            "data": articles_dict,
-            "pagination": {
-                "page": current_page,
-                "page_size": current_page_size,
-                "total": total_pages,  # total pages
-                "total_results": total_items  # total result count
-            }
-        }
-        
+        # Use service layer pagination function
+        from backend.services.article_service import list_articles_with_pagination
+        result = await list_articles_with_pagination(
+            page=current_page, 
+            page_size=current_page_size, 
+            app_id=app_id
+        )
         
         return result
     except Exception as e:
@@ -146,29 +128,18 @@ async def get_articles(
 @articles.get("/popular")
 async def home_popular_articles(page: int = 1, page_size: int = 10, app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
     try:
-        # Get popular articles (returns List[dict])
-        popular = await get_popular_articles(page, page_size, app_id=app_id)
-        # popular is already list of dicts
-        popular_dict = popular
+        # Use service layer pagination function
+        from backend.services.article_service import get_popular_articles_with_pagination
+        result = await get_popular_articles_with_pagination(
+            page=page, 
+            page_size=page_size, 
+            app_id=app_id
+        )
         
-        # Calculate total pages for popular articles
-        from backend.services.article_service import get_total_articles_count
-        total_items = await get_total_articles_count(app_id=app_id)
-        total_pages = (total_items + page_size - 1) // page_size
-        
-        return {
-            "success": True,
-            "data": popular_dict,
-            "pagination": {
-                "page": page,
-                "page_size": page_size,
-                "total": total_pages,  # total pages
-                "total_results": total_items  # total result count
-            }
-        }
+        return result
     except Exception as e:
         print(f"Error fetching popular articles: {e}")
-        return {"success": False, "data": {"error": "Failed to fetch statistics"}}
+        return {"success": False, "data": {"error": "Failed to fetch popular articles"}}
 
 @articles.post("/generate-tags")
 async def generate_article_tags(
@@ -211,19 +182,8 @@ async def generate_article_tags(
 @articles.get("/stats")
 async def get_statistics(app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
     """Get statistics for articles, authors, views, and bookmarks."""
-    # Check Redis cache first with app_id-specific key
-    cache_key = f"homepage:statistics"
-    if app_id:
-        cache_key = f"homepage:statistics:app_{app_id}"
-    
-    cached_stats = await get_cache(cache_key)
-    if cached_stats:
-        print(f"📊 Redis Cache HIT for statistics (app_id: {app_id or 'all'})")
-        return {"success": True, "data": cached_stats}
-    
-    print(f"📊 Redis Cache MISS for statistics (app_id: {app_id or 'all'}) - Loading from DB...")
     try:
-        # Use the service layer function for consistent data
+        # Use the service layer function for consistent data with caching
         from backend.services.article_service import get_summary
         stats_data = await get_summary(app_id=app_id)
         
@@ -237,10 +197,6 @@ async def get_statistics(app_id: Optional[str] = Query(None, description="Applic
             "total_views": stats_data.get("total_views", 0),
             "bookmarks": stats_data.get("bookmarks", 0)
         }
-        
-        # Cache the results for 3 minutes (180 seconds)
-        await set_cache(cache_key, api_stats, ttl=180)
-        print(f"📊 Redis Cache SET for statistics (app_id: {app_id or 'all'})")
         
         return {
             "success": True,
@@ -262,98 +218,9 @@ async def get_statistics(app_id: Optional[str] = Query(None, description="Applic
 @articles.get("/categories")
 async def get_categories(app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
     """Get all available categories and their article counts."""
-    # Check Redis cache first
-    cache_key = f"homepage:categories:app_{app_id or 'none'}"
-    cached_categories = await get_cache(cache_key)
-    if cached_categories:
-        print("🏷️ Redis Cache HIT for categories")
-        return {"success": True, "data": cached_categories}
-    
-    print("🏷️ Redis Cache MISS for categories - Loading from DB...")
     try:
-        # Try to get data from Cosmos DB first
-        try:
-            articles_container = await get_articles_container()
-            
-            # Cosmos DB does not support GROUP BY across partitioned arrays in the SDK easily.
-            # We'll read items and aggregate tag counts client-side. Use read_all_items
-            # to iterate across partitions without passing unsupported kwargs.
-            categories_result = []
-            from collections import Counter
-            tag_counter = Counter()
-
-            # iterate over all articles and accumulate tags (filter client-side)
-            async for item in articles_container.read_all_items():
-                try:
-                    if not item or not item.get('is_active'):
-                        continue
-                    # Filter by app_id if provided
-                    if app_id and item.get('app_id') != app_id:
-                        continue
-                    tags = item.get('tags') or []
-                    for t in tags:
-                        tag_counter[t] += 1
-                except Exception:
-                    # ignore malformed documents
-                    continue
-
-            # prepare top categories (limit to top 10)
-            for tag, count in tag_counter.most_common(10):
-                categories_result.append({"name": tag, "count": count})
-            
-        except Exception as db_error:
-            print(f"Cosmos DB connection failed, using sample data in the ai_search/data/articles.json for categories: {db_error}")
-            # Fallback to sample data from articles.json
-            import json
-            import os
-            from collections import Counter
-            
-            # Path to the sample articles file
-            sample_file_path = os.path.join(os.path.dirname(__file__), '..', '..', 'ai_search', 'data', 'articles.json')
-            
-            if os.path.exists(sample_file_path):
-                with open(sample_file_path, 'r', encoding='utf-8') as f:
-                    sample_articles = json.load(f)
-                
-                # Count tags from sample data
-                all_tags = []
-                for article in sample_articles:
-                    # Filter by app_id if provided
-                    if app_id and article.get('app_id') != app_id:
-                        continue
-                    if article.get('tags'):
-                        all_tags.extend(article['tags'])
-                
-                tag_counts = Counter(all_tags)
-                categories_result = [
-                    {"name": tag, "count": count} 
-                    for tag, count in tag_counts.most_common(10)  # Top 10 categories
-                ]
-            else:
-                # If sample file not found, use default categories
-                categories_result = [
-                    {"name": "Technology", "count": 15},
-                    {"name": "Design", "count": 12},
-                    {"name": "Business", "count": 10},
-                    {"name": "Science", "count": 8},
-                    {"name": "Health", "count": 6},
-                    {"name": "Lifestyle", "count": 5}
-                ]
-        
-        # Add default categories if none exist
-        if not categories_result:
-            categories_result = [
-                {"name": "Technology", "count": 15},
-                {"name": "Design", "count": 12},
-                {"name": "Business", "count": 10},
-                {"name": "Science", "count": 8},
-                {"name": "Health", "count": 6},
-                {"name": "Lifestyle", "count": 5}
-            ]
-        
-        # Cache the results for 3 minutes (180 seconds)
-        await set_cache(cache_key, categories_result, ttl=180)
-        print("🏷️ Redis Cache SET for categories")
+        from backend.services.article_service import get_categories as get_categories_service
+        categories_result = await get_categories_service(app_id=app_id)
         
         return {
             "success": True,
@@ -383,71 +250,9 @@ async def get_articles_by_category(
 ):
     """Get articles by category."""
     try:
-        articles_container = await get_articles_container()
-        
-        # Query articles that have the specified category in their tags
-        if app_id:
-            query = """
-            SELECT * FROM c 
-            WHERE c.is_active = true 
-            AND ARRAY_CONTAINS(c.tags, @category)
-            AND c.app_id = @app_id
-            ORDER BY c.created_at DESC
-            OFFSET @skip LIMIT @limit
-            """
-        else:
-            query = """
-            SELECT * FROM c 
-            WHERE c.is_active = true 
-            AND ARRAY_CONTAINS(c.tags, @category)
-            ORDER BY c.created_at DESC
-            OFFSET @skip LIMIT @limit
-            """
-        
-        skip = (page - 1) * limit
-        parameters = [
-            {"name": "@category", "value": category_name},
-            {"name": "@skip", "value": skip},
-            {"name": "@limit", "value": limit}
-        ]
-        if app_id:
-            parameters.append({"name": "@app_id", "value": app_id})
-        
-        results = []
-        async for doc in articles_container.query_items(query=query, parameters=parameters):
-            results.append(doc)
-        
-        # Calculate total pages for category
-        # First get total count for this category
-        count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published'"
-        if category_name != "all":
-            count_query += " AND ARRAY_CONTAINS(c.tags, @category)"
-        if app_id:
-            count_query += " AND c.app_id = @app_id"
-        
-        count_parameters = []
-        if category_name != "all":
-            count_parameters.append({"name": "@category", "value": category_name})
-        if app_id:
-            count_parameters.append({"name": "@app_id", "value": app_id})
-        
-        total_items = 0
-        async for count in articles_container.query_items(query=count_query, parameters=count_parameters):
-            total_items = count
-            break
-        
-        total_pages = (total_items + limit - 1) // limit
-        
-        return {
-            "success": True,
-            "data": results,
-            "pagination": {
-                "page": page,
-                "limit": limit,
-                "total": total_pages,  # total pages
-                "total_results": total_items  # total result count
-            }
-        }
+        from backend.services.article_service import get_articles_by_category as get_articles_by_category_service
+        result = await get_articles_by_category_service(category_name, page, limit, app_id)
+        return result
     except Exception as e:
         print(f"Error fetching articles by category: {e}")
         return {
@@ -581,37 +386,20 @@ async def remove(article_id: str, app_id: Optional[str] = Query(None, descriptio
 
 @articles.get("/author/{author_id}")
 async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20, app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
-    # Check Redis cache first
-    cache_key = f"articles:author:{author_id}:page_{page}_size_{page_size}:app_{app_id or 'none'}"
-    cached_articles = await get_cache(cache_key)
-    if cached_articles:
-        print(f"✍️ Redis Cache HIT for author {author_id} articles")
-        return cached_articles
-    
-    print(f"✍️ Redis Cache MISS for author {author_id} articles - Loading from DB...")
-    # Get articles by author (returns List[dict])
-    articles_list = await get_articles_by_author(author_id, page - 1, page_size, app_id=app_id)
-    # articles_list is already list of dicts
-    articles_dict = articles_list
-    
-    # Calculate total pages for this author
-    from backend.services.article_service import get_total_articles_count_by_author
-    total_items = await get_total_articles_count_by_author(author_id, app_id=app_id)
-    total_pages = (total_items + page_size - 1) // page_size
-    
-    result = {
-        "success": True,
-        "data": articles_dict,
-        "pagination": {
-            "page": page,
-            "page_size": page_size,
-            "total": total_pages,  # total pages
-            "total_results": total_items  # total result count
-        }
-    }
-    
-    # Cache the results for 3 minutes (180 seconds)
-    await set_cache(cache_key, result, ttl=180)
-    print(f"✍️ Redis Cache SET for author {author_id} articles")
-    
-    return result
+    try:
+        # Use service layer pagination function
+        from backend.services.article_service import get_articles_by_author_with_pagination
+        result = await get_articles_by_author_with_pagination(
+            author_id=author_id,
+            page=page, 
+            page_size=page_size, 
+            app_id=app_id
+        )
+        
+        return result
+    except Exception as e:
+        print(f"Error fetching articles by author: {e}")
+        return JSONResponse(status_code=500, content={
+            "success": False,
+            "data": {"error": str(e)}
+        })

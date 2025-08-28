@@ -9,7 +9,6 @@ from backend.services import user_service
 from backend.repositories import user_repo as user_repository
 from backend.repositories import article_repo
 from backend.utils import get_current_user
-from backend.services.cache_service import get_cache, set_cache
 
 users = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -173,37 +172,15 @@ async def get_all_users_admin(
 ):
     """Get all users for admin dashboard with full details"""
     try:
-        users_data = await user_service.list_users(app_id=app_id)
+        # Use service layer pagination function
+        from backend.services.user_service import list_users_with_pagination_admin
+        result = await list_users_with_pagination_admin(
+            page=page,
+            limit=limit,
+            app_id=app_id
+        )
         
-        if not users_data:
-            return {
-                "success": True,
-                "data": [],
-                "pagination": {
-                    "page": page,
-                    "limit": limit,
-                    "total": 0,
-                    "total_results": 0
-                }
-            }
-        
-        # Apply pagination
-        total_items = len(users_data)
-        total_pages = (total_items + limit - 1) // limit
-        start_idx = (page - 1) * limit
-        end_idx = start_idx + limit
-        paginated_users = users_data[start_idx:end_idx]
-        
-        return {
-            "success": True,
-            "data": paginated_users,
-            "pagination": {
-                "page": page,
-                "limit": limit,
-                "total": total_pages,
-                "total_results": total_items
-            }
-        }
+        return result
     except Exception as e:
         print(f"Error fetching users for admin: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch users")
@@ -217,61 +194,14 @@ async def get_all_users(
     app_id: Optional[str] = Query(None, description="Application ID for filtering results")
 ):
     """Get all users with pagination and optional featured filter."""
-    # Check Redis cache first
-    cache_key = f"authors:page_{page}_limit_{limit}_featured_{featured}_app_{app_id or 'none'}"
-    # Temporarily disable cache to serve fresh pagination data
-    cached_authors = await get_cache(cache_key)
-    if cached_authors:
-        print("👥 Redis Cache HIT for authors")
-        return cached_authors
-    
-    print("👥 Redis Cache MISS for authors - Loading from DB...")
     try:
-        users_data = await user_service.list_users(app_id=app_id)
-        
-        if not users_data:
-            return {
-                "success": True,
-                "data": [],
-                "pagination": {
-                    "page": page,
-                    "limit": limit,
-                    "total": 0,  # total pages
-                    "total_results": 0  # total result count
-                }
-            }
-        
-        # Filter featured users if requested
-        if featured:
-            # For now, consider users with more articles as "featured"
-            # In a real app, you'd have a featured flag in the user model
-            users_data = [u for u in users_data if u.get("article_count", 0) > 0]
-        
-        # Apply pagination
-        total_items = len(users_data)
-        total_pages = (total_items + limit - 1) // limit  # Ceiling division
-        start_idx = (page - 1) * limit
-        end_idx = start_idx + limit
-        paginated_users = users_data[start_idx:end_idx]
-        
-        result = {
-            "success": True,
-            "data": paginated_users,
-            "pagination": {
-                "page": page,
-                "limit": limit,
-                "total": total_pages,  # total pages
-                "total_results": total_items  # total result count
-            }
-        }
-        
-        print(f"👥 [USERS API DEBUG] Returning pagination: {result['pagination']}")
-        print(f"👥 [USERS API DEBUG] total_items={total_items}, total_pages={total_pages}, limit={limit}")
-        
-        # Cache the results for 3 minutes (180 seconds)
-        await set_cache(cache_key, result, ttl=180)
-        print("👥 Redis Cache SET for authors")
-        
+        from backend.services.user_service import list_users_with_cache
+        result = await list_users_with_cache(
+            page=page, 
+            page_size=limit, 
+            featured=featured, 
+            app_id=app_id
+        )
         return result
     except Exception as e:
         print(f"Error fetching users: {e}")
