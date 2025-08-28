@@ -29,7 +29,7 @@ class TokenResponse(BaseModel):
 @auth.post("/login", response_model=TokenResponse)
 async def login_user(data: LoginRequest):
     # Authenticate using user_service which validates password.
-    user = await login(data.email, data.password, app_id=data.app_id)
+    user = await login(data.email, data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"sub": user["id"]})
