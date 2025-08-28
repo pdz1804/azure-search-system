@@ -227,33 +227,33 @@ async def get_all_users_admin(
         raise HTTPException(status_code=500, detail="Failed to fetch users")
 
 
-@users.delete("/{user_id}")
-async def delete_user(
-    user_id: str,
-    app_id: Optional[str] = Query(None, description="Application ID for multi-tenant filtering"),
-    admin_user: dict = Depends(require_admin)
-):
-    """Delete a user (admin only)"""
-    try:
-        # Prevent admin from deleting themselves
-        if user_id == admin_user["id"]:
-            raise HTTPException(
-                status_code=400,
-                detail="Cannot delete your own account"
-            )
+# @users.delete("/{user_id}")
+# async def delete_user(
+#     user_id: str,
+#     app_id: Optional[str] = Query(None, description="Application ID for multi-tenant filtering"),
+#     admin_user: dict = Depends(require_admin)
+# ):
+#     """Delete a user (admin only)"""
+#     try:
+#         # Prevent admin from deleting themselves
+#         if user_id == admin_user["id"]:
+#             raise HTTPException(
+#                 status_code=400,
+#                 detail="Cannot delete your own account"
+#             )
         
-        # Delete user
-        result = await user_service.delete_user(user_id, app_id)
-        if not result:
-            raise HTTPException(status_code=404, detail="User not found or access denied")
+#         # Delete user
+#         result = await user_service.delete_user(user_id, app_id)
+#         if not result:
+#             raise HTTPException(status_code=404, detail="User not found or access denied")
         
-        return {"success": True, "data": {"message": "User deleted successfully"}}
+#         return {"success": True, "data": {"message": "User deleted successfully"}}
     
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Error deleting user: {e}")
-        raise HTTPException(status_code=500, detail="Failed to delete user")
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         print(f"Error deleting user: {e}")
+#         raise HTTPException(status_code=500, detail="Failed to delete user")
 
 
 @users.get("/")
