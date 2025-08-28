@@ -5,6 +5,7 @@ This module performs direct data access against the Cosmos DB
 here so the service layer above can remain database-agnostic.
 """
 
+import asyncio
 from calendar import c
 import math
 import re
@@ -391,7 +392,7 @@ async def get_articles_by_category(
     
     # Calculate total pages for category
     # First get total count for this category
-    count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'published'"
+    count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.status = 'true'"
     if category_name != "all":
         count_query += " AND ARRAY_CONTAINS(c.tags, @category)"
     if app_id:
@@ -460,37 +461,52 @@ async def get_article_summary_counts(app_id: Optional[str] = None) -> Dict:
     """Get efficient count-based summary for articles with all statistics."""
     try:
         articles = await get_articles()
-        
-        # Build base filter conditions
+
+        base_filter = "c.is_active = true"
+        parameters = []
         if app_id:
-            base_filter = "c.is_active = true AND c.app_id = @app_id"
+            base_filter += " AND c.app_id = @app_id"
             parameters = [{"name": "@app_id", "value": app_id}]
-        else:
-            base_filter = "c.is_active = true"
-            parameters = []
-        
-        # Execute all count queries in parallel for better performance
-        queries = {
-            "total": f"SELECT VALUE COUNT(1) FROM c WHERE {base_filter}",
-            "published": f"SELECT VALUE COUNT(1) FROM c WHERE {base_filter} AND c.status = 'published'",
-            "draft": f"SELECT VALUE COUNT(1) FROM c WHERE {base_filter} AND c.status = 'draft'",
-            "authors": f"SELECT VALUE COUNT(DISTINCT c.author_id) FROM c WHERE {base_filter} AND c.author_id != null",
-        }
-        
-        # Execute count queries
+
+        # Run each query separately to avoid issues with asyncio.gather
         results = {}
-        for key, query in queries.items():
-            async for count in articles.query_items(query=query, parameters=parameters):
-                results[key] = count
-                break
         
+        # Total articles count
+        total_query = f"SELECT VALUE COUNT(1) FROM c WHERE {base_filter}"
+        async for count in articles.query_items(query=total_query, parameters=parameters):
+            results["total"] = count
+            break
+        
+        # Published articles count
+        published_query = f"SELECT VALUE COUNT(1) FROM c WHERE {base_filter} AND c.status = 'published'"
+        async for count in articles.query_items(query=published_query, parameters=parameters):
+            results["published"] = count
+            break
+        
+        # Draft articles count
+        draft_query = f"SELECT VALUE COUNT(1) FROM c WHERE {base_filter} AND c.status = 'draft'"
+        async for count in articles.query_items(query=draft_query, parameters=parameters):
+            results["draft"] = count
+            break
+        
+        # Authors count - simplified query without DISTINCT which might cause issues
+        authors_query = f"SELECT c.author_id FROM c WHERE {base_filter} AND IS_DEFINED(c.author_id)"
+        unique_authors = set()
+        async for item in articles.query_items(query=authors_query, parameters=parameters):
+            if item.get("author_id"):
+                unique_authors.add(item["author_id"])
+        results["authors"] = len(unique_authors)
+
         return {
             "total_articles": results.get("total", 0),
             "published_articles": results.get("published", 0),
             "draft_articles": results.get("draft", 0),
             "authors": results.get("authors", 0),
         }
-    except Exception:
+
+    except Exception as e:
+        # Ghi log lỗi để debug
+        print(f"Error in get_article_summary_counts: {e}")
         return {
             "total_articles": 0,
             "published_articles": 0,
@@ -502,33 +518,29 @@ async def get_article_summary_aggregations(app_id: Optional[str] = None) -> Dict
     """Get aggregation statistics (views, likes) for articles."""
     try:
         articles = await get_articles()
-        
-        # Build aggregation query
+
+        base_filter = "c.is_active = true"
+        parameters = []
         if app_id:
-            query = """
-                SELECT 
-                    SUM(c.views) as total_views,
-                    SUM(c.likes) as total_likes
-                FROM c 
-                WHERE c.is_active = true AND c.app_id = @app_id
-            """
+            base_filter += " AND c.app_id = @app_id"
             parameters = [{"name": "@app_id", "value": app_id}]
-        else:
-            query = """
-                SELECT 
-                    SUM(c.views) as total_views,
-                    SUM(c.likes) as total_likes
-                FROM c 
-                WHERE c.is_active = true
-            """
-            parameters = []
+
+        # Get all views and likes by fetching documents and summing manually
+        # This avoids issues with SUM aggregates in Cosmos DB
+        query = f"SELECT c.views, c.likes FROM c WHERE {base_filter}"
         
-        async for result in articles.query_items(query=query, parameters=parameters):
-            return {
-                "total_views": int(result.get("total_views", 0) or 0),
-                "total_likes": int(result.get("total_likes", 0) or 0),
-            }
+        total_views = 0
+        total_likes = 0
         
-        return {"total_views": 0, "total_likes": 0}
-    except Exception:
+        async for item in articles.query_items(query=query, parameters=parameters):
+            total_views += int(item.get("views", 0) or 0)
+            total_likes += int(item.get("likes", 0) or 0)
+
+        return {
+            "total_views": total_views,
+            "total_likes": total_likes,
+        }
+
+    except Exception as e:
+        print(f"Error in get_article_summary_aggregations: {e}")
         return {"total_views": 0, "total_likes": 0}
