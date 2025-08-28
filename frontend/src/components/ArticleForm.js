@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Upload, Select, message, Card, Switch, Tag, Space, Tooltip } from 'antd';
+import React, { useState, useEffect, useRef } from 'react';
+import { Form, Input, Button, Upload, Select, message, Card, Switch, Tag, Space, Tooltip, Modal } from 'antd';
 import { UploadOutlined, SaveOutlined, BulbOutlined, LoadingOutlined } from '@ant-design/icons';
-import ReactQuill from 'react-quill';
+import ReactQuill, { Quill } from 'react-quill';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -15,6 +15,8 @@ import { APP_ID } from '../config/appConfig';
 const { TextArea } = Input;
 const { Option } = Select;
 
+
+
 const ArticleForm = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -24,6 +26,7 @@ const ArticleForm = () => {
   const [isEdit, setIsEdit] = useState(false);
   const [suggestedTags, setSuggestedTags] = useState([]);
   const [generatingTags, setGeneratingTags] = useState(false);
+  const quillRef = useRef(null);
   const navigate = useNavigate();
   const { id } = useParams();
 
@@ -88,6 +91,8 @@ const ArticleForm = () => {
     // Remove from suggested tags after adding
     setSuggestedTags(prev => prev.filter(t => t !== tag));
   };
+
+  
 
   const handleSubmit = async (values) => {
     setLoading(true);
@@ -221,18 +226,20 @@ const ArticleForm = () => {
   };
 
   const modules = {
-    toolbar: [
-      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      [{ 'script': 'sub'}, { 'script': 'super' }],
-      [{ 'indent': '-1'}, { 'indent': '+1' }],
-      [{ 'direction': 'rtl' }],
-      [{ 'color': [] }, { 'background': [] }],
-      [{ 'align': [] }],
-      ['link', 'image', 'video'],
-      ['clean']
-    ],
+    toolbar: {
+      container: [
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'script': 'sub'}, { 'script': 'super' }],
+        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        [{ 'direction': 'rtl' }],
+        [{ 'color': [] }, { 'background': [] }],
+        [{ 'align': [] }],
+        ['link', 'image', 'video'],
+        ['clean']
+      ]
+    }
   };
 
   return (
@@ -297,6 +304,7 @@ const ArticleForm = () => {
           ) : (
             <Form.Item label="Content" required>
               <ReactQuill
+                ref={quillRef}
                 theme="snow"
                 value={content}
                 onChange={setContent}
@@ -426,6 +434,8 @@ const ArticleForm = () => {
           </Form.Item>
         </Form>
       </Card>
+
+
     </div>
   );
 };

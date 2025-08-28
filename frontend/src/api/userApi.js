@@ -340,5 +340,21 @@ export const userApi = {
         error: error.response?.data?.detail || 'Failed to update user' 
       };
     }
+  },
+
+  // Admin-only: Delete user
+  deleteUser: async (userId) => {
+    try {
+      const response = await apiClient.delete(`/users/${userId}`, {
+        params: { app_id: APP_ID }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Delete user error:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.detail || 'Failed to delete user' 
+      };
+    }
   }
 };

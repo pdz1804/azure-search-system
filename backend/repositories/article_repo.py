@@ -215,10 +215,10 @@ async def get_article_by_author(author_id: str, page: int = 1, page_size: int = 
 
     # Build count query with app_id filter if provided
     if app_id:
-        count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.author_id = @author_id AND c.app_id = @app_id"
+        count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.author_id = @author_id AND c.is_active = true AND c.app_id = @app_id"
         count_parameters = [{"name": "@author_id", "value": author_id}, {"name": "@app_id", "value": app_id}]
     else:
-        count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.author_id = @author_id"
+        count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.author_id = @author_id AND c.is_active = true"
         count_parameters = [{"name": "@author_id", "value": author_id}]
         
     count_result = [item async for item in articles.query_items(query=count_query, parameters=count_parameters)]
@@ -232,10 +232,10 @@ async def get_article_by_author(author_id: str, page: int = 1, page_size: int = 
 
     # Build data query with app_id filter if provided
     if app_id:
-        data_query = "SELECT * FROM c WHERE c.author_id = @author_id AND c.app_id = @app_id"
+        data_query = "SELECT * FROM c WHERE c.author_id = @author_id AND c.is_active = true AND c.app_id = @app_id ORDER BY c.created_at DESC"
         data_parameters = [{"name": "@author_id", "value": author_id}, {"name": "@app_id", "value": app_id}]
     else:
-        data_query = "SELECT * FROM c WHERE c.author_id = @author_id"
+        data_query = "SELECT * FROM c WHERE c.author_id = @author_id AND c.is_active = true ORDER BY c.created_at DESC"
         data_parameters = [{"name": "@author_id", "value": author_id}]
         
     async for doc in articles.query_items(query=data_query, parameters=data_parameters):
@@ -270,24 +270,26 @@ async def get_author_stats(author_id: str, app_id: Optional[str] = None) -> Dict
 
     total_items = 0
     total_views = 0
+    total_likes = 0
 
     try:
         async for doc in articles.query_items(query=data_query, parameters=parameters):
             try:
                 total_items += 1
                 total_views += int(doc.get('views', 0) or 0)
+                total_likes += int(doc.get('likes', 0) or 0)
             except Exception:
                 # If a document is malformed, skip its numeric contribution but still count it
                 total_items += 1
                 continue
     except Exception:
         # On any error, return zeros so caller can fallback
-        return {"articles_count": 0, "total_views": 0}
+        return {"articles_count": 0, "total_views": 0, "total_likes": 0}
 
-    return {"articles_count": total_items, "total_views": total_views}
+    return {"articles_count": total_items, "total_views": total_views, "total_likes": total_likes}
 
 
-async def get_articles_by_ids(article_ids: List[str]):
+async def get_articles_by_ids(article_ids: List[str], app_id: Optional[str] = None):
     articles_repo = await get_articles()
 
     if not article_ids:
@@ -297,6 +299,11 @@ async def get_articles_by_ids(article_ids: List[str]):
     parameters = [{"name": f"@id{i}", "value": id_} for i, id_ in enumerate(article_ids)]
 
     query = f"SELECT * FROM c WHERE c.id IN ({ids_placeholders}) AND c.is_active = true"
+    
+    # Add app_id filtering if provided
+    if app_id:
+        query += " AND c.app_id = @app_id"
+        parameters.append({"name": "@app_id", "value": app_id})
 
     results = []
     async for doc in articles_repo.query_items(query=query, parameters=parameters):

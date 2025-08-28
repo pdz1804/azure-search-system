@@ -228,6 +228,7 @@ async def _convert_to_article_detail_dto(article: dict, app_id: Optional[str] = 
             recommended_dtos = []
     
     return {
+        "app_id": article.get("app_id", ""),
         "id": article.get("id", ""),
         "title": article.get("title", ""),
         "content": article.get("content", ""),
@@ -346,7 +347,12 @@ async def update_article(article_id: str, update_doc: dict, app_id: Optional[str
 
 async def delete_article(article_id: str, app_id: Optional[str] = None):
     # Get article info before deletion to get author_id and app_id
-    article_to_delete = await article_repo.get_article_by_id(article_id)
+    # Pass app_id to ensure we only delete articles from the correct app
+    article_to_delete = await article_repo.get_article_by_id(article_id, app_id)
+    
+    if not article_to_delete:
+        print(f"❌ Article {article_id} not found or app_id mismatch for deletion")
+        return False
     
     await article_repo.delete_article(article_id)
     await user_service.delete_reaction(article_id)
@@ -362,6 +368,8 @@ async def delete_article(article_id: str, app_id: Optional[str] = None):
         article_id=article_id,
         author_id=article_to_delete.get("author_id") if article_to_delete else None
     )
+    
+    return True
 
 async def list_articles(page: int, page_size: int, app_id: Optional[str] = None) -> List[dict]:
     # Try to get from cache using new cache API

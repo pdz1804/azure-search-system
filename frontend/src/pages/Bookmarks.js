@@ -30,41 +30,20 @@ const Bookmarks = () => {
       setLoading(true);
       console.log('Fetching bookmarked articles for user:', user);
       
-      // Get bookmarked article IDs from user data
-      const bookmarkedIds = user?.bookmarked_articles || [];
-      console.log('Bookmarked article IDs:', bookmarkedIds);
+      // Use the dedicated bookmarks API endpoint
+      const response = await userApi.getBookmarkedArticles();
+      console.log('Bookmarks API response:', response);
       
-      if (bookmarkedIds.length === 0) {
+      if (response.success && response.data) {
+        setBookmarkedArticles(response.data);
+      } else {
+        console.warn('Failed to fetch bookmarks:', response.error);
         setBookmarkedArticles([]);
-        setLoading(false);
-        return;
       }
-      
-      // Fetch each bookmarked article individually
-      const articlePromises = bookmarkedIds.map(async (articleId) => {
-        try {
-          const response = await articleApi.getArticleById(articleId);
-          if (response.success) {
-            return response.data;
-          } else {
-            console.warn(`Failed to fetch article ${articleId}:`, response.error);
-            return null;
-          }
-        } catch (error) {
-          console.error(`Error fetching article ${articleId}:`, error);
-          return null;
-        }
-      });
-      
-      const articles = await Promise.all(articlePromises);
-      const validArticles = articles.filter(article => article !== null);
-      
-      console.log('Fetched bookmarked articles:', validArticles);
-      setBookmarkedArticles(validArticles);
       
     } catch (error) {
       console.error('Error fetching bookmarked articles:', error);
-      message.error('Failed to load bookmarked articles. Please try again.');
+      message.error('Failed to load bookmarks');
       setBookmarkedArticles([]);
     } finally {
       setLoading(false);
