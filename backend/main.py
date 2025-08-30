@@ -49,7 +49,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL").split(",")
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[ FRONTEND_URL],  # Frontend URLs
+    allow_origins=FRONTEND_URL,  # Frontend URLs
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers

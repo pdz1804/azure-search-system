@@ -103,12 +103,12 @@ Note:
 - fix phân trang của tất cả ==> DONE fix phân trang của list all articles ==> chưa done search or authors --> tạm chấp nhận như hiện tại rằng ví dụ khi search xong nó sẽ hiện có 5 trang và đang ở trang 1. sau đó nhấn vào trang 5 thì nó mới gọi api để search results cho trang 5 --> thì khi search trang 5 nó lại có thông tin rằng còn những results score thấp hơn ở các trang sau ví dụ 6 7 nữa nên pagination sẽ update rằng có thêm trang 6 và 7. Chỉ hong suggest thêm trang nếu ví dụ khi nhấn vào trang 8 thì result trả ra chỉ nằm trọn trong trang đó thôi ==> maybe this still ok ==> **DONE**
 - view all authors not filter `is_active=false` yet ==> **DONE**
 - account deleted and account not found UIs ==> **DONE**
+- api list all user của admin dashboard  **DONE**
 
 ---
 
 # TODO
 
-- api list all user của admin dashboard  **DONE**
 - recommended thật sự và recommended tùy profile user cho trang homepage / trang authors / trang articles --> Cuong + Minh
 - test deploy 3 app 
 - think + search for hints for performing the website for BĐS or some others...
