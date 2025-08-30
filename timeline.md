@@ -108,7 +108,7 @@ Note:
 
 # TODO
 
-- api list all user của admin dashboard 
+- api list all user của admin dashboard  **DONE**
 - recommended thật sự và recommended tùy profile user cho trang homepage / trang authors / trang articles --> Cuong + Minh
 - test deploy 3 app 
 - think + search for hints for performing the website for BĐS or some others...

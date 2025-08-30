@@ -42,7 +42,8 @@ const Dashboard = () => {
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 20,
-    total: 0
+    total: 0,
+    loading: false
   });
   
   // Search and filter states
@@ -57,7 +58,7 @@ const Dashboard = () => {
   const [filterDrawerVisible, setFilterDrawerVisible] = useState(false);
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsers(pagination.current, pagination.pageSize);
     checkScreenSize();
     
     const handleResize = () => checkScreenSize();
@@ -70,32 +71,44 @@ const Dashboard = () => {
     setIsMobile(window.innerWidth < 768);
   };
 
-  // Filter and search users whenever data or filters change
-  useEffect(() => {
-    applyFilters();
-  }, [users, searchText, roleFilter, statusFilter, sortField, sortOrder]);
-
-  const fetchUsers = async () => {
+  // Fetch users with pagination from backend
+  const fetchUsers = async (page = 1, pageSize = 20) => {
     try {
       setLoading(true);
-      // For admin dashboard, fetch all users at once with a high limit
-      // We'll handle pagination on the frontend for better filtering/searching
-      const response = await userApi.getAllUsersAdmin(1, 1000); // Get up to 1000 users
+      setPagination(prev => ({ ...prev, loading: true }));
+      
+      const response = await userApi.getAllUsersAdmin(page, pageSize);
+      
       if (response.success) {
-        const allUsers = response.data || [];
-        setUsers(allUsers);
-        console.log(`Admin Dashboard: Loaded ${allUsers.length} total users`);
+        const usersData = response.data || [];
+        const paginationData = response.pagination || {};
+        
+        setUsers(usersData);
+        setFilteredUsers(usersData); // Initially set filtered to all users
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          pageSize: pageSize,
+          total: paginationData.total_results || 0,
+          loading: false
+        }));
+        
+        console.log(`Admin Dashboard: Loaded ${usersData.length} users for page ${page}`);
+        console.log(`Total users: ${paginationData.total_results || 0}`);
       } else {
         message.error('Failed to fetch users');
+        setPagination(prev => ({ ...prev, loading: false }));
       }
     } catch (error) {
       message.error('Failed to load users');
       console.error('Error fetching users:', error);
+      setPagination(prev => ({ ...prev, loading: false }));
     } finally {
       setLoading(false);
     }
   };
 
+  // Apply filters to current page data only
   const applyFilters = () => {
     let filtered = [...users];
 
@@ -138,8 +151,12 @@ const Dashboard = () => {
     });
 
     setFilteredUsers(filtered);
-    setPagination(prev => ({ ...prev, current: 1, total: filtered.length }));
   };
+
+  // Apply filters whenever data or filters change (only on current page data)
+  useEffect(() => {
+    applyFilters();
+  }, [users, searchText, roleFilter, statusFilter, sortField, sortOrder]);
 
   const handleEditUser = (user) => {
     setSelectedUser(user);
@@ -164,7 +181,8 @@ const Dashboard = () => {
       if (response.success) {
         message.success('User updated successfully');
         setEditModalVisible(false);
-        fetchUsers();
+        // Reload current page instead of all users
+        fetchUsers(pagination.current, pagination.pageSize);
       } else {
         message.error('Failed to update user');
       }
@@ -186,7 +204,8 @@ const Dashboard = () => {
         message.success('User deleted successfully');
         setDeleteModalVisible(false);
         setSelectedUser(null);
-        fetchUsers();
+        // Reload current page instead of all users
+        fetchUsers(pagination.current, pagination.pageSize);
       } else {
         message.error('Failed to delete user');
       }
@@ -203,7 +222,8 @@ const Dashboard = () => {
       const response = await userApi.updateUser(user.id, { is_active: true });
       if (response.success) {
         message.success('User reactivated successfully');
-        fetchUsers();
+        // Reload current page instead of all users
+        fetchUsers(pagination.current, pagination.pageSize);
       } else {
         message.error('Failed to reactivate user');
       }
@@ -214,10 +234,11 @@ const Dashboard = () => {
   };
 
   const handleTableChange = (paginationInfo, filters, sorter) => {
-    setPagination(prev => ({
-      ...prev,
-      current: paginationInfo.current
-    }));
+    // Handle pagination change - fetch new page data
+    if (paginationInfo.current !== pagination.current || paginationInfo.pageSize !== pagination.pageSize) {
+      fetchUsers(paginationInfo.current, paginationInfo.pageSize);
+      return;
+    }
 
     // Handle sorting
     if (sorter && sorter.field) {
@@ -228,18 +249,22 @@ const Dashboard = () => {
 
   const handleSearch = (value) => {
     setSearchText(value);
-    // Reset pagination when searching
-    setPagination(prev => ({ ...prev, current: 1 }));
+    // When searching, we need to go back to page 1 and refetch
+    if (value !== searchText) {
+      fetchUsers(1, pagination.pageSize);
+    }
   };
 
   const handleRoleFilterChange = (value) => {
     setRoleFilter(value);
-    setPagination(prev => ({ ...prev, current: 1 }));
+    // When filtering, we need to go back to page 1 and refetch
+    fetchUsers(1, pagination.pageSize);
   };
 
   const handleStatusFilterChange = (value) => {
     setStatusFilter(value);
-    setPagination(prev => ({ ...prev, current: 1 }));
+    // When filtering, we need to go back to page 1 and refetch
+    fetchUsers(1, pagination.pageSize);
   };
 
   const clearFilters = () => {
@@ -248,7 +273,8 @@ const Dashboard = () => {
     setStatusFilter('all');
     setSortField('created_at');
     setSortOrder('descend');
-    setPagination(prev => ({ ...prev, current: 1 }));
+    // Fetch first page with cleared filters
+    fetchUsers(1, pagination.pageSize);
   };
 
   const getRoleColor = (role) => {
@@ -505,11 +531,11 @@ const Dashboard = () => {
     );
   }
 
-  // Calculate statistics
-  const totalUsers = users.length;
-  const activeUsers = users.filter(u => u.is_active !== false).length;
-  const adminUsers = users.filter(u => u.role === 'admin').length;
-  const writerUsers = users.filter(u => u.role === 'writer').length;
+  // Calculate statistics from pagination info (since we don't have all users loaded)
+  const totalUsers = pagination.total;
+  const activeUsers = users.filter(u => u.is_active !== false).length; // Count from current page
+  const adminUsers = users.filter(u => u.role === 'admin').length; // Count from current page  
+  const writerUsers = users.filter(u => u.role === 'writer').length; // Count from current page
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
@@ -552,8 +578,8 @@ const Dashboard = () => {
               <Button 
                 type="primary" 
                 icon={<ArrowPathIcon className="w-4 h-4" />}
-                onClick={fetchUsers}
-                loading={loading}
+                onClick={() => fetchUsers(pagination.current, pagination.pageSize)}
+                loading={loading || pagination.loading}
                 size={isMobile ? "small" : "default"}
               >
                 Refresh
@@ -628,7 +654,13 @@ const Dashboard = () => {
                   {/* Filter Summary and Clear */}
                   <div className="flex justify-between items-center mt-4">
                     <div className="text-sm text-gray-600">
-                      Showing <span className="font-semibold">{filteredUsers.length}</span> of <span className="font-semibold">{users.length}</span> users
+                      Showing <span className="font-semibold">{filteredUsers.length}</span> users on this page
+                      <span className="ml-2">
+                        (Page {pagination.current} of {Math.ceil(pagination.total / pagination.pageSize)})
+                      </span>
+                      <span className="ml-2">
+                        • Total: <span className="font-semibold">{pagination.total}</span> users
+                      </span>
                       {searchText && (
                         <span className="ml-2">
                           • Search: "<span className="font-medium">{searchText}</span>"
@@ -662,7 +694,10 @@ const Dashboard = () => {
               {/* Mobile Filter Summary */}
               {isMobile && (
                 <div className="text-sm text-gray-600 text-center">
-                  Showing <span className="font-semibold">{filteredUsers.length}</span> of <span className="font-semibold">{users.length}</span> users
+                  Showing <span className="font-semibold">{filteredUsers.length}</span> users on this page
+                  <span className="block mt-1">
+                    Page {pagination.current} of {Math.ceil(pagination.total / pagination.pageSize)} • Total: {pagination.total}
+                  </span>
                   {(searchText || roleFilter !== 'all' || statusFilter !== 'all') && (
                     <span className="block mt-1">
                       Filters applied • <Button 
@@ -682,7 +717,7 @@ const Dashboard = () => {
             {/* Mobile User Cards */}
             {isMobile && (
               <div className="space-y-4">
-                {filteredUsers.slice((pagination.current - 1) * pagination.pageSize, pagination.current * pagination.pageSize).map((userRecord) => (
+                {filteredUsers.map((userRecord) => (
                   <Card key={userRecord.id} className="shadow-sm border border-gray-200">
                     <div className="space-y-3">
                       {/* User Info */}
@@ -778,17 +813,19 @@ const Dashboard = () => {
                     <Button
                       size="small"
                       disabled={pagination.current === 1}
-                      onClick={() => setPagination(prev => ({ ...prev, current: prev.current - 1 }))}
+                      loading={pagination.loading}
+                      onClick={() => fetchUsers(pagination.current - 1, pagination.pageSize)}
                     >
                       Previous
                     </Button>
                     <span className="px-3 py-2 text-sm text-gray-600">
-                      Page {pagination.current} of {Math.ceil(filteredUsers.length / pagination.pageSize)}
+                      Page {pagination.current} of {Math.ceil(pagination.total / pagination.pageSize)}
                     </span>
                     <Button
                       size="small"
-                      disabled={pagination.current >= Math.ceil(filteredUsers.length / pagination.pageSize)}
-                      onClick={() => setPagination(prev => ({ ...prev, current: prev.current + 1 }))}
+                      disabled={pagination.current >= Math.ceil(pagination.total / pagination.pageSize)}
+                      loading={pagination.loading}
+                      onClick={() => fetchUsers(pagination.current + 1, pagination.pageSize)}
                     >
                       Next
                     </Button>
@@ -803,19 +840,19 @@ const Dashboard = () => {
                 columns={getDesktopColumns()}
                 dataSource={filteredUsers}
                 rowKey="id"
-                loading={loading}
+                loading={loading || pagination.loading}
                 scroll={{ x: 1200 }}
                 pagination={{
                   current: pagination.current,
                   pageSize: pagination.pageSize,
-                  total: filteredUsers.length,
+                  total: pagination.total, // Use total from backend
                   showSizeChanger: true,
                   showQuickJumper: true,
                   showTotal: (total, range) => 
                     `${range[0]}-${range[1]} of ${total} users`,
                   pageSizeOptions: ['10', '20', '50', '100'],
                   onShowSizeChange: (current, size) => {
-                    setPagination(prev => ({ ...prev, pageSize: size, current: 1 }));
+                    fetchUsers(1, size); // Fetch new page size from backend
                   },
                   responsive: true,
                   position: ['bottomRight']
@@ -1022,7 +1059,10 @@ const Dashboard = () => {
             
             {/* Results Count */}
             <div className="text-center text-sm text-gray-600 pt-4 border-t border-gray-200">
-              Showing <span className="font-semibold">{filteredUsers.length}</span> of <span className="font-semibold">{users.length}</span> users
+              Showing <span className="font-semibold">{filteredUsers.length}</span> users on this page
+              <div className="mt-1">
+                Page {pagination.current} of {Math.ceil(pagination.total / pagination.pageSize)} • Total: <span className="font-semibold">{pagination.total}</span> users
+              </div>
             </div>
           </div>
         </Drawer>

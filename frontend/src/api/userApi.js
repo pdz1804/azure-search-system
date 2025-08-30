@@ -328,22 +328,31 @@ export const userApi = {
   },
 
   // Admin-only: Get all users with full details
-  getAllUsersAdmin: async (page = 1, limit = 20) => {
+  getAllUsersAdmin: async (page = 1, pageSize = 20) => {
     try {
       const response = await apiClient.get('/users/admin/all', {
-        params: { page, limit, app_id: APP_ID }
+        params: { page, page_size: pageSize, app_id: APP_ID }
       });
       
-      // Backend returns { success: true, data: [...] }
+      // Backend returns { success: true, data: [...], pagination: {...} }
       if (response.data && response.data.success && response.data.data) {
         const users = normalizeUserArray(response.data.data);
-        return { ...response.data, data: users };
+        return { 
+          success: true,
+          data: users,
+          pagination: response.data.pagination
+        };
       }
       
       return response.data;
     } catch (error) {
       console.error('Get all users admin error:', error);
-      return { success: false, data: [], error: 'Failed to fetch users' };
+      return { 
+        success: false, 
+        data: [], 
+        pagination: { page, page_size: pageSize, total: 0, total_results: 0 },
+        error: 'Failed to fetch users' 
+      };
     }
   },
 
