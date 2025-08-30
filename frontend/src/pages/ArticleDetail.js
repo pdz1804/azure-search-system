@@ -176,6 +176,21 @@ const ArticleDetail = () => {
     }
   }, [user, id]); // Load reaction status when user data becomes available
 
+  // Separate useEffect to check follow status when user and article are ready
+  useEffect(() => {
+    if (article && user && isAuthenticated()) {
+      const authorId = article.author_id || article.author?.id;
+      console.log('useEffect checkFollow - authorId:', authorId, 'userId:', user.id || user.user_id);
+      
+      if (authorId && authorId !== user.id && authorId !== user.user_id) {
+        console.log('Calling checkFollowStatus from useEffect for author:', authorId);
+        checkFollowStatus(authorId);
+      } else {
+        console.log('Skipping follow check - same user or missing data');
+      }
+    }
+  }, [article, user]); // Check follow status when article and user data are available
+
   useEffect(() => {
     if (top5Recs.length > 0) {
       setTop5Recommendations(top5Recs);
@@ -257,8 +272,20 @@ const ArticleDetail = () => {
         }
         
         // Check follow status if user is logged in and not the author
-        if (isAuthenticated() && data?.author_id !== user?.id) {
-          checkFollowStatus(data.author_id);
+        const authorId = data?.author_id || data?.author?.id;
+        console.log('Checking follow conditions:', {
+          isAuthenticated: isAuthenticated(),
+          authorId: authorId,
+          userId: user?.id,
+          userIdFromAuth: user?.user_id,
+          shouldCheckFollow: isAuthenticated() && authorId && authorId !== user?.id && authorId !== user?.user_id
+        });
+        
+        if (isAuthenticated() && authorId && authorId !== user?.id && authorId !== user?.user_id) {
+          console.log('Calling checkFollowStatus for author:', authorId);
+          checkFollowStatus(authorId);
+        } else {
+          console.log('Skipping follow status check - conditions not met');
         }
       } else {
         console.error('Article API returned error:', response?.error);
@@ -385,11 +412,17 @@ const ArticleDetail = () => {
   };
 
   const checkFollowStatus = async (authorId) => {
+    console.log('checkFollowStatus called with authorId:', authorId);
     try {
+      console.log('Making API call to check follow status...');
       const response = await userApi.checkFollowStatus(authorId);
-      setIsFollowing(response.is_following);
+      console.log('Follow status response:', response);
+      const followStatus = response.data?.is_following || false;
+      console.log('Setting isFollowing to:', followStatus);
+      setIsFollowing(followStatus);
     } catch (error) {
-      // Silent fail
+      console.error('Error checking follow status:', error);
+      setIsFollowing(false);
     }
   };
 
@@ -524,6 +557,12 @@ const ArticleDetail = () => {
       return;
     }
     
+    const authorId = article.author_id || article.author?.id;
+    if (!authorId) {
+      message.error('Author information not available');
+      return;
+    }
+    
     setFollowLoading(true);
     try {
       if (isFollowing) {
@@ -536,6 +575,7 @@ const ArticleDetail = () => {
         setIsFollowing(true);
       }
     } catch (error) {
+      console.error('Follow/unfollow error:', error);
       message.error('Failed to perform action');
     } finally {
       setFollowLoading(false);
@@ -613,6 +653,19 @@ const ArticleDetail = () => {
   const authorName = article.author_name || article.author?.name || 'Unknown Author';
   const authorId = article.author_id || article.author?.id;
   const authorAvatar = article.author_avatar_url || article.author?.avatar_url;
+
+  // Debug: Log user and author info for follow button visibility
+  console.log('Follow button visibility check:', {
+    isAuthenticated: isAuthenticated(),
+    authorId: authorId,
+    userId: user?.id,
+    userIdFromAuth: user?.user_id,
+    articleAuthorId: article.author_id,
+    articleAuthorObjectId: article.author?.id,
+    showFollowButton: isAuthenticated() && authorId && 
+                     authorId !== user?.id && 
+                     authorId !== user?.user_id
+  });
 
   // Custom components for markdown rendering
   const markdownComponents = {
@@ -838,9 +891,11 @@ const ArticleDetail = () => {
                     {isBookmarked ? 'Bookmarked' : 'Bookmark'}
                   </Button>
                 
-                {isAuthenticated() && article.author_id !== user?.id && (
+                {isAuthenticated() && authorId && 
+                 authorId !== user?.id && 
+                 authorId !== user?.user_id && (
                   <Button
-                    type={isFollowing ? "default" : "primary"}
+                    type={isFollowing ? "primary" : "default"}
                     icon={isFollowing ? <UserDeleteOutlined /> : <UserAddOutlined />}
                     onClick={handleFollow}
                     loading={followLoading}

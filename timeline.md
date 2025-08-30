@@ -88,6 +88,10 @@ Note:
 
 ---
 
+# 30/8 CHương
+- add check follow status   **DONE**
+- ẩn nút follow nếu là bài viết của bản thân  **DONE**
+
 # TODO
 
 - soft delete user TUY NHIÊN hong delete like dislike số lương bên article done ==> DONE API chưa done APP
