@@ -29,6 +29,7 @@ const ArticleList = ({
   sortBy = 'created_at',
   onRefresh = null,
   onBookmarkChange = null,
+  onPublishDraft = null,
   currentPage = null,
   onPageChange = null,
   showTopPager = false,
@@ -343,6 +344,7 @@ const ArticleList = ({
                     onDelete={handleDelete}
                     onLike={handleLike}
                     onDislike={handleDislike}
+                    onPublishDraft={onPublishDraft}
                     layout="grid"
                   />
                 </div>

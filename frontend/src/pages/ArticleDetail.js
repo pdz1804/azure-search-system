@@ -104,7 +104,7 @@ const ArticleDetail = () => {
       more5: processedRecommendations.slice(5, 10),
       total: processedRecommendations.length,
       was_refreshed: processedRecommendations.length > 0,
-      last_updated: article?.recommended_time || new Date().toISOString()
+      last_updated: article?.recommended_time || null
     };
   }, [processedRecommendations, article?.recommended_time]);
     
@@ -203,7 +203,14 @@ const ArticleDetail = () => {
         const elapsed = Math.floor((now - updateTime) / 1000);
         const remaining = Math.max(0, 3600 - elapsed); // 60 minutes
         setRefreshCountdown(remaining);
+        console.log(`⏰ Timer initialized: last_updated=${lastUpdated}, elapsed=${elapsed}s, remaining=${remaining}s`);
+      } else {
+        console.log('⚠️ No recommended_time from backend, timer not initialized');
+        setRefreshCountdown(0); // No timer if no timestamp
       }
+    } else {
+      console.log('📋 No recommendations available, resetting timer');
+      setRefreshCountdown(0);
     }
   }, [top5Recs, more5Recs, lastUpdated]);
 
@@ -262,6 +269,14 @@ const ArticleDetail = () => {
       if (response && response.success) {
         const data = response.data;
         
+        // Debug: Log the recommended_time field from backend
+        console.log('🔍 Backend response debug:', {
+          hasRecommended: !!data.recommended,
+          recommendedCount: Array.isArray(data.recommended) ? data.recommended.length : 0,
+          recommendedTime: data.recommended_time,
+          recommendedTimeType: typeof data.recommended_time
+        });
+        
         // Recommendations are now included directly in the article data
         if (data.recommendations) {
           if (data.recommendations.was_refreshed) {
@@ -308,19 +323,49 @@ const ArticleDetail = () => {
     // Load popular authors: top 5 authors with most followers/articles/views in current app (excluding current article author)
     const loadRecommendedAuthors = async () => {
       try {
-        if (!article?.author_id) return;
+        console.log('🔍 Starting loadRecommendedAuthors...');
         
+        // Fix: Backend returns author_id and author_name as separate fields, not nested under author object
+        const authorId = article?.author_id || article?.author?.id;
+        const authorName = article?.author_name || article?.author?.name;
+        
+        console.log('📄 Article data:', {
+          hasArticle: !!article,
+          authorId: authorId,
+          authorName: authorName,
+          appId: article?.app_id
+        });
+        
+        if (!authorId) {
+          console.log('❌ No article author ID found, skipping popular authors load');
+          return;
+        }
+        
+        console.log('📞 Calling userApi.getAllUsers...');
         const usersResp = await userApi.getAllUsers(1, 100);
+        console.log('📥 Users API response:', {
+          success: usersResp.success,
+          dataType: typeof usersResp.data,
+          hasItems: !!usersResp.data?.items,
+          hasData: !!usersResp.data,
+          dataLength: usersResp.data?.items?.length || usersResp.data?.length || 0
+        });
+        
         if (usersResp.success) {
           const items = usersResp.data?.items || usersResp.data || [];
-          console.log('Recommended authors - raw user data:', items.slice(0, 2)); // Debug first 2 users
-          console.log('Total users returned:', items.length);
+          console.log('👥 Raw user data sample:', items.slice(0, 2));
+          console.log('📊 Total users returned:', items.length);
           
           // Filter out the current article author and inactive users
           const filteredUsers = items.filter(user => 
-            user.user_id !== article.author_id && user.is_active !== false
+            user.user_id !== authorId && user.is_active !== false
           );
-          console.log('Users after filtering current author:', filteredUsers.length);
+          console.log('🔍 Users after filtering:', {
+            total: items.length,
+            filtered: filteredUsers.length,
+            currentAuthorId: authorId,
+            filteredOut: items.length - filteredUsers.length
+          });
           
           // Sort by total_followers first, then by total_articles, then by total_views
           const top = filteredUsers
@@ -331,16 +376,58 @@ const ArticleDetail = () => {
             })
             .slice(0, 5);
             
-          console.log('Recommended authors - top 5:', top); // Debug top 5
-          console.log('Sample user structure:', items[0]); // Debug user structure
+          console.log('🏆 Top 5 popular authors:', top.map(u => ({
+            name: u.full_name,
+            followers: u.total_followers,
+            articles: u.articles_count,
+            views: u.total_views
+          })));
+          console.log('📝 Sample user structure:', items[0]);
           setRecommendedAuthors(top);
+        } else {
+          console.error('❌ Users API call failed:', usersResp);
         }
       } catch (e) {
-        console.error('Failed to load recommended authors:', e);
+        console.error('💥 Failed to load recommended authors:', e);
+        
+        // Even if the main API fails, try to get authors from recommended articles as fallback
+        try {
+          console.log('🔄 Trying fallback to recommended article authors...');
+          if (article.recommended && Array.isArray(article.recommended)) {
+            const fallbackAuthors = article.recommended
+              .filter(rec => {
+                // Fix: Check for author_id or author.id
+                const recAuthorId = rec.author_id || rec.author?.id;
+                return recAuthorId && recAuthorId !== (article?.author_id || article?.author?.id);
+              })
+              .map(rec => ({
+                user_id: rec.author_id || rec.author?.id,
+                full_name: rec.author_name || rec.author?.name || rec.author?.full_name || 'Unknown Author',
+                avatar_url: rec.author?.avatar_url,
+                role: rec.author?.role || 'user',
+                is_active: true,
+                articles_count: 1,
+                total_views: rec.total_view || rec.views || 0,
+                total_followers: 0
+              }))
+              .slice(0, 5);
+            
+            if (fallbackAuthors.length > 0) {
+              console.log('✅ Using fallback authors from recommended articles:', fallbackAuthors);
+              setRecommendedAuthors(fallbackAuthors);
+            } else {
+              console.log('⚠️ No fallback authors found in recommended articles');
+            }
+          } else {
+            console.log('⚠️ No recommended articles available for fallback');
+          }
+        } catch (fallbackError) {
+          console.error('💥 Fallback also failed:', fallbackError);
+        }
       }
     };
     loadRecommendedAuthors();
-  }, [article?.author_id]);
+  }, [article?.author?.id]);
 
   // Debug logging only when article changes
   useEffect(() => {
@@ -996,15 +1083,22 @@ const ArticleDetail = () => {
                   }
                   extra={
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                      {lastUpdated && (
+                      {lastUpdated ? (
+                        <>
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            <ClockCircleOutlined style={{ marginRight: 4 }} />
+                            {formatDisplayDate(lastUpdated)}
+                          </Text>
+                          {refreshCountdown > 0 && (
+                            <Text type="secondary" style={{ fontSize: 11, color: '#52c41a' }}>
+                              Refresh in {formatCountdown(refreshCountdown)}
+                            </Text>
+                          )}
+                        </>
+                      ) : (
                         <Text type="secondary" style={{ fontSize: 12 }}>
                           <ClockCircleOutlined style={{ marginRight: 4 }} />
-                          {formatDisplayDate(lastUpdated)}
-                        </Text>
-                      )}
-                      {refreshCountdown > 0 && (
-                        <Text type="secondary" style={{ fontSize: 11, color: '#52c41a' }}>
-                          Refresh in {formatCountdown(refreshCountdown)}
+                          No timestamp available
                         </Text>
                       )}
                     </div>

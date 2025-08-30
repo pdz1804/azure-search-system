@@ -34,6 +34,11 @@ const normalizeUserData = (user) => {
     normalized.num_following = user.total_following;
   }
   
+  // Map followers field for frontend compatibility
+  if (user.total_followers !== undefined && !normalized.followers) {
+    normalized.followers = user.total_followers;
+  }
+  
   // Handle article statistics
   if (user.articles_count !== undefined) {
     normalized.articles_count = user.articles_count;
@@ -74,8 +79,9 @@ export const userApi = {
 
   // AI-powered user search
   searchUsersAI: async (params = {}) => {
-    try {
-      const response = await apiClient.get('/search/authors', { 
+          try {
+        // Use the backend search API instead of the AI search API for better compatibility
+        const response = await apiClient.get('/search/authors', { 
         params: {
           q: params.q,
           k: params.limit || 10,
@@ -85,16 +91,22 @@ export const userApi = {
         }
       });
       
-      // Backend returns { success: true, data: [...] }
+      // Backend search API returns { success: true, data: [...] } format
       if (response.data && response.data.success && response.data.data) {
         const users = normalizeUserArray(response.data.data);
-        return { ...response.data, data: users };
+        return { success: true, data: users, results: users };
       }
       
-      return response.data;
+      // Fallback for other response formats
+      if (response.data && response.data.results) {
+        const users = normalizeUserArray(response.data.results);
+        return { success: true, data: users, results: users };
+      }
+      
+      return { success: false, data: [], results: [] };
     } catch (error) {
-      console.error('AI search users error:', error);
-      return { success: false, data: [], error: 'Failed to search users' };
+      console.error('Backend search users error:', error);
+      return { success: false, data: [], results: [], error: 'Failed to search users' };
     }
   },
 
@@ -132,6 +144,21 @@ export const userApi = {
         data: normalizeUserData(userData)
       };
     } catch (error) {
+      // Handle specific error cases
+      if (error.response?.status === 404) {
+        return {
+          success: false,
+          error: 'user_not_found',
+          message: 'User not found'
+        };
+      } else if (error.response?.status === 410) {
+        return {
+          success: false,
+          error: 'account_deleted',
+          message: error.response?.data?.message || 'This account has been deleted'
+        };
+      }
+      
       return {
         success: false,
         error: error.response?.data?.detail || 'User not found'
@@ -336,13 +363,19 @@ export const userApi = {
     }
   },
 
-  // Admin-only: Delete user - REMOVED: endpoint is commented out in backend
-  // This functionality is not available in the current backend implementation
+  // Admin-only: Delete user (soft delete - sets is_active=false)
   deleteUser: async (userId) => {
-    console.warn('Delete user functionality is not implemented in the backend');
-    return { 
-      success: false, 
-      error: 'Delete user functionality is not available' 
-    };
+    try {
+      const response = await apiClient.delete(`/users/${userId}`, {
+        params: { app_id: APP_ID }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Delete user error:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.detail || 'Failed to delete user' 
+      };
+    }
   }
 };

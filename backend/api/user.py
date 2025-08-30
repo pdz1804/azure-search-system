@@ -81,7 +81,20 @@ async def get_user_by_id(
 
         user = await user_service.get_user_by_id(id, app_id=app_id)
         if not user:
-            return JSONResponse(status_code=404, content={"success": False, "data": None})
+            return JSONResponse(status_code=404, content={"success": False, "data": None, "error": "user_not_found"})
+        
+        # Check if user account is deleted
+        if user.get("error") == "account_deleted":
+            return JSONResponse(
+                status_code=410,  # Gone - resource existed but is no longer available
+                content={
+                    "success": False, 
+                    "data": None, 
+                    "error": "account_deleted",
+                    "message": user.get("message", "This account has been deleted")
+                }
+            )
+        
         return {"success": True, "data": user}
     except Exception as e:
         print(f"Error getting user by id: {e}")

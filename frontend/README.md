@@ -178,6 +178,14 @@ This project uses **Tailwind CSS** for styling with custom configurations:
 - **Reading history** and recommendations
 - **Author profiles** with article listings
 
+### 👥 Popular Authors & Recommendations
+- **Smart author ranking** based on followers, articles, and views
+- **Popularity formula**: `(followers × 10,000) + (articles × 100) + views`
+- **AI-powered article recommendations** with semantic similarity
+- **Fallback system** ensures content availability even when APIs fail
+- **Multi-tenant support** with app-specific filtering
+- **Real-time caching** for optimal performance
+
 ## ⚙️ Configuration
 
 ### Environment Variables

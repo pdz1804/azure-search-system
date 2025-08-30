@@ -9,7 +9,8 @@ import {
   HeartOutlined,
   FileTextOutlined,
   TeamOutlined,
-  MailOutlined
+  MailOutlined,
+  ExclamationCircleOutlined
 } from '@ant-design/icons';
 import { userApi } from '../api/userApi';
 import { articleApi } from '../api/articleApi';
@@ -34,6 +35,10 @@ const Profile = () => {
     followers: 0,
     following: 0
   });
+
+  // New state variables for error handling
+  const [errorType, setErrorType] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const [followingModalVisible, setFollowingModalVisible] = useState(false);
   const [followingList, setFollowingList] = useState([]);
@@ -97,13 +102,30 @@ const Profile = () => {
       if (response.success) {
         console.log('🔍 User data received:', response.data);
         setUser(response.data);
+        // Clear any previous errors
+        setErrorType(null);
+        setErrorMessage('');
         return response.data;
       } else {
-        throw new Error(response.error || 'Failed to fetch user');
+        // Handle specific error cases
+        if (response.error === 'account_deleted') {
+          setErrorType('account_deleted');
+          setErrorMessage(response.message || 'This account has been deleted');
+          setUser(null);
+        } else if (response.error === 'user_not_found') {
+          setErrorType('user_not_found');
+          setErrorMessage('User not found');
+          setUser(null);
+        } else {
+          throw new Error(response.error || 'Failed to fetch user');
+        }
       }
     } catch (error) {
       message.error('Failed to load user information');
       console.error('Error fetching user:', error);
+      setErrorType('general_error');
+      setErrorMessage('Failed to load user information');
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -323,6 +345,75 @@ const Profile = () => {
     return (
       <div style={{ textAlign: 'center', padding: '50px' }}>
         <Spin size="large" />
+      </div>
+    );
+  }
+
+  // Handle error cases
+  if (errorType === 'account_deleted') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="bg-white rounded-3xl p-12 shadow-2xl border border-slate-200 text-center max-w-2xl mx-4">
+          <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <UserOutlined className="text-red-500 text-4xl" />
+          </div>
+          <h1 className="text-3xl font-bold text-slate-900 mb-4">Account Deleted</h1>
+          <p className="text-slate-600 text-lg mb-8">{errorMessage}</p>
+          <button
+            onClick={() => navigate('/')}
+            className="bg-indigo-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-indigo-700 transition-all duration-200"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (errorType === 'user_not_found') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="bg-white rounded-3xl p-12 shadow-2xl border border-slate-200 text-center max-w-2xl mx-4">
+          <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <UserOutlined className="text-yellow-500 text-4xl" />
+          </div>
+          <h1 className="text-3xl font-bold text-slate-900 mb-4">User Not Found</h1>
+          <p className="text-slate-600 text-lg mb-8">{errorMessage}</p>
+          <button
+            onClick={() => navigate('/')}
+            className="bg-indigo-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-indigo-700 transition-all duration-200"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (errorType === 'general_error') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="bg-white rounded-3xl p-12 shadow-2xl border border-slate-200 text-center max-w-2xl mx-4">
+          <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ExclamationCircleOutlined className="text-red-500 text-4xl" />
+          </div>
+          <h1 className="text-3xl font-bold text-slate-900 mb-4">Error Loading Profile</h1>
+          <p className="text-slate-600 text-lg mb-8">{errorMessage}</p>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-indigo-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-indigo-700 transition-all duration-200"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="bg-gray-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-gray-700 transition-all duration-200"
+            >
+              Go Home
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

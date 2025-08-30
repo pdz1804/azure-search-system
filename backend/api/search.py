@@ -75,7 +75,7 @@ async def search_general(
         if not result or not result.get("results"):
             raise HTTPException(status_code=500, detail="Search failed - no results returned")
 
-        print(f"Result DEBUG: {result}")
+        # print(f"Result DEBUG: {result}")
 
         # Transform results based on search type
         search_type = result.get("search_type", "articles")
@@ -260,7 +260,7 @@ async def search_authors(
         if not result or not result.get("results"):
             return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Search failed - no results returned"}})
 
-        print(f"Result DEBUG: {result}")
+        # print(f"Result DEBUG: {result}")
         docs = await search_response_users(result)
         # # Transform results to AuthorHit format for API response
         # authors = [
