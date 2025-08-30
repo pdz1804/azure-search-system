@@ -104,13 +104,13 @@ Note:
 - view all authors not filter `is_active=false` yet ==> **DONE**
 - account deleted and account not found UIs ==> **DONE**
 - api list all user của admin dashboard  **DONE**
+- test deploy 3 app **DONE**
 
 ---
 
 # TODO
 
 - recommended thật sự và recommended tùy profile user cho trang homepage / trang authors / trang articles --> Cuong + Minh
-- test deploy 3 app 
 - think + search for hints for performing the website for BĐS or some others...
 
 
