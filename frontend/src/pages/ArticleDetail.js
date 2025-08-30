@@ -94,7 +94,7 @@ const ArticleDetail = () => {
       return rec;
     }).filter(Boolean); // Remove null entries
     
-    console.log('Processing recommendations:', processed.length, 'valid recommendations');
+    // console.log('Processing recommendations:', processed.length, 'valid recommendations');
     return processed;
   }, [article?.recommended, article?.recommendations]);
 
@@ -345,14 +345,14 @@ const ArticleDetail = () => {
   // Debug logging only when article changes
   useEffect(() => {
     if (article) {
-      console.log('Article loaded:', {
-        id: article.id,
-        title: article.title,
-        hasContent: !!article.content,
-        hasAbstract: !!article.abstract,
-        hasRecommended: !!article.recommended,
-        recommendedCount: Array.isArray(article.recommended) ? article.recommended.length : 0
-      });
+      // console.log('Article loaded:', {
+      //   id: article.id,
+      //   title: article.title,
+      //   hasContent: !!article.content,
+      //   hasAbstract: !!article.abstract,
+      //   hasRecommended: !!article.recommended,
+      //   recommendedCount: Array.isArray(article.recommended) ? article.recommended.length : 0
+      // });
     }
   }, [article?.id, article?.recommended?.length]);
 
@@ -654,18 +654,20 @@ const ArticleDetail = () => {
   const authorId = article.author_id || article.author?.id;
   const authorAvatar = article.author_avatar_url || article.author?.avatar_url;
 
-  // Debug: Log user and author info for follow button visibility
-  console.log('Follow button visibility check:', {
-    isAuthenticated: isAuthenticated(),
-    authorId: authorId,
-    userId: user?.id,
-    userIdFromAuth: user?.user_id,
-    articleAuthorId: article.author_id,
-    articleAuthorObjectId: article.author?.id,
-    showFollowButton: isAuthenticated() && authorId && 
-                     authorId !== user?.id && 
-                     authorId !== user?.user_id
-  });
+  // Debug: Removed to prevent infinite loop
+  // React.useEffect(() => {
+  //   if (article && user) {
+  //     console.log('Follow button visibility check:', {
+  //       isAuthenticated: isAuthenticated(),
+  //       authorId: authorId,
+  //       userId: user?.id,
+  //       userIdFromAuth: user?.user_id,
+  //       showFollowButton: isAuthenticated() && authorId && 
+  //                        authorId !== user?.id && 
+  //                        authorId !== user?.user_id
+  //     });
+  //   }
+  // }, [article?.id, user?.id, authorId]);
 
   // Custom components for markdown rendering
   const markdownComponents = {

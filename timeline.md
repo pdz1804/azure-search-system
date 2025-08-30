@@ -91,6 +91,7 @@ Note:
 # 30/8 CHương
 - add check follow status   **DONE**
 - ẩn nút follow nếu là bài viết của bản thân  **DONE**
+- fix infinite loop console log trong ArticleDetail **DONE**
 - search quang phu response trả ra đúng nhưng hiển thị thứ tự sai                            (fix quài hong đc)
 - thêm nút tìm kiếm ở search article và author, thêm loading khi đang đợi response           (fix quài hong đc)
 
