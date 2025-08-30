@@ -42,6 +42,7 @@ const Blogs = () => {
 	const [articleSortBy, setArticleSortBy] = useState(qSort);
 	const [articlePage, setArticlePage] = useState(qPage);
 	const [authorPage, setAuthorPage] = useState(qAuthorPage);
+	const [isAuthorSearchMode, setIsAuthorSearchMode] = useState(false);
 	const authorPageSize = 10;
 
 	// Refs for search inputs
@@ -99,6 +100,7 @@ const Blogs = () => {
 	// Load top authors list
 	const loadAuthors = async () => {
 		setAuthorsLoading(true);
+		setIsAuthorSearchMode(false); // Reset search mode flag
 		try {
 			const response = await userApi.getAllUsers(1, 100);
 			if (response.success) {
@@ -108,6 +110,31 @@ const Blogs = () => {
 			}
 		} catch (error) {
 			console.error('Failed to load authors:', error);
+		} finally {
+			setAuthorsLoading(false);
+		}
+	};
+
+	// Enhanced search function that fetches complete user data for search results
+	const searchAuthorsWithFullData = async (query) => {
+		setAuthorsLoading(true);
+		setIsAuthorSearchMode(true); // Set search mode flag
+		try {
+			// Search for authors using backend search API (returns complete user data)
+			const res = await userApi.searchUsersAI({ q: query, limit: 100, page: 1 });
+			const searchResults = res.results || res.data || [];
+			
+			if (searchResults.length === 0) {
+				setAuthors([]);
+				return;
+			}
+
+			// Backend search API already returns complete user data, no need for additional API calls
+			setAuthors(searchResults);
+			setAuthorPage(1);
+		} catch (error) {
+			console.error('Failed to search authors:', error);
+			setAuthors([]);
 		} finally {
 			setAuthorsLoading(false);
 		}
@@ -301,49 +328,64 @@ const Blogs = () => {
 						<div>
 							<div className="mb-6 flex justify-center sm:justify-end">
 								<div className="relative max-w-xs w-full sm:w-auto min-w-[280px]">
-									<input
-										ref={authorSearchRef}
-										type="text"
-										placeholder="Search authors..."
-										onKeyDown={async (e) => {
-											if (e.key === 'Enter') {
-												const val = e.target.value;
-												if (!val) {
-													loadAuthors();
-													return;
+										<input
+											ref={authorSearchRef}
+											type="text"
+											placeholder="Search authors..."
+											onKeyDown={async (e) => {
+												if (e.key === 'Enter') {
+													const val = e.target.value;
+													if (!val) {
+														loadAuthors();
+														return;
+													}
+													await searchAuthorsWithFullData(val);
 												}
-												try {
-													const res = await userApi.searchUsersAI({ q: val, limit: 100, page: 1 });
-													const list = res.results || res.data || [];
-													setAuthors(list);
-													setAuthorPage(1);
-												} catch {}
-											}
-										}}
-										className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none bg-white/90 backdrop-blur-sm shadow-sm"
-									/>
-									<button
-										type="button"
-										onClick={async () => {
-											if (authorSearchRef.current) {
-												const val = authorSearchRef.current.value;
-												if (!val) {
-													loadAuthors();
-													return;
+											}}
+											onChange={(e) => {
+												// Clear search mode if input is empty
+												if (!e.target.value.trim()) {
+													setIsAuthorSearchMode(false);
 												}
-												try {
-													const res = await userApi.searchUsersAI({ q: val, limit: 100, page: 1 });
-													const list = res.results || res.data || [];
-													setAuthors(list);
-													setAuthorPage(1);
-												} catch {}
-											}
-										}}
-										className="absolute left-3 top-1/2 transform -translate-y-1/2 hover:text-indigo-600 transition-colors duration-200"
-									>
-										<MagnifyingGlassIcon className="w-5 h-5 text-gray-400 hover:text-indigo-600" />
-									</button>
-								</div>
+											}}
+											className="w-full px-4 py-2 pl-10 pr-20 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none bg-white/90 backdrop-blur-sm shadow-sm"
+										/>
+										<button
+											type="button"
+											onClick={async () => {
+												if (authorSearchRef.current) {
+													const val = authorSearchRef.current.value;
+													if (!val) {
+														loadAuthors();
+														return;
+													}
+													await searchAuthorsWithFullData(val);
+												}
+											}}
+											className="absolute left-3 top-1/2 transform -translate-y-1/2 hover:text-indigo-600 transition-colors duration-200"
+										>
+											<MagnifyingGlassIcon className="w-5 h-5 text-gray-400 hover:text-indigo-600" />
+										</button>
+										{/* Clear search button */}
+										{authorSearchRef.current?.value && (
+											<button
+												type="button"
+												onClick={() => {
+													if (authorSearchRef.current) {
+														authorSearchRef.current.value = '';
+														setIsAuthorSearchMode(false);
+														loadAuthors();
+													}
+												}}
+												className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors duration-200"
+												title="Clear search"
+											>
+												<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+												</svg>
+											</button>
+										)}
+									</div>
 							</div>
 							{authorsLoading ? (
 								<div className="text-center py-16">
@@ -353,7 +395,14 @@ const Blogs = () => {
 								<div>
 									{authors
 										.slice()
-										.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||''))
+										.sort((a,b) => {
+											// If in search mode, preserve the relevance order from the search API
+											if (isAuthorSearchMode) {
+												return 0; // No sorting, keep search relevance order
+											}
+											// For default authors list, sort alphabetically by full_name
+											return (a.full_name || '').localeCompare(b.full_name || '');
+										})
 										.slice((authorPage - 1) * authorPageSize, authorPage * authorPageSize)
 										.map(renderAuthorCard)}
 									<div className="mt-8 flex justify-center">

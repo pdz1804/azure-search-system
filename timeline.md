@@ -83,27 +83,35 @@ Note:
 **==> DONE (lí do là vì 1 vài user hong hiện trong search dù tên trùng là do chưa có field is_active) ==> DONE**
 - **get user by id hiện đang truyền app_id, tuy nhiên nếu sai app_id vẫn dô đc ==> DONE**
 - **get user in admin hiện đang truyền app_id, tuy nhiên nếu sai app_id vẫn dô đc ==> DONE**
-- 
-
 
 ---
 
-# 30/8 CHương
-- add check follow status   **DONE**
-- ẩn nút follow nếu là bài viết của bản thân  **DONE**
-- fix infinite loop console log trong ArticleDetail **DONE**
-- search quang phu response trả ra đúng nhưng hiển thị thứ tự sai                            (fix quài hong đc)
-- thêm nút tìm kiếm ở search article và author, thêm loading khi đang đợi response           (fix quài hong đc)
+# 30/8 
 
+- add check follow status ==> **DONE**
+- ẩn nút follow nếu là bài viết của bản thân ==> **DONE**
+- fix infinite loop console log trong ArticleDetail ==> **DONE**
+- fix author recommendation now works nicely ==> **DONE**
+- search quang phu response trả ra đúng nhưng hiển thị thứ tự sai ==> **DONE**
+- cannot view the detailed user info of the results from searching users ==> **DONE**
+- thêm nút tìm kiếm ở search article và author, thêm loading khi đang đợi response ==> **DONE**
+- when viewing the recommendation more tab, if we click to view the next articles, it still opens that tab, which should be closed ==> **DONE**
+- update the delete and reactivate the account of user from the admin dashboard and backend api such that the `is_active=false` for soft delete (done in index, indexer of ai_search already). ==> **DONE**
+- UI for the admin dashboard is not well-responsive ==> **DONE**
+- check lại summary (api/articles/stats) xem đã filter is_active=false chưa ==> **DONE** 
+- đang bị get all item xong mới đếm chứ hong phải là select + count done --> FIX cho file article_repo fucntion get_article_summary_aggregations  dùng SUM thay vì COUNT ==> **DONE**
+- fix phân trang của tất cả ==> DONE fix phân trang của list all articles ==> chưa done search or authors --> tạm chấp nhận như hiện tại rằng ví dụ khi search xong nó sẽ hiện có 5 trang và đang ở trang 1. sau đó nhấn vào trang 5 thì nó mới gọi api để search results cho trang 5 --> thì khi search trang 5 nó lại có thông tin rằng còn những results score thấp hơn ở các trang sau ví dụ 6 7 nữa nên pagination sẽ update rằng có thêm trang 6 và 7. Chỉ hong suggest thêm trang nếu ví dụ khi nhấn vào trang 8 thì result trả ra chỉ nằm trọn trong trang đó thôi ==> maybe this still ok ==> **DONE**
+- view all authors not filter `is_active=false` yet ==> **DONE**
+- account deleted and account not found UIs ==> **DONE**
+
+---
 
 # TODO
 
-- soft delete user TUY NHIÊN hong delete like dislike số lương bên article done ==> DONE API chưa done APP
-- update the deletion of user from the admin dashboard and backend api such that the `is_active=false` for soft delete (done in index, indexer of ai_search already).
-- recommended authors and articles are not working now ==> now recommend articles = search (work) + recommend users thì đang làm
-- check lại summary (api/articles/stats) xem đã filter is_active=false chưa, đang bị get all item xong mới đếm chứ hong phải là select + count done (NOT DONE)
-- chương fix phân trang của tất cả ==> DONE fix phân trang của list all articles ==> chưa done search or authors
-- AUTO fit with new data or firms
+- api list all user của admin dashboard 
+- recommended thật sự và recommended tùy profile user cho trang homepage / trang authors / trang articles --> Cuong + Minh
+- test deploy 3 app 
+- think + search for hints for performing the website for BĐS or some others...
 
 
 

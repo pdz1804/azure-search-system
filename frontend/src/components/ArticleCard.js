@@ -33,6 +33,7 @@ const ArticleCard = ({
   onDelete, 
   onLike, 
   onDislike,
+  onPublishDraft,
   className = ''
 }) => {
   
@@ -374,6 +375,19 @@ const ArticleCard = ({
                   </button>
                 </>
               )}
+              
+              {/* Publish Draft Button */}
+              {onPublishDraft && article.status === 'draft' && (
+                <button
+                  onClick={() => onPublishDraft(article)}
+                  className="p-2 rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                  title="Publish Draft"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+              )}
             </div>
             
             <div onClick={handleClick} className="cursor-pointer">
@@ -523,6 +537,19 @@ const ArticleCard = ({
                 </button>
               </>
             )}
+            
+            {/* Publish Draft Button */}
+            {onPublishDraft && article.status === 'draft' && (
+              <button
+                onClick={() => onPublishDraft(article)}
+                className="p-1.5 rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                title="Publish Draft"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </button>
+            )}
           </div>
         )}
       </motion.article>
@@ -668,6 +695,19 @@ const ArticleCard = ({
                   <TrashIcon className="w-4 h-4" />
                 </button>
               </>
+            )}
+            
+            {/* Publish Draft Button */}
+            {onPublishDraft && article.status === 'draft' && (
+              <button
+                onClick={() => onPublishDraft(article)}
+                className="p-2 rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                title="Publish Draft"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </button>
             )}
           </div>
           

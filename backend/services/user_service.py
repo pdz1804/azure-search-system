@@ -32,6 +32,7 @@ async def _convert_to_user_dto(user: dict) -> dict:
         "is_active": user.get("is_active", True),
         "articles_count": user.get("articles_count", 0),
         "total_views": user.get("total_views", 0),
+        "total_followers": len(user.get("followers", [])),
         "created_at": user.get("created_at")
     }
 
@@ -229,6 +230,13 @@ async def create_user(doc: dict, app_id: Optional[str] = None) -> dict:
     doc["id"] = uuid.uuid4().hex
     doc["is_active"] = True
     
+    # Initialize empty arrays for social features
+    doc["followers"] = []
+    doc["following"] = []
+    doc["liked_articles"] = []
+    doc["bookmarked_articles"] = []
+    doc["disliked_articles"] = []
+    
     # Add app_id to user document if provided
     if app_id:
         doc["app_id"] = app_id
@@ -236,7 +244,7 @@ async def create_user(doc: dict, app_id: Optional[str] = None) -> dict:
     user = await user_repo.insert(doc)
     
     # Clear users list cache after creating new user
-    await delete_cache_pattern(CACHE_KEYS["authors"] + "*"+ app_id)
+    await delete_cache_pattern(CACHE_KEYS["authors"] + "*", app_id=app_id)
     print("👥 Cleared users cache after creating new user")
     
     # Convert to UserDetailDTO format before returning
@@ -246,6 +254,15 @@ async def create_user(doc: dict, app_id: Optional[str] = None) -> dict:
 async def get_user_by_id(user_id: str, app_id: Optional[str] = None) -> Optional[dict]:
     user = await user_repo.get_user_by_id(user_id, app_id=app_id)  # ✅ Truyền app_id
     if user:
+        # Check if user is active
+        if not user.get("is_active", True):
+            # Return special error for deleted accounts
+            return {
+                "error": "account_deleted",
+                "message": "This account has been deleted",
+                "user_id": user_id
+            }
+        
         user_detail = await _convert_to_user_detail_dto(user, app_id=app_id)
         
         # Cache the result
@@ -275,7 +292,13 @@ async def update_user(user_id: str, update_data: dict, app_id: Optional[str] = N
         
         # Clear related caches using new cache API with app_id
         await delete_cache(CACHE_KEYS["user_detail"], user_id=user_id, app_id=app_id)  # Clear specific user cache
-        await delete_cache_pattern(CACHE_KEYS["authors"] + "*"+app_id)  # Clear authors list cache
+        await delete_cache_pattern(CACHE_KEYS["authors"] + "*", app_id=app_id)  # Clear authors list cache
+        
+        # If user status changed, also clear related article caches
+        if "is_active" in update_data:
+            print(f"🔄 User status changed to {update_data['is_active']}, clearing related caches")
+            # Clear homepage statistics since user count might change
+            await delete_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)
         
         # Convert to UserDetailDTO format before returning
         return await _convert_to_user_detail_dto(updated_user, app_id=app_id)
@@ -390,7 +413,7 @@ async def search_response_users(data: Dict) -> List[dict]:
 
 
 async def delete_user(user_id: str, app_id: Optional[str] = None) -> bool:
-    """Delete a user and all associated data (admin only)"""
+    """Soft delete a user by setting is_active=false (admin only)"""
     try:
         # Get user with app_id filtering for security
         user = await user_repo.get_user_by_id(user_id, app_id)
@@ -398,7 +421,7 @@ async def delete_user(user_id: str, app_id: Optional[str] = None) -> bool:
             print(f"❌ User {user_id} not found or app_id mismatch for deletion")
             return False
         
-        # Check if user has articles
+        # Check if user has articles (for logging purposes)
         user_articles = await article_repo.get_article_by_author(user_id, page=0, page_size=1000, app_id=app_id)
         if user_articles:
             articles_list = user_articles.get("items", []) if isinstance(user_articles, dict) else user_articles
@@ -411,21 +434,28 @@ async def delete_user(user_id: str, app_id: Optional[str] = None) -> bool:
                         await article_repo.delete_article(article.get("id"))
                     except Exception as e:
                         print(f"⚠️ Failed to delete article {article.get('id')}: {e}")
+
+                print(f"ℹ️ User {user_id} has {len(articles_list)} articles. Articles will remain but user will be deactivated.")
         
-        # Delete user from repository
-        await user_repo.delete_user(user_id)
+        # Soft delete user from repository (sets is_active=false)
+        success = await user_repo.delete_user(user_id)
+        if not success:
+            return False
         
         # Clear affected caches
         await delete_cache(CACHE_KEYS["user_detail"], user_id=user_id, app_id=app_id) 
         await delete_cache_pattern(CACHE_KEYS["authors"] + "*"+app_id)
         await delete_cache_pattern(CACHE_KEYS["articles_home"] + "*", app_id=app_id)
         await delete_cache_pattern(CACHE_KEYS["articles_popular"] + "*", app_id=app_id)
-
-        print(f"✅ User {user_id} deleted successfully")
+        await delete_cache_pattern(CACHE_KEYS["authors"] + "*", app_id=app_id)
+        await delete_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)  # Clear stats since user count changed
+        
+        print(f"✅ User {user_id} soft deleted successfully (set is_active=false)")
+        print(f"🗑️ Cleared Redis cache for user {user_id} and authors list")
         return True
         
     except Exception as e:
-        print(f"❌ Error deleting user {user_id}: {e}")
+        print(f"❌ Error soft deleting user {user_id}: {e}")
         return False
 
 

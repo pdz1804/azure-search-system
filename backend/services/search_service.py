@@ -955,7 +955,7 @@ class BackendSearchService:
                 final_score = min(1.0, final_score * 1.1)
             
             # Only include matches above a meaningful threshold
-            if final_score > 0.2:
+            if final_score > 0.05:  # Lowered threshold to get more results
                 matches.append((author, final_score))
         
         # Sort by score descending and return top k

@@ -525,16 +525,48 @@ async def get_article_summary_aggregations(app_id: Optional[str] = None) -> Dict
             base_filter += " AND c.app_id = @app_id"
             parameters = [{"name": "@app_id", "value": app_id}]
 
+        # OLD IMPLEMENTATION (INEFFICIENT) - Commented out for testing
         # Get all views and likes by fetching documents and summing manually
         # This avoids issues with SUM aggregates in Cosmos DB
-        query = f"SELECT c.views, c.likes FROM c WHERE {base_filter}"
-        
-        total_views = 0
-        total_likes = 0
-        
-        async for item in articles.query_items(query=query, parameters=parameters):
-            total_views += int(item.get("views", 0) or 0)
-            total_likes += int(item.get("likes", 0) or 0)
+        # query = f"SELECT c.views, c.likes FROM c WHERE {base_filter}"
+        # 
+        # total_views = 0
+        # total_likes = 0
+        # 
+        # async for item in articles.query_items(query=query, parameters=parameters):
+        #     total_views += int(item.get("views", 0) or 0)
+        #     total_likes += int(item.get("likes", 0) or 0)
+
+        # NEW IMPLEMENTATION (OPTIMIZED) - Using Cosmos DB native aggregation functions
+        try:
+            # Try using SUM aggregation for views
+            views_query = f"SELECT VALUE SUM(IS_NUMBER(c.views) ? c.views : 0) FROM c WHERE {base_filter}"
+            total_views = 0
+            async for result in articles.query_items(query=views_query, parameters=parameters):
+                total_views = int(result) if result is not None else 0
+                break
+            
+            # Try using SUM aggregation for likes
+            likes_query = f"SELECT VALUE SUM(IS_NUMBER(c.likes) ? c.likes : 0) FROM c WHERE {base_filter}"
+            total_likes = 0
+            async for result in articles.query_items(query=likes_query, parameters=parameters):
+                total_likes = int(result) if result is not None else 0
+                break
+                
+            print(f"✅ Successfully used Cosmos DB aggregation functions for views ({total_views}) and likes ({total_likes})")
+            
+        except Exception as aggregation_error:
+            print(f"⚠️ Cosmos DB aggregation failed, falling back to manual calculation: {aggregation_error}")
+            
+            # FALLBACK: Manual calculation if aggregation fails
+            query = f"SELECT c.views, c.likes FROM c WHERE {base_filter}"
+            
+            total_views = 0
+            total_likes = 0
+            
+            async for item in articles.query_items(query=query, parameters=parameters):
+                total_views += int(item.get("views", 0) or 0)
+                total_likes += int(item.get("likes", 0) or 0)
 
         return {
             "total_views": total_views,

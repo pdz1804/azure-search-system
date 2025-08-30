@@ -99,6 +99,138 @@ code {
   color: var(--text);
 }
 
+/* Mobile responsive improvements */
+@media (max-width: 768px) {
+  .ant-table {
+    font-size: 12px;
+  }
+  
+  .ant-table-thead > tr > th {
+    padding: 8px 4px;
+  }
+  
+  .ant-table-tbody > tr > td {
+    padding: 8px 4px;
+  }
+  
+  .ant-pagination {
+    font-size: 12px;
+  }
+  
+  .ant-pagination-item {
+    min-width: 28px;
+    height: 28px;
+    line-height: 26px;
+  }
+  
+  .ant-pagination-prev,
+  .ant-pagination-next {
+    min-width: 28px;
+    height: 28px;
+    line-height: 26px;
+  }
+  
+  .ant-drawer-content {
+    border-radius: 16px 0 0 16px;
+  }
+  
+  .ant-drawer-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .ant-drawer-body {
+    padding: 20px;
+  }
+  
+  /* Mobile card improvements */
+  .ant-card {
+    border-radius: 12px;
+  }
+  
+  .ant-card-body {
+    padding: 16px;
+  }
+  
+  /* Mobile button improvements */
+  .ant-btn {
+    border-radius: 8px;
+  }
+  
+  .ant-btn-sm {
+    height: 32px;
+    padding: 4px 12px;
+    font-size: 13px;
+  }
+  
+  /* Mobile modal improvements */
+  .ant-modal {
+    margin: 16px;
+  }
+  
+  .ant-modal-content {
+    border-radius: 16px;
+  }
+  
+  .ant-modal-header {
+    border-radius: 16px 16px 0 0;
+  }
+  
+  /* Mobile statistic improvements */
+  .ant-statistic-title {
+    font-size: 14px;
+  }
+  
+  .ant-statistic-content {
+    font-size: 20px;
+  }
+}
+
+/* Tablet responsive improvements */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .ant-table {
+    font-size: 13px;
+  }
+  
+  .ant-table-thead > tr > th {
+    padding: 12px 8px;
+  }
+  
+  .ant-table-tbody > tr > td {
+    padding: 12px 8px;
+  }
+  
+  /* Tablet statistic improvements */
+  .ant-statistic-title {
+    font-size: 16px;
+  }
+  
+  .ant-statistic-content {
+    font-size: 24px;
+  }
+}
+
+/* Small mobile improvements */
+@media (max-width: 480px) {
+  .ant-card-body {
+    padding: 12px;
+  }
+  
+  .ant-statistic-title {
+    font-size: 12px;
+  }
+  
+  .ant-statistic-content {
+    font-size: 18px;
+  }
+  
+  .ant-btn-sm {
+    height: 28px;
+    padding: 2px 8px;
+    font-size: 12px;
+  }
+}
+
 /* Theme-aware utility helpers for components */
 .bg-surface {
   background: var(--card-bg) !important;

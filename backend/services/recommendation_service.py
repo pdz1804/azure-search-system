@@ -136,10 +136,11 @@ class RecommendationService:
                 print("⚠️ No title or abstract available for recommendation generation")
                 return []
             
-            # Search for similar articles (request more to filter out current article)  
+            # Search for similar articles (request more to ensure we get enough after filtering)
+            # Increased from 15 to 25 to account for potential filtering and ensure we get 10+ recommendations
             search_results = self.search_service.search_articles(
                 query=content_query,
-                k=15,  # Request more to ensure we get 10 after filtering
+                k=25,  # Request more to ensure we get 10+ after filtering
                 page_index=None,
                 page_size=None,
                 app_id=app_id  # Filter by app_id for multi-tenant support
@@ -159,6 +160,36 @@ class RecommendationService:
                     # Stop when we have 10 recommendations
                     if len(recommendations) >= 10:
                         break
+            
+            # If we don't have enough recommendations, try a broader search
+            if len(recommendations) < 8:  # Threshold for "not enough" recommendations
+                print(f"⚠️ Only got {len(recommendations)} recommendations, trying broader search...")
+                
+                # Try a broader search with just the title
+                if title_text:
+                    broader_results = self.search_service.search_articles(
+                        query=title_text,
+                        k=30,  # Request even more for broader search
+                        page_index=None,
+                        page_size=None,
+                        app_id=app_id
+                    )
+                    
+                    if broader_results and 'results' in broader_results:
+                        # Add more recommendations from broader search
+                        for result in broader_results['results']:
+                            result_id = result.get('id')
+                            # Skip if already in recommendations or is the current article
+                            if result_id != article_id and not any(r['article_id'] == result_id for r in recommendations):
+                                recommendations.append({
+                                    'article_id': result_id,
+                                    'score': result.get('score', 0.0) * 0.8  # Slightly lower score for broader matches
+                                })
+                                
+                                if len(recommendations) >= 10:
+                                    break
+                
+                print(f"📊 After broader search: {len(recommendations)} recommendations")
             
             print(f"📊 Generated {len(recommendations)} recommendations (IDs only)")
             return recommendations
@@ -256,7 +287,7 @@ class RecommendationService:
             print(f"❌ Error getting recommendations for article {article_id}: {e}")
             return [], False
 
-    async def fetch_article_details_for_recommendations(self, recommendations: List[Dict]) -> List[Dict]:
+    async def fetch_article_details_for_recommendations(self, recommendations: List[Dict], app_id: Optional[str] = None) -> List[Dict]:
         """
         Fetch full article details for lightweight recommendation objects.
         
@@ -295,14 +326,23 @@ class RecommendationService:
             score = rec.get('score', 0.0)
             
             try:
-                article_details = await get_article_by_id_repo(article_id)
+                # Use app_id filtering when fetching article details
+                article_details = await get_article_by_id_repo(article_id, app_id=app_id)
                 if article_details:
+                    # Additional app_id check for safety
+                    if app_id and article_details.get('app_id') != app_id:
+                        print(f"🔒 Filtering recommendation {article_id} - different app_id: {article_details.get('app_id')} != {app_id}")
+                        continue
+                    
                     article_details['recommendation_score'] = score
                     detailed_recommendations.append(article_details)
+                else:
+                    print(f"⚠️ Article {article_id} not found or filtered out by app_id")
             except Exception as e:
                 print(f"⚠️ Failed to fetch article {article_id}: {e}")
                 continue
         
+        print(f"📊 Fetched {len(detailed_recommendations)} detailed recommendations (filtered by app_id: {app_id})")
         return detailed_recommendations
 
     def format_recommendations_for_display(self, detailed_recommendations: List[Dict]) -> Dict[str, List[Dict]]:

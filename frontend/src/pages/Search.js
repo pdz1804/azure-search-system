@@ -239,9 +239,9 @@ const Search = () => {
       <Content style={{ padding: '24px' }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
           <div style={{ marginBottom: 24 }}>
-            <Title level={2}>
+            {/* <Title level={2}>
               Search results for "{query}"
-            </Title>
+            </Title> */}
             {searchType === 'authors' && (
               <Text type="secondary" style={{ fontSize: 16 }}>
                 AI-powered author search

@@ -16,6 +16,13 @@ async def get_list_user(app_id: Optional[str] = None):
     users = await get_users()
     
     # Filter users by app_id if provided
+    # if app_id:
+    #     query = "SELECT * FROM c WHERE c.app_id = @app_id AND c.is_active = true"
+    #     parameters = [{"name": "@app_id", "value": app_id}]
+    # else:
+    #     query = "SELECT * FROM c WHERE c.is_active = true"
+    #     parameters = []
+
     if app_id:
         query = "SELECT * FROM c WHERE c.app_id = @app_id"
         parameters = [{"name": "@app_id", "value": app_id}]

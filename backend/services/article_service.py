@@ -160,6 +160,7 @@ async def _convert_to_article_dto(article: dict) -> dict:
         "abstract": article.get("abstract"),
         "image": article.get("image"),
         "tags": article.get("tags", []),
+        "status": article.get("status", "published"),  # Include status field
         "author": author_dto.model_dump(),  # Convert to dict
         "created_date": article.get("created_at"),
         "total_like": article.get("likes", 0),
@@ -185,7 +186,8 @@ async def _convert_to_article_detail_dto(article: dict, recommended_dtos: Option
         "total_like": article.get("likes", 0),
         "total_view": article.get("views", 0),
         "total_dislike": article.get("dislikes", 0),
-        "recommended": recommended_dtos if recommended_dtos else None
+        "recommended": recommended_dtos if recommended_dtos else None,
+        "recommended_time": article.get("recommended_time")
     }
 
 async def create_article(doc: dict, app_id: Optional[str] = None) -> dict:
@@ -239,10 +241,23 @@ async def get_article_detail(article_id: str, app_id: Optional[str] = None) -> O
     cached_article = await get_cache(CACHE_KEYS["article_detail"], app_id=app_id, article_id=article_id)
     
     if cached_article:
+        print(f"🔍 Cache HIT for article {article_id}:")
+        print(f"   - Has recommended_time: {'recommended_time' in cached_article}")
+        print(f"   - recommended_time value: {cached_article.get('recommended_time')}")
+        print(f"   - Has recommended: {'recommended' in cached_article}")
+        print(f"   - recommended count: {len(cached_article.get('recommended', []))}")
         return cached_article
     else:
         # Get fresh article data
         article = await article_repo.get_article_by_id(article_id, app_id=app_id)
+        print(f"🔍 Database returned for article {article_id}:")
+        if article:
+            print(f"   - Has recommended_time: {'recommended_time' in article}")
+            print(f"   - recommended_time value: {article.get('recommended_time')}")
+            print(f"   - Has recommended: {'recommended' in article}")
+            print(f"   - recommended count: {len(article.get('recommended', []))}")
+        else:
+            print(f"   - Article not found in database")
     
     if article:
         # Check app_id filtering if specified
@@ -256,19 +271,49 @@ async def get_article_detail(article_id: str, app_id: Optional[str] = None) -> O
         
         # Check if article already has recommendations in the database
         existing_recommendations = article.get("recommended", [])
-        if existing_recommendations:
-            # Extract article IDs from existing recommendations
+        recommended_time = article.get("recommended_time")
+        
+        # Check if recommendations need to be refreshed (older than 60 minutes)
+        should_refresh_recommendations = False
+        if existing_recommendations and recommended_time:
+            try:
+                last_recommended = datetime.fromisoformat(recommended_time)
+                current_time = datetime.utcnow()
+                time_diff = current_time - last_recommended
+                minutes_since_recommendation = time_diff.total_seconds() / 60
+                
+                print(f"⏰ Recommendations last updated: {recommended_time}")
+                print(f"⏰ Minutes since last recommendation: {minutes_since_recommendation:.1f}")
+                
+                # Refresh if more than 60 minutes old
+                if minutes_since_recommendation >= 60:
+                    should_refresh_recommendations = True
+                    print(f"🔄 Recommendations are {minutes_since_recommendation:.1f} minutes old, will refresh")
+                else:
+                    print(f"💾 Recommendations are {minutes_since_recommendation:.1f} minutes old, using cached")
+            except Exception as e:
+                print(f"⚠️ Error parsing recommended_time '{recommended_time}': {e}")
+                # If we can't parse the time, assume we need fresh recommendations
+                should_refresh_recommendations = True
+        
+        # Handle recommendations based on cache status
+        if existing_recommendations and not should_refresh_recommendations:
+            # Use existing recommendations WITHOUT updating recommended_time
             recommended_ids = [rec.get("article_id") for rec in existing_recommendations if rec.get("article_id")]
             print(f"📋 Found {len(recommended_ids)} existing recommendations for article {article.get('id', '')}")
             print(f"📋 Recommendation IDs: {recommended_ids[:3]}..." if len(recommended_ids) > 3 else f"📋 Recommendation IDs: {recommended_ids}")
+            print(f"💾 Using cached recommendations, NOT updating recommended_time")
         else:
-            # If no recommendations exist, generate them
+            # Generate fresh recommendations (either none exist or they're expired)
             try:
                 from backend.services.recommendation_service import get_recommendation_service
                             
                 recommendation_service = get_recommendation_service()
                             
-                print(f"🔄 No recommendations found for article {article_id}, generating new ones...")
+                if not existing_recommendations:
+                    print(f"🔄 No recommendations found for article {article_id}, generating new ones...")
+                else:
+                    print(f"🔄 Recommendations expired for article {article_id}, generating fresh ones...")
                             
                 # Get recommendations using recommendation service
                 recommendations, was_refreshed = await recommendation_service.get_article_recommendations(article_id, app_id)
@@ -277,8 +322,14 @@ async def get_article_detail(article_id: str, app_id: Optional[str] = None) -> O
                     # Extract just the article IDs from recommendations
                     recommended_ids = [rec.get("article_id") for rec in recommendations if rec.get("article_id")]
                     print(f"✅ Generated {len(recommended_ids)} recommendations for article {article_id}")
+                    print(f"🔄 Updated recommended_time in database for article {article_id}")
                 else:
                     recommended_ids = []
+                    print(f"⚠️ Failed to generate fresh recommendations, using existing ones if available")
+                    # If generation failed but we have existing recommendations, use them
+                    if existing_recommendations:
+                        recommended_ids = [rec.get("article_id") for rec in existing_recommendations if rec.get("article_id")]
+                        print(f"💾 Falling back to {len(recommended_ids)} existing recommendations")
                             
             except Exception as e:
                 print(f"⚠️ Failed to generate recommendations for article {article.get('id', '')}: {e}")
@@ -289,19 +340,37 @@ async def get_article_detail(article_id: str, app_id: Optional[str] = None) -> O
         if recommended_ids:
             try:
                 print(f"🔄 Converting {len(recommended_ids)} recommendation IDs to full article objects...")
+                
+                # Use the recommendation service to fetch full article details efficiently
+                from backend.services.recommendation_service import get_recommendation_service
+                recommendation_service = get_recommendation_service()
+                
+                # Convert lightweight recommendations back to the format expected by fetch_article_details_for_recommendations
+                lightweight_recommendations = []
                 for rec_id in recommended_ids:
-                    rec_article = await article_repo.get_article_by_id(rec_id, app_id=app_id)
+                    # Find the original recommendation object to get the score
+                    original_rec = next((rec for rec in existing_recommendations if rec.get('article_id') == rec_id), None)
+                    score = original_rec.get('score', 0.0) if original_rec else 0.0
+                    lightweight_recommendations.append({
+                        'article_id': rec_id,
+                        'score': score
+                    })
+                
+                # Fetch full article details using the recommendation service
+                detailed_recommendations = await recommendation_service.fetch_article_details_for_recommendations(lightweight_recommendations, app_id)
+                
+                # Filter by app_id if specified and convert to DTOs
+                for rec_article in detailed_recommendations:
                     if rec_article:
                         # Filter recommendations by app_id if specified
                         if app_id and rec_article.get('app_id') != app_id:
-                            print(f"🔒 Filtering recommendation {rec_id} - different app_id")
+                            print(f"🔒 Filtering recommendation {rec_article.get('id', 'unknown')} - different app_id")
                             continue
                         
                         rec_dto = await _convert_to_article_dto(rec_article)
-                        recommended_dtos.append(rec_dto)  # rec_dto is already a dict now
-                        print(f"✅ Converted recommendation {rec_id} to article DTO: {rec_dto.get('title', 'No title')}")
-                    else:
-                        print(f"⚠️ Could not find article for recommendation ID: {rec_id}")
+                        recommended_dtos.append(rec_dto)
+                        print(f"✅ Converted recommendation {rec_article.get('id', 'unknown')} to article DTO: {rec_dto.get('title', 'No title')}")
+                
                 print(f"📋 Final recommended_dtos count: {len(recommended_dtos)}")
             except Exception as e:
                 print(f"⚠️ Failed to fetch recommended articles: {e}")
@@ -309,6 +378,13 @@ async def get_article_detail(article_id: str, app_id: Optional[str] = None) -> O
         
         # Convert to detail DTO with recommendations
         article_dict = await _convert_to_article_detail_dto(article, recommended_dtos, app_id=app_id)
+        
+        # Debug: Log what we're returning to the API
+        print(f"🔍 Article service returning:")
+        print(f"   - Has recommended_time: {'recommended_time' in article_dict}")
+        print(f"   - recommended_time value: {article_dict.get('recommended_time')}")
+        print(f"   - Has recommended: {'recommended' in article_dict}")
+        print(f"   - recommended count: {len(article_dict.get('recommended', []))}")
         
         # Cache the dict data using new cache API
         await set_cache(

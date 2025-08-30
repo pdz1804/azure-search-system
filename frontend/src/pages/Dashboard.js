@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { message, Table, Button, Modal, Select, Tag, Input, Space } from 'antd';
+import { message, Table, Button, Modal, Select, Tag, Input, Space, Drawer, Dropdown, Card, Row, Col, Statistic } from 'antd';
 import { 
   UserIcon,
   CogIcon,
   ExclamationTriangleIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  Bars3Icon,
+  EllipsisVerticalIcon,
+  UsersIcon,
+  ShieldCheckIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline';
 import { 
   UserIcon as UserSolid
@@ -29,9 +34,11 @@ const Dashboard = () => {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [editForm, setEditForm] = useState({ role: '', is_active: true });
   const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 20,
@@ -44,10 +51,24 @@ const Dashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortField, setSortField] = useState('created_at');
   const [sortOrder, setSortOrder] = useState('descend');
+  
+  // Mobile responsive states
+  const [isMobile, setIsMobile] = useState(false);
+  const [filterDrawerVisible, setFilterDrawerVisible] = useState(false);
 
   useEffect(() => {
     fetchUsers();
-  }, []); // Remove pagination dependency since we're fetching all users at once
+    checkScreenSize();
+    
+    const handleResize = () => checkScreenSize();
+    window.addEventListener('resize', handleResize);
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const checkScreenSize = () => {
+    setIsMobile(window.innerWidth < 768);
+  };
 
   // Filter and search users whenever data or filters change
   useEffect(() => {
@@ -103,26 +124,21 @@ const Dashboard = () => {
       let aValue = a[sortField];
       let bValue = b[sortField];
 
-      // Handle different data types
+      // Handle special cases
       if (sortField === 'created_at') {
-        aValue = new Date(aValue || 0).getTime();
-        bValue = new Date(bValue || 0).getTime();
-      } else if (typeof aValue === 'string') {
-        aValue = aValue?.toLowerCase() || '';
-        bValue = bValue?.toLowerCase() || '';
-      } else if (typeof aValue === 'number') {
-        aValue = aValue || 0;
-        bValue = bValue || 0;
+        aValue = new Date(aValue || 0);
+        bValue = new Date(bValue || 0);
       }
 
       if (sortOrder === 'ascend') {
-        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+        return aValue > bValue ? 1 : -1;
       } else {
-        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+        return aValue < bValue ? 1 : -1;
       }
     });
 
     setFilteredUsers(filtered);
+    setPagination(prev => ({ ...prev, current: 1, total: filtered.length }));
   };
 
   const handleEditUser = (user) => {
@@ -134,6 +150,11 @@ const Dashboard = () => {
     setEditModalVisible(true);
   };
 
+  const handleDeleteUser = (user) => {
+    setSelectedUser(user);
+    setDeleteModalVisible(true);
+  };
+
   const handleUpdateUser = async () => {
     if (!selectedUser) return;
     
@@ -143,10 +164,9 @@ const Dashboard = () => {
       if (response.success) {
         message.success('User updated successfully');
         setEditModalVisible(false);
-        setSelectedUser(null);
-        fetchUsers(); // Refresh the list
+        fetchUsers();
       } else {
-        message.error(response.error || 'Failed to update user');
+        message.error('Failed to update user');
       }
     } catch (error) {
       message.error('Failed to update user');
@@ -156,29 +176,41 @@ const Dashboard = () => {
     }
   };
 
-  const handleDeleteUser = async (userId, userName) => {
-    Modal.confirm({
-      title: 'Delete User',
-      content: `Are you sure you want to delete "${userName}"? This action cannot be undone and will also delete all their articles.`,
-      okText: 'Delete',
-      okType: 'danger',
-      cancelText: 'Cancel',
-      onOk: async () => {
-        try {
-          const response = await userApi.deleteUser(userId);
-          
-          if (response.success) {
-            message.success('User deleted successfully');
-            fetchUsers(); // Refresh the list
-          } else {
-            message.error(response.error || 'Failed to delete user');
-          }
-        } catch (error) {
-          message.error('Failed to delete user');
-          console.error('Error deleting user:', error);
-        }
+  const confirmDeleteUser = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      setDeleting(true);
+      const response = await userApi.deleteUser(selectedUser.id);
+      if (response.success) {
+        message.success('User deleted successfully');
+        setDeleteModalVisible(false);
+        setSelectedUser(null);
+        fetchUsers();
+      } else {
+        message.error('Failed to delete user');
       }
-    });
+    } catch (error) {
+      message.error('Failed to delete user');
+      console.error('Error deleting user:', error);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleReactivateUser = async (user) => {
+    try {
+      const response = await userApi.updateUser(user.id, { is_active: true });
+      if (response.success) {
+        message.success('User reactivated successfully');
+        fetchUsers();
+      } else {
+        message.error('Failed to reactivate user');
+      }
+    } catch (error) {
+      message.error('Failed to reactivate user');
+      console.error('Error reactivating user:', error);
+    }
   };
 
   const handleTableChange = (paginationInfo, filters, sorter) => {
@@ -232,7 +264,105 @@ const Dashboard = () => {
     return isActive !== false ? 'green' : 'red';
   };
 
-  const columns = [
+  // Mobile-optimized columns
+  const getMobileColumns = () => [
+    {
+      title: 'User',
+      dataIndex: 'full_name',
+      key: 'full_name',
+      render: (text, record) => (
+        <div className="space-y-2">
+          <div className="flex items-center space-x-3">
+            {record.avatar_url ? (
+              <img 
+                src={record.avatar_url} 
+                alt={text}
+                className="w-8 h-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                <UserIcon className="w-5 h-5 text-gray-500" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold text-gray-900 truncate">{text}</div>
+              <div className="text-sm text-gray-500 truncate">{record.email}</div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Tag color={getRoleColor(record.role)} className="capitalize text-xs">
+              {record.role || 'user'}
+            </Tag>
+            <Tag color={getStatusColor(record.is_active)} className="text-xs">
+              {record.is_active !== false ? 'Active' : 'Inactive'}
+            </Tag>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Stats',
+      key: 'stats',
+      render: (_, record) => (
+        <div className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-500">Articles:</span>
+            <span className="font-medium">{record.articles_count || 0}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Views:</span>
+            <span className="font-medium">{formatNumber(record.total_views || 0)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Joined:</span>
+            <span className="font-medium">{record.created_at ? new Date(record.created_at).toLocaleDateString() : '-'}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 80,
+      render: (_, record) => (
+        <Dropdown
+          menu={{
+            items: [
+              {
+                key: 'edit',
+                label: 'Edit User',
+                icon: <CogIcon className="w-4 h-4" />,
+                onClick: () => handleEditUser(record)
+              },
+              ...(record.is_active === false && record.id !== user?.id ? [{
+                key: 'reactivate',
+                label: 'Reactivate',
+                icon: <ArrowPathIcon className="w-4 h-4" />,
+                onClick: () => handleReactivateUser(record)
+              }] : []),
+              ...(record.is_active !== false && record.id !== user?.id ? [{
+                key: 'delete',
+                label: 'Delete',
+                icon: <ExclamationTriangleIcon className="w-4 h-4" />,
+                onClick: () => handleDeleteUser(record)
+              }] : [])
+            ]
+          }}
+          trigger={['click']}
+          placement="bottomRight"
+        >
+          <Button
+            size="small"
+            icon={<EllipsisVerticalIcon className="w-4 h-4" />}
+            className="flex items-center justify-center"
+          />
+        </Dropdown>
+      ),
+    },
+  ];
+
+  // Desktop columns
+  const getDesktopColumns = () => [
     {
       title: 'User',
       dataIndex: 'full_name',
@@ -252,9 +382,9 @@ const Dashboard = () => {
               <UserIcon className="w-4 h-4 text-gray-500" />
             </div>
           )}
-          <div>
-            <div className="font-medium text-gray-900">{text}</div>
-            <div className="text-sm text-gray-500">{record.email}</div>
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-gray-900 truncate">{text}</div>
+            <div className="text-sm text-gray-500 truncate">{record.email}</div>
           </div>
         </div>
       ),
@@ -277,10 +407,23 @@ const Dashboard = () => {
       key: 'is_active',
       sorter: true,
       sortOrder: sortField === 'is_active' ? sortOrder : null,
-      render: (isActive) => (
-        <Tag color={getStatusColor(isActive)}>
-          {isActive !== false ? 'Active' : 'Inactive'}
-        </Tag>
+      render: (isActive, record) => (
+        <div className="flex items-center space-x-2">
+          <Tag color={getStatusColor(isActive)}>
+            {isActive !== false ? 'Active' : 'Inactive'}
+          </Tag>
+          {isActive === false && record.id !== user?.id && (
+            <Button
+              size="small"
+              type="link"
+              className="text-green-600 hover:text-green-700 p-0 h-auto"
+              onClick={() => handleReactivateUser(record)}
+              title="Click to reactivate this user account"
+            >
+              Reactivate
+            </Button>
+          )}
+        </div>
       ),
     },
     {
@@ -310,6 +453,7 @@ const Dashboard = () => {
     {
       title: 'Actions',
       key: 'actions',
+      width: 200,
       render: (_, record) => (
         <div className="flex space-x-2">
           <Button
@@ -320,13 +464,26 @@ const Dashboard = () => {
           >
             Edit
           </Button>
-          {record.id !== user?.id && (
+          
+          {/* Show Reactivate button for inactive users */}
+          {record.is_active === false && record.id !== user?.id && (
+            <Button
+              size="small"
+              type="default"
+              className="text-green-600 border-green-600 hover:border-green-700 hover:text-green-700"
+              onClick={() => handleReactivateUser(record)}
+            >
+              Reactivate
+            </Button>
+          )}
+          
+          {/* Show Delete button for active users */}
+          {record.is_active !== false && record.id !== user?.id && (
             <Button
               size="small"
               type="primary"
               danger
-              disabled
-              title="Delete functionality is not available in the current backend implementation"
+              onClick={() => handleDeleteUser(record)}
               icon={<ExclamationTriangleIcon className="w-4 h-4" />}
             >
               Delete
@@ -348,20 +505,26 @@ const Dashboard = () => {
     );
   }
 
+  // Calculate statistics
+  const totalUsers = users.length;
+  const activeUsers = users.filter(u => u.is_active !== false).length;
+  const adminUsers = users.filter(u => u.role === 'admin').length;
+  const writerUsers = users.filter(u => u.role === 'writer').length;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12">
         {/* Header */}
         <motion.div 
-          className="text-center mb-12"
+          className="text-center mb-8 sm:mb-12"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
             Admin Dashboard
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto px-4">
             Manage users, roles, and system administration
           </p>
         </motion.div>
@@ -373,16 +536,16 @@ const Dashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-8 py-6 border-b border-gray-200">
-            <div className="flex justify-between items-center">
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-gray-200">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mr-3">
-                    <UserSolid className="w-4 h-4 text-white" />
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center">
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mr-3">
+                    <UserSolid className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                   </div>
                   User Management
                 </h2>
-                <p className="text-gray-600 mt-2">
+                <p className="text-gray-600 mt-2 text-sm sm:text-base">
                   View and manage all users in the system
                 </p>
               </div>
@@ -391,112 +554,275 @@ const Dashboard = () => {
                 icon={<ArrowPathIcon className="w-4 h-4" />}
                 onClick={fetchUsers}
                 loading={loading}
+                size={isMobile ? "small" : "default"}
               >
                 Refresh
               </Button>
             </div>
           </div>
           
-          <div className="p-8">
+          <div className="p-4 sm:p-6 lg:p-8">
             {/* Search and Filter Controls */}
             <div className="mb-6 bg-gray-50 p-4 rounded-lg">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Search */}
-                <div className="md:col-span-2">
-                  <Search
-                    placeholder="Search by name or email..."
-                    allowClear
-                    value={searchText}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    onSearch={handleSearch}
-                    prefix={<MagnifyingGlassIcon className="w-4 h-4 text-gray-400" />}
+              {/* Mobile Filter Toggle */}
+              {isMobile && (
+                <div className="mb-4">
+                  <Button
+                    type="default"
+                    icon={<Bars3Icon className="w-4 h-4" />}
+                    onClick={() => setFilterDrawerVisible(true)}
                     className="w-full"
-                  />
-                </div>
-                
-                {/* Role Filter */}
-                <div>
-                  <Select
-                    value={roleFilter}
-                    onChange={handleRoleFilterChange}
-                    className="w-full"
-                    placeholder="Filter by role"
                   >
-                    <Option value="all">All Roles</Option>
-                    <Option value="admin">Admin</Option>
-                    <Option value="writer">Writer</Option>
-                    <Option value="user">User</Option>
-                  </Select>
-                </div>
-                
-                {/* Status Filter */}
-                <div>
-                  <Select
-                    value={statusFilter}
-                    onChange={handleStatusFilterChange}
-                    className="w-full"
-                    placeholder="Filter by status"
-                  >
-                    <Option value="all">All Status</Option>
-                    <Option value="active">Active</Option>
-                    <Option value="inactive">Inactive</Option>
-                  </Select>
-                </div>
-              </div>
-              
-              {/* Filter Summary and Clear */}
-              <div className="flex justify-between items-center mt-4">
-                <div className="text-sm text-gray-600">
-                  Showing <span className="font-semibold">{filteredUsers.length}</span> of <span className="font-semibold">{users.length}</span> users
-                  {searchText && (
-                    <span className="ml-2">
-                      • Search: "<span className="font-medium">{searchText}</span>"
-                    </span>
-                  )}
-                  {roleFilter !== 'all' && (
-                    <span className="ml-2">
-                      • Role: <span className="font-medium capitalize">{roleFilter}</span>
-                    </span>
-                  )}
-                  {statusFilter !== 'all' && (
-                    <span className="ml-2">
-                      • Status: <span className="font-medium capitalize">{statusFilter}</span>
-                    </span>
-                  )}
-                </div>
-                
-                {(searchText || roleFilter !== 'all' || statusFilter !== 'all') && (
-                  <Button 
-                    type="link" 
-                    onClick={clearFilters}
-                    icon={<FunnelIcon className="w-4 h-4" />}
-                  >
-                    Clear Filters
+                    Show Filters & Search
                   </Button>
-                )}
-              </div>
+                </div>
+              )}
+              
+              {/* Desktop Filters */}
+              {!isMobile && (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Search */}
+                    <div className="md:col-span-2">
+                      <Search
+                        placeholder="Search by name or email..."
+                        allowClear
+                        value={searchText}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        onSearch={handleSearch}
+                        prefix={<MagnifyingGlassIcon className="w-4 h-4 text-gray-400" />}
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    {/* Role Filter */}
+                    <div>
+                      <Select
+                        value={roleFilter}
+                        onChange={handleRoleFilterChange}
+                        className="w-full"
+                        placeholder="Filter by role"
+                      >
+                        <Option value="all">All Roles</Option>
+                        <Option value="admin">Admin</Option>
+                        <Option value="writer">Writer</Option>
+                        <Option value="user">User</Option>
+                      </Select>
+                    </div>
+                    
+                    {/* Status Filter */}
+                    <div>
+                      <Select
+                        value={statusFilter}
+                        onChange={handleStatusFilterChange}
+                        className="w-full"
+                        placeholder="Filter by status"
+                      >
+                        <Option value="all">All Status</Option>
+                        <Option value="active">Active</Option>
+                        <Option value="inactive">Inactive</Option>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {/* Filter Summary and Clear */}
+                  <div className="flex justify-between items-center mt-4">
+                    <div className="text-sm text-gray-600">
+                      Showing <span className="font-semibold">{filteredUsers.length}</span> of <span className="font-semibold">{users.length}</span> users
+                      {searchText && (
+                        <span className="ml-2">
+                          • Search: "<span className="font-medium">{searchText}</span>"
+                        </span>
+                      )}
+                      {roleFilter !== 'all' && (
+                        <span className="ml-2">
+                          • Role: <span className="font-medium capitalize">{roleFilter}</span>
+                        </span>
+                      )}
+                      {statusFilter !== 'all' && (
+                        <span className="ml-2">
+                          • Status: <span className="font-medium capitalize">{statusFilter}</span>
+                        </span>
+                      )}
+                    </div>
+                    
+                    {(searchText || roleFilter !== 'all' || statusFilter !== 'all') && (
+                      <Button 
+                        type="link" 
+                        onClick={clearFilters}
+                        icon={<FunnelIcon className="w-4 h-4" />}
+                      >
+                        Clear Filters
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+              
+              {/* Mobile Filter Summary */}
+              {isMobile && (
+                <div className="text-sm text-gray-600 text-center">
+                  Showing <span className="font-semibold">{filteredUsers.length}</span> of <span className="font-semibold">{users.length}</span> users
+                  {(searchText || roleFilter !== 'all' || statusFilter !== 'all') && (
+                    <span className="block mt-1">
+                      Filters applied • <Button 
+                        type="link" 
+                        onClick={clearFilters}
+                        size="small"
+                        className="p-0 h-auto text-blue-600"
+                      >
+                        Clear All
+                      </Button>
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
-            <Table
-              columns={columns}
-              dataSource={filteredUsers}
-              rowKey="id"
-              loading={loading}
-              pagination={{
-                current: pagination.current,
-                pageSize: pagination.pageSize,
-                total: filteredUsers.length,
-                showSizeChanger: true,
-                showQuickJumper: true,
-                showTotal: (total, range) => 
-                  `${range[0]}-${range[1]} of ${total} users`,
-                pageSizeOptions: ['10', '20', '50', '100'],
-                onShowSizeChange: (current, size) => {
-                  setPagination(prev => ({ ...prev, pageSize: size, current: 1 }));
-                }
-              }}
-              onChange={handleTableChange}
-            />
+            {/* Mobile User Cards */}
+            {isMobile && (
+              <div className="space-y-4">
+                {filteredUsers.slice((pagination.current - 1) * pagination.pageSize, pagination.current * pagination.pageSize).map((userRecord) => (
+                  <Card key={userRecord.id} className="shadow-sm border border-gray-200">
+                    <div className="space-y-3">
+                      {/* User Info */}
+                      <div className="flex items-center space-x-3">
+                        {userRecord.avatar_url ? (
+                          <img 
+                            src={userRecord.avatar_url} 
+                            alt={userRecord.full_name}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                            <UserIcon className="w-6 h-6 text-gray-500" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 truncate">{userRecord.full_name}</h3>
+                          <p className="text-sm text-gray-500 truncate">{userRecord.email}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Tags */}
+                      <div className="flex flex-wrap gap-2">
+                        <Tag color={getRoleColor(userRecord.role)} className="capitalize">
+                          {userRecord.role || 'user'}
+                        </Tag>
+                        <Tag color={getStatusColor(userRecord.is_active)}>
+                          {userRecord.is_active !== false ? 'Active' : 'Inactive'}
+                        </Tag>
+                      </div>
+                      
+                      {/* Stats */}
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div className="text-center">
+                          <div className="font-semibold text-gray-900">{userRecord.articles_count || 0}</div>
+                          <div className="text-gray-500">Articles</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-semibold text-gray-900">{formatNumber(userRecord.total_views || 0)}</div>
+                          <div className="text-gray-500">Views</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-semibold text-gray-900">
+                            {userRecord.created_at ? new Date(userRecord.created_at).toLocaleDateString() : '-'}
+                          </div>
+                          <div className="text-gray-500">Joined</div>
+                        </div>
+                      </div>
+                      
+                      {/* Actions */}
+                      <div className="flex gap-2 pt-2 border-t border-gray-100">
+                        <Button
+                          size="small"
+                          type="primary"
+                          onClick={() => handleEditUser(userRecord)}
+                          icon={<CogIcon className="w-4 h-4" />}
+                          className="flex-1"
+                        >
+                          Edit
+                        </Button>
+                        
+                        {userRecord.is_active === false && userRecord.id !== user?.id && (
+                          <Button
+                            size="small"
+                            type="default"
+                            className="text-green-600 border-green-600 hover:border-green-700 hover:text-green-700 flex-1"
+                            onClick={() => handleReactivateUser(userRecord)}
+                          >
+                            Reactivate
+                          </Button>
+                        )}
+                        
+                        {userRecord.is_active !== false && userRecord.id !== user?.id && (
+                          <Button
+                            size="small"
+                            type="primary"
+                            danger
+                            onClick={() => handleDeleteUser(userRecord)}
+                            icon={<ExclamationTriangleIcon className="w-4 h-4" />}
+                            className="flex-1"
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+                
+                {/* Mobile Pagination */}
+                <div className="flex justify-center mt-6">
+                  <div className="flex space-x-2">
+                    <Button
+                      size="small"
+                      disabled={pagination.current === 1}
+                      onClick={() => setPagination(prev => ({ ...prev, current: prev.current - 1 }))}
+                    >
+                      Previous
+                    </Button>
+                    <span className="px-3 py-2 text-sm text-gray-600">
+                      Page {pagination.current} of {Math.ceil(filteredUsers.length / pagination.pageSize)}
+                    </span>
+                    <Button
+                      size="small"
+                      disabled={pagination.current >= Math.ceil(filteredUsers.length / pagination.pageSize)}
+                      onClick={() => setPagination(prev => ({ ...prev, current: prev.current + 1 }))}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Desktop Table */}
+            {!isMobile && (
+              <Table
+                columns={getDesktopColumns()}
+                dataSource={filteredUsers}
+                rowKey="id"
+                loading={loading}
+                scroll={{ x: 1200 }}
+                pagination={{
+                  current: pagination.current,
+                  pageSize: pagination.pageSize,
+                  total: filteredUsers.length,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) => 
+                    `${range[0]}-${range[1]} of ${total} users`,
+                  pageSizeOptions: ['10', '20', '50', '100'],
+                  onShowSizeChange: (current, size) => {
+                    setPagination(prev => ({ ...prev, pageSize: size, current: 1 }));
+                  },
+                  responsive: true,
+                  position: ['bottomRight']
+                }}
+                onChange={handleTableChange}
+              />
+            )}
           </div>
         </motion.div>
 
@@ -508,6 +834,7 @@ const Dashboard = () => {
           onCancel={() => setEditModalVisible(false)}
           confirmLoading={updating}
           okText="Update User"
+          width={isMobile ? '90%' : 520}
         >
           <div className="space-y-4">
             <div>
@@ -537,6 +864,9 @@ const Dashboard = () => {
                 <Option value={true}>Active</Option>
                 <Option value={false}>Inactive</Option>
               </Select>
+              <p className="text-xs text-gray-500 mt-1">
+                Set to "Active" to reactivate deactivated accounts, or "Inactive" to deactivate accounts
+              </p>
             </div>
 
             {selectedUser?.id === user?.id && editForm.is_active === false && (
@@ -549,8 +879,153 @@ const Dashboard = () => {
                 </div>
               </div>
             )}
+            
+            {selectedUser?.is_active === false && editForm.is_active === true && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <div className="w-5 h-5 bg-green-600 rounded-full flex items-center justify-center mr-2">
+                    <span className="white text-xs">✓</span>
+                  </div>
+                  <span className="text-sm text-green-800">
+                    This will reactivate the user account. The user will be able to log in and access the system again.
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
+
+        {/* Delete User Confirmation Modal */}
+        <Modal
+          title="Delete User"
+          open={deleteModalVisible}
+          onOk={confirmDeleteUser}
+          onCancel={() => {
+            setDeleteModalVisible(false);
+            setSelectedUser(null);
+          }}
+          confirmLoading={deleting}
+          okText="Delete User"
+          okType="danger"
+          cancelText="Cancel"
+          width={isMobile ? '90%' : 520}
+        >
+          <div className="space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <ExclamationTriangleIcon className="w-5 h-5 text-red-600 mr-2" />
+                <span className="text-sm text-red-800 font-medium">
+                  Warning: This action cannot be undone!
+                </span>
+              </div>
+            </div>
+            
+            <div className="text-gray-700">
+              <p>Are you sure you want to delete the user <strong>"{selectedUser?.full_name}"</strong>?</p>
+              <p className="mt-2 text-sm text-gray-600">
+                This will set the user's status to inactive (soft delete). Their articles will remain in the system.
+              </p>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Mobile Filter Drawer */}
+        <Drawer
+          title="Search & Filters"
+          placement="right"
+          onClose={() => setFilterDrawerVisible(false)}
+          open={filterDrawerVisible}
+          width={320}
+          className="md:hidden"
+        >
+          <div className="space-y-6">
+            {/* Search */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Search Users
+              </label>
+              <Search
+                placeholder="Search by name or email..."
+                allowClear
+                value={searchText}
+                onChange={(e) => handleSearch(e.target.value)}
+                onSearch={handleSearch}
+                prefix={<MagnifyingGlassIcon className="w-4 h-4 text-gray-400" />}
+                className="w-full"
+              />
+            </div>
+            
+            {/* Role Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Filter by Role
+              </label>
+              <Select
+                value={roleFilter}
+                onChange={handleRoleFilterChange}
+                className="w-full"
+                placeholder="Filter by role"
+              >
+                <Option value="all">All Roles</Option>
+                <Option value="admin">Admin</Option>
+                <Option value="writer">Writer</Option>
+                <Option value="user">User</Option>
+              </Select>
+            </div>
+            
+            {/* Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Filter by Status
+              </label>
+              <Select
+                value={statusFilter}
+                onChange={handleStatusFilterChange}
+                className="w-full"
+                placeholder="Filter by status"
+              >
+                <Option value="all">All Status</Option>
+                <Option value="active">Active</Option>
+                <Option value="inactive">Inactive</Option>
+              </Select>
+            </div>
+            
+            {/* Active Filters Summary */}
+            {(searchText || roleFilter !== 'all' || statusFilter !== 'all') && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-blue-800 mb-2">Active Filters:</h4>
+                <div className="space-y-2 text-sm text-blue-700">
+                  {searchText && (
+                    <div>• Search: "{searchText}"</div>
+                  )}
+                  {roleFilter !== 'all' && (
+                    <div>• Role: {roleFilter}</div>
+                  )}
+                  {statusFilter !== 'all' && (
+                    <div>• Status: {statusFilter}</div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Clear Filters Button */}
+            {(searchText || roleFilter !== 'all' || statusFilter !== 'all') && (
+              <Button 
+                type="default" 
+                onClick={clearFilters}
+                icon={<FunnelIcon className="w-4 h-4" />}
+                className="w-full"
+              >
+                Clear All Filters
+              </Button>
+            )}
+            
+            {/* Results Count */}
+            <div className="text-center text-sm text-gray-600 pt-4 border-t border-gray-200">
+              Showing <span className="font-semibold">{filteredUsers.length}</span> of <span className="font-semibold">{users.length}</span> users
+            </div>
+          </div>
+        </Drawer>
       </div>
     </div>
   );
