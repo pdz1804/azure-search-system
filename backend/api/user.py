@@ -269,7 +269,7 @@ async def delete_user(
         raise HTTPException(status_code=500, detail="Failed to delete user")
 
 
-@users.get("/")
+@users.get("")
 async def get_all_users(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
