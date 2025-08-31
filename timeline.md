@@ -110,6 +110,10 @@ Note:
 
 # TODO
 
+- problems with searching 
+  - currently we embed the whole content of the article but that is not good 
+  - maybe we should concatenate all the info of the article together in one field by creating some trigger or fix code of backend for when creating / updating the articles for this 
+  - then, when the indexer receiving this one-thing-for-all field, we should perform the significant step of preprocessing --> currently we just embed all of them without the preprocessing steps, that is not good at all. 
 - recommended thật sự và recommended tùy profile user cho trang homepage / trang authors / trang articles --> Cuong + Minh
 - think + search for hints for performing the website for BĐS or some others...
 
