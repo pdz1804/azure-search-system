@@ -23,6 +23,9 @@ from backend.services.cache_service import (
     get_cache, set_cache, delete_cache, delete_cache_pattern, 
     CACHE_KEYS, CACHE_TTL
 )
+from backend.services.text_preprocessing_service import (
+    preprocess_article_text, should_regenerate_preprocessed_text
+)
 
 async def clear_affected_caches(
     operation: str,
@@ -204,6 +207,14 @@ async def create_article(doc: dict, app_id: Optional[str] = None) -> dict:
     # Set app_id if provided
     if app_id:
         doc["app_id"] = app_id
+    
+    # Generate preprocessed searchable text
+    try:
+        doc["preprocessed_searchable_text"] = preprocess_article_text(doc)
+        print(f"✨ Generated preprocessed text for new article: {len(doc['preprocessed_searchable_text'])} characters")
+    except Exception as e:
+        print(f"⚠️ Failed to generate preprocessed text for new article: {e}")
+        doc["preprocessed_searchable_text"] = None
     
     print(f"📝 Creating new article with created_at = updated_at = {now}")
 
@@ -407,8 +418,30 @@ async def update_article(article_id: str, update_doc: dict, app_id: Optional[str
     print(f"📝 Article service updating article {article_id}")
     print(f"🔑 Update fields: {list(update_doc.keys())}")
     
-    # Get article info before update to get author_id
+    # Get article info before update to get author_id and check if preprocessing needed
     original_article = await article_repo.get_article_by_id(article_id)
+    
+    # Check if text preprocessing is needed
+    content_fields = {'title', 'abstract', 'content'}
+    if content_fields.intersection(set(update_doc.keys())):
+        try:
+            # Get current values, preferring updated values
+            current_title = update_doc.get('title', original_article.get('title', ''))
+            current_abstract = update_doc.get('abstract', original_article.get('abstract', ''))
+            current_content = update_doc.get('content', original_article.get('content', ''))
+            
+            # Generate new preprocessed text
+            article_data = {
+                'title': current_title,
+                'abstract': current_abstract,
+                'content': current_content
+            }
+            update_doc["preprocessed_searchable_text"] = preprocess_article_text(article_data)
+            print(f"✨ Updated preprocessed text: {len(update_doc['preprocessed_searchable_text'])} characters")
+            
+        except Exception as e:
+            print(f"⚠️ Failed to update preprocessed text: {e}")
+            # Don't fail the update if preprocessing fails
     
     updated_article = await article_repo.update_article(article_id, update_doc)
     

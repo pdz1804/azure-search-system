@@ -152,7 +152,7 @@ const MyArticles = () => {
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 mb-8">
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 mb-8 p-4">
           <Tabs
             activeKey={activeTab}
             onChange={setActiveTab}

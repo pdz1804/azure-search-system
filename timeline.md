@@ -80,13 +80,13 @@ Note:
 - **add the `app_id` field for the users and authors and update the code for the `index` and `indexer` to get that field from cosmos db too and update the search function to include the `app_id` field in the `filter`**
 - **Fix update and Delete article to not calling the recommendation anymore ==> faster ==> DONE**
 - **trong quá trình return lại kết quả sau khi dùng DTO thì 2 thg kết quả search của articles và của authors đang bị chưa đúng thứ tự của score cao --> score thấp**
-**==> DONE (lí do là vì 1 vài user hong hiện trong search dù tên trùng là do chưa có field is_active) ==> DONE**
+  **==> DONE (lí do là vì 1 vài user hong hiện trong search dù tên trùng là do chưa có field is_active) ==> DONE**
 - **get user by id hiện đang truyền app_id, tuy nhiên nếu sai app_id vẫn dô đc ==> DONE**
 - **get user in admin hiện đang truyền app_id, tuy nhiên nếu sai app_id vẫn dô đc ==> DONE**
 
 ---
 
-# 30/8 
+# 30/8
 
 - add check follow status ==> **DONE**
 - ẩn nút follow nếu là bài viết của bản thân ==> **DONE**
@@ -98,24 +98,21 @@ Note:
 - when viewing the recommendation more tab, if we click to view the next articles, it still opens that tab, which should be closed ==> **DONE**
 - update the delete and reactivate the account of user from the admin dashboard and backend api such that the `is_active=false` for soft delete (done in index, indexer of ai_search already). ==> **DONE**
 - UI for the admin dashboard is not well-responsive ==> **DONE**
-- check lại summary (api/articles/stats) xem đã filter is_active=false chưa ==> **DONE** 
+- check lại summary (api/articles/stats) xem đã filter is_active=false chưa ==> **DONE**
 - đang bị get all item xong mới đếm chứ hong phải là select + count done --> FIX cho file article_repo fucntion get_article_summary_aggregations  dùng SUM thay vì COUNT ==> **DONE**
 - fix phân trang của tất cả ==> DONE fix phân trang của list all articles ==> chưa done search or authors --> tạm chấp nhận như hiện tại rằng ví dụ khi search xong nó sẽ hiện có 5 trang và đang ở trang 1. sau đó nhấn vào trang 5 thì nó mới gọi api để search results cho trang 5 --> thì khi search trang 5 nó lại có thông tin rằng còn những results score thấp hơn ở các trang sau ví dụ 6 7 nữa nên pagination sẽ update rằng có thêm trang 6 và 7. Chỉ hong suggest thêm trang nếu ví dụ khi nhấn vào trang 8 thì result trả ra chỉ nằm trọn trong trang đó thôi ==> maybe this still ok ==> **DONE**
 - view all authors not filter `is_active=false` yet ==> **DONE**
 - account deleted and account not found UIs ==> **DONE**
 - api list all user của admin dashboard  **DONE**
 - test deploy 3 app **DONE**
+- problems with searching- currently we embed the whole content of the article but that is not good
+  - maybe we should concatenate all the info of the article together in one field by creating some trigger or fix code of backend for when creating / updating the articles for this
+  - then, when the indexer receiving this one-thing-for-all field, we should perform the significant step of preprocessing --> currently we just embed all of them without the preprocessing steps (removing emails, tags, stopwords, htmls, urls...), that is not good at all.
+-
 
 ---
 
 # TODO
 
-- problems with searching 
-  - currently we embed the whole content of the article but that is not good 
-  - maybe we should concatenate all the info of the article together in one field by creating some trigger or fix code of backend for when creating / updating the articles for this 
-  - then, when the indexer receiving this one-thing-for-all field, we should perform the significant step of preprocessing --> currently we just embed all of them without the preprocessing steps, that is not good at all. 
 - recommended thật sự và recommended tùy profile user cho trang homepage / trang authors / trang articles --> Cuong + Minh
 - think + search for hints for performing the website for BĐS or some others...
-
-
-

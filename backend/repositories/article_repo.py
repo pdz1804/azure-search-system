@@ -576,3 +576,76 @@ async def get_article_summary_aggregations(app_id: Optional[str] = None) -> Dict
     except Exception as e:
         print(f"Error in get_article_summary_aggregations: {e}")
         return {"total_views": 0, "total_likes": 0}
+
+
+async def count_articles(app_id: Optional[str] = None) -> int:
+    """
+    Count total number of active articles.
+    
+    Args:
+        app_id: Optional app ID filter
+        
+    Returns:
+        Total count of active articles
+    """
+    articles = await get_articles()
+    
+    try:
+        if app_id:
+            query = "SELECT VALUE COUNT(1) FROM c WHERE c.app_id = @app_id"
+            parameters = [{"name": "@app_id", "value": app_id}]
+        else:
+            query = "SELECT VALUE COUNT(1) FROM c"
+            parameters = []
+        
+        count_result = [item async for item in articles.query_items(
+            query=query,
+            parameters=parameters
+        )]
+        
+        return count_result[0] if count_result else 0
+        
+    except Exception as e:
+        print(f"Error counting articles: {e}")
+        return 0
+
+
+async def get_articles_batch(offset: int, batch_size: int, app_id: Optional[str] = None) -> List[dict]:
+    """
+    Get a batch of articles for processing.
+    
+    Args:
+        offset: Number of articles to skip
+        batch_size: Number of articles to return
+        app_id: Optional app ID filter
+        
+    Returns:
+        List of article documents
+    """
+    articles = await get_articles()
+    
+    try:
+        if app_id:
+            query = "SELECT * FROM c WHERE c.app_id = @app_id ORDER BY c.created_at OFFSET @offset LIMIT @limit"
+            parameters = [
+                {"name": "@app_id", "value": app_id},
+                {"name": "@offset", "value": offset},
+                {"name": "@limit", "value": batch_size}
+            ]
+        else:
+            query = "SELECT * FROM c ORDER BY c.created_at OFFSET @offset LIMIT @limit"
+            parameters = [
+                {"name": "@offset", "value": offset},
+                {"name": "@limit", "value": batch_size}
+            ]
+        
+        results = [doc async for doc in articles.query_items(
+            query=query,
+            parameters=parameters
+        )]
+        
+        return results
+        
+    except Exception as e:
+        print(f"Error getting articles batch: {e}")
+        return []

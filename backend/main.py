@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Article CMS - modular", lifespan=lifespan)
 
 load_dotenv()
-FRONTEND_URL = os.getenv("FRONTEND_URL").split(",")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "*").split(",")
 
 
 # CORS configuration

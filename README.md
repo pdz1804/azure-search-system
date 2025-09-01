@@ -128,17 +128,17 @@ pip install -r ../requirements.txt
 cp .env.example .env
 # Edit .env with Azure credentials
 
-# Create search indexes
-python main.py create-indexes --verbose
+# Create search indexes with updated schema
+python -m ai_search.main create-indexes --reset --verbose
 
-# Set up automatic indexers
-python main.py setup-indexers --verbose
+# Set up automatic indexers with preprocessing support
+python -m ai_search.main setup-indexers --reset --verbose
 
 # Verify setup
-python main.py health --verbose
+python -m ai_search.main health --verbose
 
 # Start AI search service
-python main.py serve --port 8000
+python -m ai_search.main serve --port 8000
 ```
 
 #### 2. Backend API Setup
@@ -232,6 +232,22 @@ USER     │ Read articles, search, personal bookmarks
 - **Protected routes** in frontend
 - **CORS configuration** for cross-origin requests
 
+### 🧠 Text Preprocessing Features
+
+- **Advanced HTML Cleaning** - Removes images, videos, embeds, CSS, and scripts while preserving text content
+- **URL & Email Removal** - Cleans up URLs and email addresses from content
+- **Intelligent Punctuation Normalization** - Handles excessive punctuation while preserving meaning
+- **Preprocessing for Embeddings** - Optimized text preparation for vector embedding generation
+- **Automatic Indexer Integration** - Indexers use preprocessed text for better embedding quality
+- **Fallback Handling** - ConditionalSkill ensures backward compatibility with existing content
+- **Batch Migration Support** - Tools for migrating existing articles to use preprocessed text
+
+**Key Benefits:**
+- Better embedding quality from cleaned text
+- Improved search relevance and accuracy
+- Consistent text formatting across the system
+- Enhanced semantic understanding
+
 ## 🗄️ Data Management
 
 ### Database Schema
@@ -277,12 +293,12 @@ USER     │ Read articles, search, personal bookmarks
 #### Automatic Sync (Recommended)
 
 ```bash
-# Set up Azure indexers for real-time sync
+# Set up Azure indexers for real-time sync with preprocessing
 cd ai_search
-python main.py setup-indexers --verbose
+python -m ai_search.main setup-indexers --verbose
 
 # Monitor sync status
-python main.py check-indexers --verbose
+python -m ai_search.main check-indexers --verbose
 ```
 
 **Features:**
@@ -587,10 +603,13 @@ npm run format
 ```bash
 # Check index status
 cd ai_search
-python main.py check-indexers --verbose
+python -m ai_search.main check-indexers --verbose
 
-# Recreate indexes if corrupted
-python main.py create-indexes --reset --verbose
+# Recreate indexes if corrupted (with preprocessing support)
+python -m ai_search.main create-indexes --reset --verbose
+
+# Recreate indexers with updated skillset
+python -m ai_search.main setup-indexers --reset --verbose
 ```
 
 #### Authentication Issues

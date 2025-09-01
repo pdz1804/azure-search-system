@@ -11,13 +11,22 @@ from azure.search.documents import SearchClient
 from ai_search.config.settings import SETTINGS
 from ai_search.app.services.embeddings import encode
 from ai_search.utils.timeparse import parse_sql_datetime
+from ai_search.utils.text_preprocessing import generate_preprocessed_content
 
 def _article_to_doc(a: Dict[str, Any]) -> Dict[str, Any]:
     """Transform a Cosmos DB article document to optimized Azure AI Search format."""
     title = a.get("title", "")
     abstract = a.get("abstract", "")
     content = a.get("content", "")
-    searchable_text = "\n".join([title, abstract, content]).strip()
+    
+    # Use preprocessed text if available, otherwise generate it
+    preprocessed_text = a.get("preprocessed_searchable_text")
+    if not preprocessed_text:
+        preprocessed_text = generate_preprocessed_content(a)
+        print(f"🔄 Generated preprocessed text for article {a.get('id', 'unknown')}: {len(preprocessed_text)} chars")
+    
+    # Use preprocessed text for search, keep original for fallback
+    searchable_text = preprocessed_text if preprocessed_text else "\n".join([title, abstract, content]).strip()
 
     updated = a.get("updated_at")
     created = a.get("created_at")
@@ -43,11 +52,14 @@ def _article_to_doc(a: Dict[str, Any]) -> Dict[str, Any]:
         "updated_at": parse_sql_datetime(updated) if updated else None,
         "business_date": business_date,
         "searchable_text": searchable_text,
+        "preprocessed_searchable_text": preprocessed_text,
     }
     
     if SETTINGS.enable_embeddings:
         try:
-            doc["content_vector"] = encode(searchable_text)
+            # Use preprocessed text for embeddings for better quality
+            embedding_text = preprocessed_text if preprocessed_text else searchable_text
+            doc["content_vector"] = encode(embedding_text)
         except Exception as e:
             print(f"⚠️ Failed to generate embedding for article {a.get('id', 'unknown')}: {e}")
             doc["content_vector"] = [0.0] * 384  # Fallback empty vector
