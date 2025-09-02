@@ -104,8 +104,8 @@ const ArticleList = ({
     setLoading(true);
     const pageSize = pagination.pageSize || 12;
     try {
-      // Helper to normalize and sort results
-      const normalize = (raw) => {
+      // Helper to normalize results and conditionally sort
+      const normalize = (raw, isSearchMode = false) => {
         const data = raw?.data ?? raw;
         const itemsSource = Array.isArray(data)
           ? data
@@ -116,7 +116,9 @@ const ArticleList = ({
               : Array.isArray(raw?.results)
                 ? raw.results
                 : [];
-        const sorted = Array.isArray(itemsSource)
+        // Only sort by date for non-search results
+        // For search results, preserve the backend's relevance ranking
+        const sorted = Array.isArray(itemsSource) && !isSearchMode
           ? [...itemsSource].sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0))
           : itemsSource;
         return { items: sorted, page: (data?.pagination && data.pagination.page) || data?.page || page };
@@ -165,10 +167,12 @@ const ArticleList = ({
         }
 
         if (response.success) {
-          const { items } = normalize(response);
-          const finalItems = (search || searchQuery)
-            ? [...items].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
-            : items;
+          // Pass search mode to normalize function to preserve search relevance order
+          const isSearchMode = !!(search || searchQuery);
+          const { items } = normalize(response, isSearchMode);
+          // For search results, preserve the backend's relevance ranking order
+          // For non-search results, sort by date
+          const finalItems = items;
           setArticles(finalItems);
           
           // Extract pagination info - backend returns "total" as number of pages

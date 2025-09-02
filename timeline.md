@@ -106,13 +106,20 @@ Note:
 - api list all user của admin dashboard  **DONE**
 - test deploy 3 app **DONE**
 - problems with searching- currently we embed the whole content of the article but that is not good
+
   - maybe we should concatenate all the info of the article together in one field by creating some trigger or fix code of backend for when creating / updating the articles for this
   - then, when the indexer receiving this one-thing-for-all field, we should perform the significant step of preprocessing --> currently we just embed all of them without the preprocessing steps (removing emails, tags, stopwords, htmls, urls...), that is not good at all.
--
+
+  ==> do this already, but because we need to let the database schema to be as optimized as possible so maybe we do not need this.
+  ==> so currently, we have done the preprocessing of the combined fields, but now we comment them already.
+- bug: khi dùng thanh tìm kiếm để search articles, kết quả trả ra không đúng thứ tự score ==> DONE (phân biệt lúc list article trong view article và khi show results của search)
 
 ---
 
 # TODO
 
+- có gitignore cho 3 files .env frontend khong --> check
+- bug: frontend - khi like 1 article, api backend chạy đúng + state của reaction đúng nhưng hiển thị số sai. VD: đang like, like 4 dislike 2, ấn dislike thì state thành dislike đúng, nhưng UI vẫn hiện 4 2
+- bug: frontend - my-articles?tab=analytics ==> hiện đang chưa filter dụ draft hay published đúng và khi đang create articles đang mặc nhiên là published --> maybe hong cần tính năng này --> check
 - recommended thật sự và recommended tùy profile user cho trang homepage / trang authors / trang articles --> Cuong + Minh
 - think + search for hints for performing the website for BĐS or some others...

@@ -102,8 +102,8 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
         # Consolidated searchable text for highlighting
         SearchableField(name="searchable_text", type=SearchFieldDataType.String, analyzer_name="en.lucene"),
         
-        # Preprocessed searchable text optimized for embeddings
-        SearchableField(name="preprocessed_searchable_text", type=SearchFieldDataType.String, analyzer_name="en.lucene"),
+        # COMMENTED OUT: Preprocessed searchable text field (removed from articles)
+        # SearchableField(name="preprocessed_searchable_text", type=SearchFieldDataType.String, analyzer_name="en.lucene"),
         
         # Vector field for hybrid search
         SearchField(
@@ -120,7 +120,7 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
         prioritized_fields=SemanticPrioritizedFields(
             title_field=SemanticField(field_name="title"),
             content_fields=[
-                SemanticField(field_name="preprocessed_searchable_text"),
+                # SemanticField(field_name="preprocessed_searchable_text"),  # Removed: field no longer exists
                 SemanticField(field_name="abstract"), 
                 SemanticField(field_name="content")
             ],

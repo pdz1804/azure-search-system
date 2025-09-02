@@ -151,7 +151,7 @@ class AzureIndexerManager:
             FieldMapping(source_field_name="title", target_field_name="title"),
             FieldMapping(source_field_name="abstract", target_field_name="abstract"),
             FieldMapping(source_field_name="content", target_field_name="content"),
-            FieldMapping(source_field_name="preprocessed_searchable_text", target_field_name="preprocessed_searchable_text"),
+            # FieldMapping(source_field_name="preprocessed_searchable_text", target_field_name="preprocessed_searchable_text"),  # Removed: field no longer exists
             FieldMapping(source_field_name="author_name", target_field_name="author_name"),
             FieldMapping(source_field_name="status", target_field_name="status"),
             FieldMapping(source_field_name="tags", target_field_name="tags"),
@@ -162,9 +162,9 @@ class AzureIndexerManager:
         
         # Output field mappings for computed fields (using raw dict due to SDK/API mismatch)
         output_field_mappings = [
-            # Set searchable_text to selected_text (which is preprocessed_searchable_text with fallback to content)
+            # Set searchable_text to content directly (preprocessed_searchable_text field removed)
             {
-                "sourceFieldName": "/document/selected_text",
+                "sourceFieldName": "/document/content",  # Changed from selected_text to content
                 "targetFieldName": "searchable_text"
             }
         ]
@@ -303,19 +303,20 @@ class AzureIndexerManager:
         # Simple text processing skill that works reliably
         skills = []
         
-        # --- 0) Conditional text selection: use preprocessed_searchable_text if available, otherwise content
-        conditional_skill = ConditionalSkill(
-            name="select-text-for-processing",
-            description="Use preprocessed_searchable_text if available, otherwise fallback to content",
-            context="/document",
-            inputs=[
-                InputFieldMappingEntry(name="condition", source="= $(/document/preprocessed_searchable_text) != null"),
-                InputFieldMappingEntry(name="whenTrue", source="= $(/document/preprocessed_searchable_text)"),
-                InputFieldMappingEntry(name="whenFalse", source="= $(/document/content)")
-            ],
-            outputs=[OutputFieldMappingEntry(name="output", target_name="selected_text")]
-        )
-        skills.append(conditional_skill)
+        # --- 0) Use content directly for processing (preprocessed_searchable_text field removed)
+        # COMMENTED OUT: Conditional text selection that used preprocessed_searchable_text
+        # conditional_skill = ConditionalSkill(
+        #     name="select-text-for-processing",
+        #     description="Use preprocessed_searchable_text if available, otherwise fallback to content",
+        #     context="/document",
+        #     inputs=[
+        #         InputFieldMappingEntry(name="condition", source="= $(/document/preprocessed_searchable_text) != null"),
+        #         InputFieldMappingEntry(name="whenTrue", source="= $(/document/preprocessed_searchable_text)"),
+        #         InputFieldMappingEntry(name="whenFalse", source="= $(/document/content)")
+        #     ],
+        #     outputs=[OutputFieldMappingEntry(name="output", target_name="selected_text")]
+        # )
+        # skills.append(conditional_skill)
         
         # --- 1) Split long content into pages (characters-based; robust across SDK versions)
         # Tip: if you later pin a SDK supporting token-based splitting, switch to 'unit="azureOpenAITokens"'.
@@ -330,7 +331,7 @@ class AzureIndexerManager:
             maximum_page_length=chunk_size_chars,
             page_overlap_length=chunk_overlap_chars,
             maximum_pages_to_take=2,
-            inputs=[InputFieldMappingEntry(name="text", source="/document/selected_text")],
+            inputs=[InputFieldMappingEntry(name="text", source="/document/content")],  # Changed from selected_text to content
             outputs=[
                 # Array of page texts
                 OutputFieldMappingEntry(name="textItems", target_name="pages"),

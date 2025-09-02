@@ -19,4 +19,5 @@ class Article(BaseModel):
     views: int
     created_at: datetime
     updated_at: datetime
-    preprocessed_searchable_text: Optional[str] = None    
+    # NOTE: Commented out for preprocessing field removal
+    # preprocessed_searchable_text: Optional[str] = None    

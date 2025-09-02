@@ -649,3 +649,36 @@ async def get_articles_batch(offset: int, batch_size: int, app_id: Optional[str]
     except Exception as e:
         print(f"Error getting articles batch: {e}")
         return []
+
+
+async def remove_field_from_article(article_id: str, field_name: str) -> bool:
+    """
+    Remove a specific field from an article.
+    
+    Args:
+        article_id: The ID of the article to update
+        field_name: The name of the field to remove
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    articles = await get_articles()
+    try:
+        # Read the existing article
+        existing_article = await articles.read_item(item=article_id, partition_key=article_id)
+        
+        # Remove the field if it exists
+        if field_name in existing_article:
+            del existing_article[field_name]
+            
+            # Upsert the updated article back to Cosmos DB
+            await articles.upsert_item(body=existing_article)
+            print(f"✅ Removed field '{field_name}' from article {article_id}")
+            return True
+        else:
+            print(f"⏭️ Field '{field_name}' not found in article {article_id}")
+            return True  # Consider it successful if field doesn't exist
+            
+    except Exception as e:
+        print(f"❌ Error removing field '{field_name}' from article {article_id}: {e}")
+        return False
