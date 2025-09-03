@@ -148,6 +148,20 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await authApi.getCurrentUser();
+      if (response.success && response.data) {
+        setUser(response.data);
+        localStorage.setItem('user', JSON.stringify(response.data));
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+    }
+    return null;
+  };
+
   const isAuthenticated = () => {
     return !!token && !!user;
   };
@@ -170,6 +184,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
+    refreshUser,
     isAuthenticated,
     hasRole,
     canEditArticle,

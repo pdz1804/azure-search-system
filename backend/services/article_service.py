@@ -41,11 +41,13 @@ async def clear_affected_caches(
     - "create": New article created → clear all listings, stats, categories, author
     - "delete": Article deleted → clear all listings, stats, categories, author
     - "update": Article updated → selective clearing based on updated_fields
-    - "like": Article liked → clear detail, popular, stats
-    - "unlike": Article unliked → clear detail, popular, stats  
-    - "dislike": Article disliked → clear detail, stats only
-    - "undislike": Article undisliked → clear detail, stats only
-    - "view": Article viewed → clear detail, popular, stats
+    - "like": Article liked → clear detail, popular, stats, home listings
+    - "unlike": Article unliked → clear detail, popular, stats, home listings
+    - "dislike": Article disliked → clear detail, stats, home listings
+    - "undislike": Article undisliked → clear detail, stats, home listings
+    - "view": Article viewed → clear detail, popular, stats, home listings
+    - "bookmark": Article bookmarked → clear user cache only (handled in user_service)
+    - "unbookmark": Article unbookmarked → clear user cache only (handled in user_service)
     """
     
     print(f"🗑️ Cache clearing: {operation} (app_id: {app_id}, article_id: {article_id}, author_id: {author_id})")
@@ -107,13 +109,20 @@ async def clear_affected_caches(
         # Other minor changes - only detail cache cleared above
     
     elif operation in ["like", "unlike", "view"]:
-        # Interactions that affect popularity
+        # Interactions that affect popularity AND main article listings (like counts shown in cards)
+        await delete_cache_pattern(CACHE_KEYS["articles_home"] + "*", app_id=app_id)
         await delete_cache_pattern(CACHE_KEYS["articles_popular"] + "*", app_id=app_id)
         await delete_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)
     
     elif operation in ["dislike", "undislike"]:
-        # Interactions that only affect stats
+        # Interactions that affect stats AND main article listings (dislike counts shown in detail)
+        await delete_cache_pattern(CACHE_KEYS["articles_home"] + "*", app_id=app_id)
         await delete_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)
+    
+    elif operation in ["bookmark", "unbookmark"]:
+        # Bookmark operations don't affect article stats but need to clear article lists where bookmark status might be shown
+        await delete_cache_pattern(CACHE_KEYS["articles_home"] + "*", app_id=app_id)
+        # Note: user cache clearing is handled in user_service for bookmark operations
     
     print(f"✅ Cache clearing completed for {operation}")
 
@@ -636,6 +645,21 @@ async def get_total_articles_count_by_author(author_id: str, app_id: Optional[st
 async def list_articles_with_pagination(page: int = 1, page_size: int = 20, app_id: Optional[str] = None) -> dict:
     """Get articles with pagination metadata."""
     try:
+        # Try to get from cache first using new cache API
+        cached_result = await get_cache(
+            CACHE_KEYS["articles_home"], 
+            app_id=app_id, 
+            page=page, 
+            page_size=page_size
+        )
+        
+        if cached_result:
+            print(f"📋 Redis Cache HIT for paginated articles page {page} (app_id: {app_id or 'all'})")
+            # Return the complete cached response structure
+            return cached_result
+        
+        print(f"📋 Redis Cache MISS for paginated articles page {page} (app_id: {app_id or 'all'}) - Loading from DB...")
+        
         # Get articles data with pagination info from repository
         result = await article_repo.list_articles(page, page_size, app_id=app_id)
         
@@ -650,7 +674,8 @@ async def list_articles_with_pagination(page: int = 1, page_size: int = 20, app_
         else:
             article_dicts = []
         
-        return {
+        # Build the complete response structure
+        response_data = {
             "success": True,
             "data": article_dicts,
             "pagination": {
@@ -660,6 +685,19 @@ async def list_articles_with_pagination(page: int = 1, page_size: int = 20, app_
                 "total_results": total_items  # total result count
             }
         }
+        
+        # Cache the complete response structure using new cache API
+        await set_cache(
+            CACHE_KEYS["articles_home"], 
+            response_data, 
+            app_id=app_id, 
+            ttl=CACHE_TTL["home"],
+            page=page,
+            page_size=page_size
+        )
+        print(f"📋 Redis Cache SET for paginated articles page {page} (app_id: {app_id or 'all'})")
+        
+        return response_data
     except Exception as e:
         print(f"Error in list_articles_with_pagination: {e}")
         return {

@@ -1,6 +1,10 @@
 # PDZ added 
 note.txt 
 ai_search/data/
+frontend/env.blog
+frontend/env.news
+frontend/env.tech
+frontend/env.example
 
 # -------------------------
 # Python

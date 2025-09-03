@@ -321,41 +321,60 @@ async def like_article(user_id: str, article_id: str, app_id: Optional[str] = No
     if is_liked and is_liked.get("reaction_type") == "none":
         await user_repo.like_article(user_id, article_id)
         await article_repo.increment_article_likes(article_id)
-        await delete_cache(CACHE_KEYS["article_detail"], article_id=article_id, app_id=app_id)
-        await delete_cache_pattern(CACHE_KEYS["articles_home"] + "*", app_id=app_id)
-        await delete_cache_pattern(CACHE_KEYS["articles_popular"] + "*", app_id=app_id)
-
+        # Use centralized cache clearing from article service
+        from backend.services.article_service import clear_affected_caches
+        await clear_affected_caches(operation="like", app_id=app_id, article_id=article_id)
+        # Also clear user cache for updated reaction status
+        await delete_cache(CACHE_KEYS["user_detail"], user_id=user_id, app_id=app_id)
 
 async def unlike_article(user_id: str, article_id: str, app_id: Optional[str] = None):
     is_unliked = await check_article_status(user_id, article_id, app_id)
     if is_unliked["reaction_type"] == "like":
         await user_repo.unlike_article(user_id, article_id)
         await article_repo.decrement_article_likes(article_id)
-        await delete_cache(CACHE_KEYS["article_detail"], article_id=article_id, app_id=app_id)
-        await delete_cache_pattern(CACHE_KEYS["articles_home"] + "*", app_id=app_id)
-        await delete_cache_pattern(CACHE_KEYS["articles_popular"] + "*", app_id=app_id)
+        # Use centralized cache clearing from article service
+        from backend.services.article_service import clear_affected_caches
+        await clear_affected_caches(operation="unlike", app_id=app_id, article_id=article_id)
+        # Also clear user cache for updated reaction status
+        await delete_cache(CACHE_KEYS["user_detail"], user_id=user_id, app_id=app_id)
 
 async def dislike_article(user_id: str, article_id: str, app_id: Optional[str] = None):
     is_disliked = await check_article_status(user_id, article_id, app_id)
     if is_disliked and is_disliked.get("reaction_type") == "none":
         await user_repo.dislike_article(user_id, article_id)
         await article_service.increment_article_dislikes(article_id)
-        await delete_cache(CACHE_KEYS["article_detail"], article_id=article_id, app_id=app_id)
-        await delete_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)
+        # Use centralized cache clearing from article service
+        from backend.services.article_service import clear_affected_caches
+        await clear_affected_caches(operation="dislike", app_id=app_id, article_id=article_id)
+        # Also clear user cache for updated reaction status
+        await delete_cache(CACHE_KEYS["user_detail"], user_id=user_id, app_id=app_id)
 
 async def undislike_article(user_id: str, article_id: str, app_id: Optional[str] = None):
     is_disliked = await check_article_status(user_id, article_id, app_id)
     if is_disliked["reaction_type"] == "dislike":
         await user_repo.undislike_article(user_id, article_id)
         await article_service.decrement_article_dislikes(article_id)
-        await delete_cache(CACHE_KEYS["article_detail"], article_id=article_id, app_id=app_id)
-        await delete_cache(CACHE_KEYS["homepage_statistics"], app_id=app_id)
+        # Use centralized cache clearing from article service
+        from backend.services.article_service import clear_affected_caches
+        await clear_affected_caches(operation="undislike", app_id=app_id, article_id=article_id)
+        # Also clear user cache for updated reaction status
+        await delete_cache(CACHE_KEYS["user_detail"], user_id=user_id, app_id=app_id)
 
 async def bookmark_article(user_id: str, article_id: str, app_id: Optional[str] = None):
     await user_repo.bookmark_article(user_id, article_id)
+    # Use centralized cache clearing from article service
+    from backend.services.article_service import clear_affected_caches
+    await clear_affected_caches(operation="bookmark", app_id=app_id, article_id=article_id)
+    # Also clear user cache for updated bookmark status
+    await delete_cache(CACHE_KEYS["user_detail"], user_id=user_id, app_id=app_id)
 
 async def unbookmark_article(user_id: str, article_id: str, app_id: Optional[str] = None):
-    await user_repo.unbookmark_article(user_id, article_id)   
+    await user_repo.unbookmark_article(user_id, article_id)
+    # Use centralized cache clearing from article service
+    from backend.services.article_service import clear_affected_caches
+    await clear_affected_caches(operation="unbookmark", app_id=app_id, article_id=article_id)
+    # Also clear user cache for updated bookmark status
+    await delete_cache(CACHE_KEYS["user_detail"], user_id=user_id, app_id=app_id)
 
 async def check_article_status(user_id: str, article_id: str, app_id: Optional[str] = None) -> Dict[str, Any]:
     user = await user_repo.get_user_by_id(user_id, app_id)

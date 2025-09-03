@@ -187,14 +187,12 @@ const MyArticles = () => {
                 ),
                 children: (
                   <div className="p-6">
-                    <ArticleList 
-                      authorId={user?.id}
-                      showAuthor={false}
-                      limit={50}
-                      status="published"
-                      showActions={true}
-                      onPublishDraft={handlePublishDraft}
-                    />
+                    <div className="text-center py-12">
+                      <CheckCircleOutlined className="text-6xl text-gray-300 mb-4" />
+                      <h3 className="text-xl font-semibold text-gray-600 mb-2">Published Articles</h3>
+                      <p className="text-gray-500">This feature is under development!</p>
+                      <p className="text-gray-400 text-sm mt-2">You can view and manage your published articles here soon.</p>
+                    </div>
                   </div>
                 )
               },
@@ -208,14 +206,12 @@ const MyArticles = () => {
                 ),
                 children: (
                   <div className="p-6">
-                    <ArticleList 
-                      authorId={user?.id}
-                      showAuthor={false}
-                      limit={50}
-                      status="draft"
-                      showActions={true}
-                      onPublishDraft={handlePublishDraft}
-                    />
+                    <div className="text-center py-12">
+                      <ClockCircleOutlined className="text-6xl text-gray-300 mb-4" />
+                      <h3 className="text-xl font-semibold text-gray-600 mb-2">Draft Articles</h3>
+                      <p className="text-gray-500">This feature is under development!</p>
+                      <p className="text-gray-400 text-sm mt-2">You can manage your draft articles here soon.</p>
+                    </div>
                   </div>
                 )
               },

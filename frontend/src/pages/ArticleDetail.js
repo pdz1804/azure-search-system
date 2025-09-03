@@ -44,6 +44,7 @@ import { userApi } from '../api/userApi';
 import { useAuth } from '../context/AuthContext';
 import { formatDate, formatNumber } from '../utils/helpers';
 import { getRandomDefaultImage } from '../utils/defaultImage';
+import { clearArticleListCache } from '../components/ArticleList';
 
 const { Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -56,7 +57,7 @@ const ARTICLE_FETCH_PROMISES = new Map();
 const ArticleDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, isAuthenticated, canEditArticle } = useAuth();
+  const { user, isAuthenticated, canEditArticle, refreshUser } = useAuth();
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -518,49 +519,61 @@ const ArticleDetail = () => {
       message.warning('Please login to like articles');
       return;
     }
+    const prevType = reactionType; // capture previous reaction
     
     try {
       setLikeLoading(true);
       let response;
       
-      if (reactionType === 'like') {
+      if (prevType === 'like') {
         response = await userApi.unlikeArticle(id);
         if (response.success) {
           setReactionType('none');
           message.success('Article unliked');
+          // adjust counts locally
+          setArticle(prev => ({
+            ...prev,
+            likes: (prev.likes || prev.total_like || 1) - 1
+          }));
         }
       } else {
-        // If currently disliked, remove dislike first
-        if (reactionType === 'dislike') {
+        if (prevType === 'dislike') {
           await userApi.undislikeArticle(id);
         }
-        
         response = await userApi.likeArticle(id);
         if (response.success) {
           setReactionType('like');
           message.success('Article liked');
+          // adjust counts locally
+          setArticle(prev => ({
+            ...prev,
+            likes: (prev.likes || prev.total_like || 0) + 1,
+            dislikes: prevType === 'dislike' ? (prev.dislikes || prev.total_dislike || 1) - 1 : (prev.dislikes || prev.total_dislike)
+          }));
         }
       }
       
-      // Refresh article data to get accurate like/dislike counts
       if (response?.success) {
-        // Only refresh the article data, not the full fetch
+        // update cache too
         try {
           const articleResponse = await articleApi.getArticle(id);
           if (articleResponse.success) {
             setArticle(articleResponse.data);
+            ARTICLE_CACHE.set(id, articleResponse.data);
           }
           await loadUserReactionStatus();
+          // Refresh user data to update liked_articles array for other components
+          await refreshUser();
+          // Clear article list cache to ensure updated reactions show in lists
+          clearArticleListCache();
         } catch (refreshError) {
           console.error('Error refreshing article data:', refreshError);
           // Fallback to full refresh if quick refresh fails
           await fetchArticle();
         }
       }
-    } catch (error) {
-      console.error('Error handling like:', error);
-      message.error('Failed to update like status');
-    } finally {
+    } catch (error) {}
+    finally {
       setLikeLoading(false);
     }
   };
@@ -570,49 +583,56 @@ const ArticleDetail = () => {
       message.warning('Please login to dislike articles');
       return;
     }
-    
+    const prevType = reactionType;
+
     try {
       setDislikeLoading(true);
       let response;
-      
-      if (reactionType === 'dislike') {
+
+      if (prevType === 'dislike') {
         response = await userApi.undislikeArticle(id);
         if (response.success) {
           setReactionType('none');
           message.success('Article undisliked');
+          setArticle(prev => ({
+            ...prev,
+            dislikes: (prev.dislikes || prev.total_dislike || 1) - 1
+          }));
         }
       } else {
-        // If currently liked, remove like first
-        if (reactionType === 'like') {
+        if (prevType === 'like') {
           await userApi.unlikeArticle(id);
         }
-        
         response = await userApi.dislikeArticle(id);
         if (response.success) {
           setReactionType('dislike');
           message.success('Article disliked');
+          setArticle(prev => ({
+            ...prev,
+            dislikes: (prev.dislikes || prev.total_dislike || 0) + 1,
+            likes: prevType === 'like' ? (prev.likes || prev.total_like || 1) - 1 : (prev.likes || prev.total_like)
+          }));
         }
       }
-      
-      // Refresh article data to get accurate like/dislike counts
+
       if (response?.success) {
-        // Only refresh the article data, not the full fetch
         try {
           const articleResponse = await articleApi.getArticle(id);
           if (articleResponse.success) {
             setArticle(articleResponse.data);
+            ARTICLE_CACHE.set(id, articleResponse.data);
           }
           await loadUserReactionStatus();
+          // Refresh user data to update disliked_articles array for other components
+          await refreshUser();
+          // Clear article list cache to ensure updated reactions show in lists
+          clearArticleListCache();
         } catch (refreshError) {
-          console.error('Error refreshing article data:', refreshError);
-          // Fallback to full refresh if quick refresh fails
           await fetchArticle();
         }
       }
-    } catch (error) {
-      console.error('Error handling dislike:', error);
-      message.error('Failed to update dislike status');
-    } finally {
+    } catch (error) {}
+    finally {
       setDislikeLoading(false);
     }
   };
@@ -626,10 +646,22 @@ const ArticleDetail = () => {
     try {
       if (isBookmarked) {
         const res = await userApi.unbookmarkArticle(id);
-        if (res.success) setIsBookmarked(false);
+        if (res.success) {
+          setIsBookmarked(false);
+          // Refresh user data to update bookmarked_articles array for other components
+          await refreshUser();
+          // Clear article list cache to ensure updated bookmarks show in lists
+          clearArticleListCache();
+        }
       } else {
         const res = await userApi.bookmarkArticle(id);
-        if (res.success) setIsBookmarked(true);
+        if (res.success) {
+          setIsBookmarked(true);
+          // Refresh user data to update bookmarked_articles array for other components
+          await refreshUser();
+          // Clear article list cache to ensure updated bookmarks show in lists
+          clearArticleListCache();
+        }
       }
     } catch {
       message.error('Failed to update bookmark status');
@@ -732,8 +764,9 @@ const ArticleDetail = () => {
   const contentForReading = article.content || article.abstract || '';
 
   // Handle both backend field names for compatibility
-  const likesCount = article.likes || article.total_like || 0;
-  const dislikesCount = article.dislikes || article.total_dislike || 0;
+  // Use nullish coalescing so counts use updated values even if 0
+  const likesCount = article.likes ?? article.total_like ?? 0;
+  const dislikesCount = article.dislikes ?? article.total_dislike ?? 0;
   const viewsCount = article.views || article.total_view || 0;
   
   // Extract author info from backend structure

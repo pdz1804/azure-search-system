@@ -58,14 +58,13 @@ const ArticleCard = ({
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [likesCount, setLikesCount] = useState(article.likes || article.total_like || 0);
   const [reactionLoading, setReactionLoading] = useState(false);
-  const [statusLoaded, setStatusLoaded] = useState(false);
 
-  // Load user's reaction status when component mounts
+  // Load user's reaction status when component mounts or user data changes
   useEffect(() => {
-    if (user && !statusLoaded) {
+    if (user) {
       loadUserReactionStatus();
     }
-  }, [user, article.id || article.article_id, statusLoaded]);
+  }, [user, article.id || article.article_id, user?.liked_articles, user?.disliked_articles, user?.bookmarked_articles]);
 
   // Load user's reaction status from user data (no API call)
   const loadUserReactionStatus = async () => {
@@ -82,7 +81,6 @@ const ArticleCard = ({
       
       setUserReaction(isLiked ? 'like' : isDisliked ? 'dislike' : 'none');
       setIsBookmarked(isBookmarked);
-      setStatusLoaded(true);
       
       console.log(`Article ${article.id || article.article_id} status from user data:`, {
         isLiked,
@@ -91,7 +89,6 @@ const ArticleCard = ({
       });
     } catch (error) {
       // Silent fail - user might not be logged in
-      setStatusLoaded(true);
     }
   };
 
@@ -167,7 +164,7 @@ const ArticleCard = ({
         const response = await userApi.unlikeArticle(articleId);
         if (response.success) {
           setUserReaction('none');
-          setLikesCount(prev => prev - 1);
+          setLikesCount(prev => Math.max(0, prev - 1));
         }
       } else {
         const response = await userApi.likeArticle(articleId);

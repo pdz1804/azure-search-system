@@ -14,6 +14,13 @@ import toast from 'react-hot-toast';
 const globalFetchMap = new Map();
 const globalFetchPromises = new Map();
 
+// Function to clear caches when data is invalidated
+export const clearArticleListCache = () => {
+  globalFetchMap.clear();
+  globalFetchPromises.clear();
+  console.log('ArticleList cache cleared');
+};
+
 const ArticleList = ({ 
   authorId = null, 
   category = null,

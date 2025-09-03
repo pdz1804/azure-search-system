@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import ArticleList from '../components/ArticleList';
+import ArticleList, { clearArticleListCache } from '../components/ArticleList';
 import { userApi } from '../api/userApi';
 import { articleApi } from '../api/articleApi';
 import { formatNumber, formatDate } from '../utils/helpers';
@@ -34,6 +34,13 @@ const Blogs = () => {
 	const qAuthorPage = parseInt(params.get('apage') || '1', 10);
 
 	const [activeTab, setActiveTab] = useState(qTab);
+	// Clear article list cache when switching back to articles tab
+	useEffect(() => {
+	  if (activeTab === 'articles') {
+	    clearArticleListCache();
+	  }
+	}, [activeTab]);
+
 	const [authors, setAuthors] = useState([]);
 	const [authorsLoading, setAuthorsLoading] = useState(false);
 	const [categories, setCategories] = useState([]);
@@ -225,7 +232,7 @@ const Blogs = () => {
 					<div className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:space-x-4 lg:space-x-8 border-b border-gray-200 mb-6">
 						<button
 							type="button"
-							className={`flex items-center justify-center sm:justify-start pb-3 sm:pb-4 px-4 sm:px-3 text-sm sm:text-base md:text-lg font-semibold transition-all duration-300 border-b-3 rounded-lg sm:rounded-t-lg sm:rounded-b-none ${
+							className={`flex items-center justify-center sm:justify-start pt-3 sm:pt-4 pb-3 sm:pb-4 px-4 sm:px-3 text-sm sm:text-base md:text-lg font-semibold transition-all duration-300 border-b-3 rounded-lg sm:rounded-t-lg sm:rounded-b-none ${
 								activeTab === 'articles' 
 									? 'text-indigo-600 border-indigo-600 bg-indigo-50 shadow-sm' 
 									: 'text-gray-600 border-transparent hover:text-indigo-500 hover:bg-gray-50'
@@ -237,7 +244,7 @@ const Blogs = () => {
 						</button>
 						<button
 							type="button"
-							className={`flex items-center justify-center sm:justify-start pb-3 sm:pb-4 px-4 sm:px-3 text-sm sm:text-base md:text-lg font-semibold transition-all duration-300 border-b-3 rounded-lg sm:rounded-t-lg sm:rounded-b-none ${
+							className={`flex items-center justify-center sm:justify-start pt-3 sm:pt-4 pb-3 sm:pb-4 px-4 sm:px-3 text-sm sm:text-base md:text-lg font-semibold transition-all duration-300 border-b-3 rounded-lg sm:rounded-t-lg sm:rounded-b-none ${
 								activeTab === 'authors' 
 									? 'text-indigo-600 border-indigo-600 bg-indigo-50 shadow-sm' 
 									: 'text-gray-600 border-transparent hover:text-indigo-500 hover:bg-gray-50'

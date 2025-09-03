@@ -112,14 +112,14 @@ Note:
 
   ==> do this already, but because we need to let the database schema to be as optimized as possible so maybe we do not need this.
   ==> so currently, we have done the preprocessing of the combined fields, but now we comment them already.
-- bug: khi dùng thanh tìm kiếm để search articles, kết quả trả ra không đúng thứ tự score ==> DONE (phân biệt lúc list article trong view article và khi show results của search)
+- bug: khi dùng thanh tìm kiếm để search articles, kết quả trả ra không đúng thứ tự score ==> DONE (nguyen nhan la do cai article list no bi sort theo date --> fix them 1 flag de biet khi nao la view cho article list khi nao la view cho search articles, khi search thi kh sort theo date ma giu nguyen order cua search - theo score, khi list thi sort default theo date) (phân biệt lúc list article trong view article và khi show results của search)
+- có gitignore cho 3 files .env frontend khong --> check
+- bug: frontend - khi like 1 article, api backend chạy đúng + state của reaction đúng nhưng hiển thị số sai. VD: đang like, like 4 dislike 2, ấn dislike thì state thành dislike đúng, nhưng UI vẫn hiện 4 2
+- bug: frontend - my-articles?tab=analytics ==> hiện đang chưa filter dụ draft hay published đúng và khi đang create articles đang mặc nhiên là published --> maybe hong cần tính năng này --> check
 
 ---
 
 # TODO
 
-- có gitignore cho 3 files .env frontend khong --> check
-- bug: frontend - khi like 1 article, api backend chạy đúng + state của reaction đúng nhưng hiển thị số sai. VD: đang like, like 4 dislike 2, ấn dislike thì state thành dislike đúng, nhưng UI vẫn hiện 4 2
-- bug: frontend - my-articles?tab=analytics ==> hiện đang chưa filter dụ draft hay published đúng và khi đang create articles đang mặc nhiên là published --> maybe hong cần tính năng này --> check
 - recommended thật sự và recommended tùy profile user cho trang homepage / trang authors / trang articles --> Cuong + Minh
 - think + search for hints for performing the website for BĐS or some others...
