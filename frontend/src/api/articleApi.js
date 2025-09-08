@@ -276,7 +276,7 @@ export const articleApi = {
     }
   },
 
-  // Get statistics
+  // Get statistics (now includes categories)
   getStatistics: async () => {
     try {
       const response = await apiClient.get('/articles/stats', {
@@ -287,19 +287,33 @@ export const articleApi = {
       console.error('Get statistics error:', error);
       return { 
         success: false, 
-        data: { articles: 0, authors: 0, total_views: 0, bookmarks: 0 },
+        data: { 
+          articles: 0, 
+          authors: 0, 
+          total_views: 0, 
+          bookmarks: 0,
+          categories: []
+        },
         error: 'Failed to fetch statistics' 
       };
     }
   },
 
-  // Get categories
+  // Get categories (now gets from stats endpoint)
   getCategories: async () => {
     try {
-      const response = await apiClient.get('/articles/categories', {
+      const response = await apiClient.get('/articles/stats', {
         params: { app_id: APP_ID }
       });
-      return response.data;
+      
+      if (response.data?.success && response.data?.data?.categories) {
+        return {
+          success: true,
+          data: response.data.data.categories
+        };
+      }
+      
+      return { success: false, data: [], error: 'No categories data found' };
     } catch (error) {
       console.error('Get categories error:', error);
       return { success: false, data: [], error: 'Failed to fetch categories' };

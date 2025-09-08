@@ -952,7 +952,6 @@ async def get_summary(app_id: Optional[str] = None) -> Dict:
         # Use efficient count queries instead of fetching all articles
         count_stats = await article_repo.get_article_summary_counts(app_id=app_id)
         aggregation_stats = await article_repo.get_article_summary_aggregations(app_id=app_id)
-        
         # Combine the results
         stats_data = {
             **count_stats,

@@ -37,45 +37,48 @@ const Home = () => {
 			try {
 				setLoading(true);
 				
-				// Launch all API calls concurrently - Redis caching handled on backend
-				const [statsResult, categoriesResult, authorsResult] = await Promise.allSettled([
-					articleApi.getStatistics().finally(() => setStatsLoading(false)),
-					articleApi.getCategories().finally(() => setCategoriesLoading(false)),
+				// Launch all API calls concurrently - stats now includes categories
+				const [statsResult, authorsResult] = await Promise.allSettled([
+					articleApi.getStatistics().finally(() => {
+						setStatsLoading(false);
+						setCategoriesLoading(false);
+					}),
 					userApi.getAllUsers(1, 7, true).finally(() => setAuthorsLoading(false)) // Use featured=true to get featured authors
 				]);
 
-				// Handle statistics result
+				// Handle statistics result (now includes categories)
 				if (statsResult.status === 'fulfilled' && statsResult.value?.success && statsResult.value.data) {
+					const data = statsResult.value.data;
+					
+					// Set statistics
 					setStatistics({
-						articles: statsResult.value.data.articles ?? statsResult.value.data.total_articles ?? '0',
-						authors: statsResult.value.data.authors ?? '0',
-						total_views: statsResult.value.data.total_views ?? '0',
-						bookmarks: statsResult.value.data.bookmarks ?? 0
+						articles: data.articles ?? data.total_articles ?? '0',
+						authors: data.authors ?? '0',
+						total_views: data.total_views ?? '0',
+						bookmarks: data.bookmarks ?? 0
 					});
+
+					// Set categories from the same API response
+					if (data.categories && Array.isArray(data.categories)) {
+						const transformedCategories = data.categories.map((cat, index) => {
+							const colors = [
+								'from-blue-500 to-indigo-600',
+								'from-purple-500 to-pink-600',
+								'from-emerald-500 to-teal-600',
+								'from-orange-500 to-red-600',
+								'from-green-500 to-emerald-600',
+								'from-yellow-500 to-orange-600'
+							];
+							return {
+								name: cat.name,
+								color: colors[index % colors.length]
+							};
+						});
+						console.log('Categories loaded:', transformedCategories.length);
+						setCategories(transformedCategories);
+					}
 				} else if (statsResult.status === 'rejected') {
 					console.warn('Failed to load statistics:', statsResult.reason);
-				}
-
-				// Handle categories result
-				if (categoriesResult.status === 'fulfilled' && categoriesResult.value?.success) {
-					const transformedCategories = categoriesResult.value.data.map((cat, index) => {
-						const colors = [
-							'from-blue-500 to-indigo-600',
-							'from-purple-500 to-pink-600',
-							'from-emerald-500 to-teal-600',
-							'from-orange-500 to-red-600',
-							'from-green-500 to-emerald-600',
-							'from-yellow-500 to-orange-600'
-						];
-						return {
-							name: cat.name,
-							color: colors[index % colors.length]
-						};
-					});
-					console.log('Categories loaded:', transformedCategories.length);
-					setCategories(transformedCategories);
-				} else if (categoriesResult.status === 'rejected') {
-					console.warn('Failed to load categories:', categoriesResult.reason);
 				}
 
 				// Handle authors result

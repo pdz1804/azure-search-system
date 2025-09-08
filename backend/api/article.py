@@ -182,11 +182,14 @@ async def generate_article_tags(
 
 @articles.get("/stats")
 async def get_statistics(app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
-    """Get statistics for articles, authors, views, and bookmarks."""
+    """Get statistics for articles, authors, views, bookmarks, and categories."""
     try:
         # Use the service layer function for consistent data with caching
-        from backend.services.article_service import get_summary
+        from backend.services.article_service import get_summary, get_categories as get_categories_service
         stats_data = await get_summary(app_id=app_id)
+        
+        # Get categories data
+        categories_data = await get_categories_service(app_id=app_id)
         
         # Add bookmarks count (placeholder for now)
         stats_data["bookmarks"] = 0  # Placeholder for bookmarks
@@ -196,7 +199,8 @@ async def get_statistics(app_id: Optional[str] = Query(None, description="Applic
             "articles": stats_data.get("total_articles", 0),
             "authors": stats_data.get("authors", 0), 
             "total_views": stats_data.get("total_views", 0),
-            "bookmarks": stats_data.get("bookmarks", 0)
+            "bookmarks": stats_data.get("bookmarks", 0),
+            "categories": categories_data
         }
         
         return {
@@ -212,35 +216,43 @@ async def get_statistics(app_id: Optional[str] = Query(None, description="Applic
                 "articles": 50,
                 "authors": 15,
                 "total_views": 2500,
-                "bookmarks": 0
+                "bookmarks": 0,
+                "categories": [
+                    {"name": "Technology", "count": 15},
+                    {"name": "Design", "count": 12},
+                    {"name": "Business", "count": 10},
+                    {"name": "Science", "count": 8},
+                    {"name": "Health", "count": 6},
+                    {"name": "Lifestyle", "count": 5}
+                ]
             }
         }
 
-@articles.get("/categories")
-async def get_categories(app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
-    """Get all available categories and their article counts."""
-    try:
-        from backend.services.article_service import get_categories as get_categories_service
-        categories_result = await get_categories_service(app_id=app_id)
-        
-        return {
-            "success": True,
-            "data": categories_result
-        }
-    except Exception as e:
-        print(f"Error fetching categories: {e}")
-        # Return default categories as fallback
-        return {
-            "success": True,
-            "data": [
-                {"name": "Technology", "count": 15},
-                {"name": "Design", "count": 12},
-                {"name": "Business", "count": 10},
-                {"name": "Science", "count": 8},
-                {"name": "Health", "count": 6},
-                {"name": "Lifestyle", "count": 5}
-            ]
-        }
+# @articles.get("/categories")
+# async def get_categories(app_id: Optional[str] = Query(None, description="Application ID for filtering results")):
+#     """Get all available categories and their article counts."""
+#     try:
+#         from backend.services.article_service import get_categories as get_categories_service
+#         categories_result = await get_categories_service(app_id=app_id)
+#         
+#         return {
+#             "success": True,
+#             "data": categories_result
+#         }
+#     except Exception as e:
+#         print(f"Error fetching categories: {e}")
+#         # Return default categories as fallback
+#         return {
+#             "success": True,
+#             "data": [
+#                 {"name": "Technology", "count": 15},
+#                 {"name": "Design", "count": 12},
+#                 {"name": "Business", "count": 10},
+#                 {"name": "Science", "count": 8},
+#                 {"name": "Health", "count": 6},
+#                 {"name": "Lifestyle", "count": 5}
+#             ]
+#         }
 
 @articles.get("/categories/{category_name}")
 async def get_articles_by_category(

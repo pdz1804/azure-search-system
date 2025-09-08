@@ -123,3 +123,31 @@ Note:
 
 - recommended thật sự và recommended tùy profile user cho trang homepage / trang authors / trang articles --> Cuong + Minh
 - think + search for hints for performing the website for BĐS or some others...
+
+- refactor for clean code:
+  + API stats và get_category gom thành 1   **Done nhưng chưa test**
+  + API cache ?
+  + API admin/all và get_all_user gom thành 1
+
+
+  - thêm 1 backend làm phần trắc nghiệm
+  - user tạo bài viết lý thuyết ( tự tạo trắc nghiệm hoặc generate tự động)
+
+
+{
+  "id":
+  "questions": [
+    {
+      "question_id": 
+      "question":
+      "answer_a":
+      "answer_b":
+      "answer_c":
+      "answer_d":
+      "correct_answer": "answer_a"
+      "explanation":
+    }
+  ]
+  "article_id":
+
+}
