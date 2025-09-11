@@ -392,9 +392,12 @@ class SearchService:
         
         # Handle pagination parameters
         if page_index is not None and page_size is not None:
+            # For pagination consistency, always fetch the same amount of results
+            # then apply pagination in-memory to ensure consistent total counts
             offset = page_index * page_size
             total_needed = offset + page_size
-            search_k = max(total_needed, k * 2)
+            # Use consistent search_k to ensure we get all relevant results
+            search_k = max(k * 4, 100)  # Fetch enough for consistent pagination
             print(f"👤 Starting planned authors search: query='{normalized_query}', page_index={page_index}, page_size={page_size}, search_k={search_k}")
         else:
             search_k = k
@@ -497,10 +500,13 @@ class SearchService:
         
         # Handle pagination parameters
         if page_index is not None and page_size is not None:
-            # Calculate offset and adjust k for pagination
+            # For pagination consistency, always fetch the same large amount of results
+            # then apply pagination in-memory to ensure consistent total counts
             offset = page_index * page_size
             total_needed = offset + page_size
-            search_k = max(total_needed, k * 2)
+            # Use a consistent large search_k to ensure we get all relevant results
+            # This prevents inconsistent total counts across pages
+            search_k = max(k * 4, 200)  # Fetch enough for consistent pagination
             print(f"📖 Starting planned articles search: query='{normalized_query}', page_index={page_index}, page_size={page_size}, search_k={search_k}")
         else:
             search_k = k

@@ -116,6 +116,15 @@ Note:
 - có gitignore cho 3 files .env frontend khong --> check
 - bug: frontend - khi like 1 article, api backend chạy đúng + state của reaction đúng nhưng hiển thị số sai. VD: đang like, like 4 dislike 2, ấn dislike thì state thành dislike đúng, nhưng UI vẫn hiện 4 2
 - bug: frontend - my-articles?tab=analytics ==> hiện đang chưa filter dụ draft hay published đúng và khi đang create articles đang mặc nhiên là published --> maybe hong cần tính năng này --> check
+- refactor for clean code:
+
+  + API stats và get_category gom thành 1   **Done nhưng chưa test**
+  + API cache ?
+  + API admin/all và get_all_user gom thành 1
+
+  - thêm 1 backend làm phần trắc nghiệm
+  - user tạo bài viết lý thuyết ( tự tạo trắc nghiệm hoặc generate tự động)
+
 
 ---
 
@@ -123,31 +132,4 @@ Note:
 
 - recommended thật sự và recommended tùy profile user cho trang homepage / trang authors / trang articles --> Cuong + Minh
 - think + search for hints for performing the website for BĐS or some others...
-
-- refactor for clean code:
-  + API stats và get_category gom thành 1   **Done nhưng chưa test**
-  + API cache ?
-  + API admin/all và get_all_user gom thành 1
-
-
-  - thêm 1 backend làm phần trắc nghiệm
-  - user tạo bài viết lý thuyết ( tự tạo trắc nghiệm hoặc generate tự động)
-
-
-{
-  "id":
-  "questions": [
-    {
-      "question_id": 
-      "question":
-      "answer_a":
-      "answer_b":
-      "answer_c":
-      "answer_d":
-      "correct_answer": "answer_a"
-      "explanation":
-    }
-  ]
-  "article_id":
-
-}
+- Fix search author + search unmeaningful
