@@ -266,7 +266,10 @@ async def get_article_detail(article_id: str, app_id: Optional[str] = None) -> O
         print(f"   - Has recommended_time: {'recommended_time' in cached_article}")
         print(f"   - recommended_time value: {cached_article.get('recommended_time')}")
         print(f"   - Has recommended: {'recommended' in cached_article}")
-        print(f"   - recommended count: {len(cached_article.get('recommended', []))}")
+        cached_recommended = cached_article.get('recommended', [])
+        if cached_recommended is None:
+            cached_recommended = []
+        print(f"   - recommended count: {len(cached_recommended)}")
         return cached_article
     else:
         # Get fresh article data
@@ -276,7 +279,10 @@ async def get_article_detail(article_id: str, app_id: Optional[str] = None) -> O
             print(f"   - Has recommended_time: {'recommended_time' in article}")
             print(f"   - recommended_time value: {article.get('recommended_time')}")
             print(f"   - Has recommended: {'recommended' in article}")
-            print(f"   - recommended count: {len(article.get('recommended', []))}")
+            recommended_list = article.get('recommended', [])
+            if recommended_list is None:
+                recommended_list = []
+            print(f"   - recommended count: {len(recommended_list)}")
         else:
             print(f"   - Article not found in database")
     
@@ -292,6 +298,8 @@ async def get_article_detail(article_id: str, app_id: Optional[str] = None) -> O
         
         # Check if article already has recommendations in the database
         existing_recommendations = article.get("recommended", [])
+        if existing_recommendations is None:
+            existing_recommendations = []
         recommended_time = article.get("recommended_time")
         
         # Check if recommendations need to be refreshed (older than 60 minutes)
@@ -405,7 +413,10 @@ async def get_article_detail(article_id: str, app_id: Optional[str] = None) -> O
         print(f"   - Has recommended_time: {'recommended_time' in article_dict}")
         print(f"   - recommended_time value: {article_dict.get('recommended_time')}")
         print(f"   - Has recommended: {'recommended' in article_dict}")
-        print(f"   - recommended count: {len(article_dict.get('recommended', []))}")
+        recommended_list = article_dict.get('recommended', [])
+        if recommended_list is None:
+            recommended_list = []
+        print(f"   - recommended count: {len(recommended_list)}")
         
         # Cache the dict data using new cache API
         await set_cache(

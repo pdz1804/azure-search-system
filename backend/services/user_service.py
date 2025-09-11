@@ -23,6 +23,10 @@ from backend.utils import hash_password, verify_password
 
 async def _convert_to_user_dto(user: dict) -> dict:
     """Convert user data to dict following UserDTO structure"""
+    followers = user.get("followers", [])
+    if followers is None:
+        followers = []
+    
     return {
         "user_id": user.get("id", ""),
         "full_name": user.get("full_name", ""),
@@ -32,7 +36,7 @@ async def _convert_to_user_dto(user: dict) -> dict:
         "is_active": user.get("is_active", True),
         "articles_count": user.get("articles_count", 0),
         "total_views": user.get("total_views", 0),
-        "total_followers": len(user.get("followers", [])),
+        "total_followers": len(followers),
         "created_at": user.get("created_at")
     }
 
@@ -42,8 +46,12 @@ async def _convert_to_user_detail_dto(user: dict, app_id: Optional[str] = None) 
     # Get user statistics
     user_id = user.get("id", "")
     
-    # Calculate statistics
-    total_followers = len(user.get("followers", []))
+    # Calculate statistics - safely handle None values
+    followers = user.get("followers", [])
+    if followers is None:
+        followers = []
+    total_followers = len(followers)
+    
     total_articles = 0
     total_published = 0
     total_views = 0
@@ -60,11 +68,16 @@ async def _convert_to_user_detail_dto(user: dict, app_id: Optional[str] = None) 
         user_articles = await article_repo.get_article_by_author(user_id, page=0, page_size=1000, app_id=app_id)
         if user_articles:
             articles_list = user_articles.get("items", []) if isinstance(user_articles, dict) else user_articles
+            if articles_list is None:
+                articles_list = []
             total_published = len([a for a in articles_list if a.get('status') == 'published'])
     except Exception as e:
         print(f"⚠️ Failed to get user statistics for {user_id}: {e}")
-        # Use fallback values
-        total_articles = len(user.get("articles", []))
+        # Use fallback values - safely handle None
+        user_articles = user.get("articles", [])
+        if user_articles is None:
+            user_articles = []
+        total_articles = len(user_articles)
     
     return {
         "id": user_id,  # Keep original id for frontend compatibility
@@ -79,12 +92,12 @@ async def _convert_to_user_detail_dto(user: dict, app_id: Optional[str] = None) 
         "total_published": total_published,
         "total_views": total_views,
         "total_likes": total_likes,
-        # Include the arrays that frontend needs for statistics
-        "followers": user.get("followers", []),
-        "following": user.get("following", []),
-        "liked_articles": user.get("liked_articles", []),
-        "bookmarked_articles": user.get("bookmarked_articles", []),
-        "disliked_articles": user.get("disliked_articles", []),
+        # Include the arrays that frontend needs for statistics - safely handle None values
+        "followers": user.get("followers", []) or [],
+        "following": user.get("following", []) or [],
+        "liked_articles": user.get("liked_articles", []) or [],
+        "bookmarked_articles": user.get("bookmarked_articles", []) or [],
+        "disliked_articles": user.get("disliked_articles", []) or [],
         "created_at": user.get("created_at"),
         "app_id": user.get("app_id")
     }
