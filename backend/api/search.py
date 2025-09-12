@@ -75,60 +75,33 @@ async def search_general(
         if not result or not result.get("results"):
             raise HTTPException(status_code=500, detail="Search failed - no results returned")
 
-        # print(f"Result DEBUG: {result}")
-
-        # Transform results based on search type
+        # Transform results to match the same format as specific endpoints
         search_type = result.get("search_type", "articles")
         
         if search_type == "authors":
-            # Transform results to AuthorHit format
-            items = [
-                AuthorHit(
-                    id=item["doc"]["id"],
-                    full_name=item["doc"].get("full_name", ""),
-                    score_final=item.get("_final", 1.0),
-                    scores={
-                        "semantic": item.get("_semantic", 0.0), 
-                        "bm25": item.get("_bm25", 0.0), 
-                        "vector": item.get("_vector", 0.0),
-                        "business": item.get("_business", 0.0)
-                    }
-                ) for item in result.get("results", [])
-            ]
+            # Use the same transformation as /search/authors endpoint
+            docs = await search_response_users(result)
         else:
-            # Transform results to ArticleHit format (default)
-            items = [
-                ArticleHit(
-                    id=item["doc"]["id"],
-                    title=item["doc"].get("title", ""),
-                    abstract=item["doc"].get("abstract", ""),
-                    author_name=item["doc"].get("author_name", ""),
-                    score_final=item.get("_final", 1.0),
-                    scores={
-                        "semantic": item.get("_semantic", 0.0), 
-                        "bm25": item.get("_bm25", 0.0), 
-                        "vector": item.get("_vector", 0.0), 
-                        "business": item.get("_business", 0.0)
-                    },
-                    highlights=item["doc"].get("highlights")
-                ) for item in result.get("results", [])
-            ]
+            # Use the same transformation as /search/articles endpoint  
+            docs = await search_response_articles(result, app_id)
         
-        # Build pagination: "total" should be number of pages. raw total results is in total_results
+        # Build pagination in the same format as specific endpoints
         pagination = result.get("pagination") or {}
-        total_results = pagination.get("total_results", len(items))
+        total_results = pagination.get("total_results", len(docs))
         total_pages = math.ceil(total_results / page_size) if page_size else 1
+        mapped_pagination = {
+            "page": (pagination.get("page_index") or page_index) + 1,
+            "page_size": pagination.get("page_size") or page_size,
+            "total": total_pages,
+            "total_results": total_results,
+        }
 
+        # Return the exact same format as specific endpoints
         response = {
-            "success": True,
-            "data": items,
-            "results": items,
-            "pagination": {
-                "page": page_index + 1,
-                "page_size": page_size,
-                "total": total_pages,
-                "total_results": total_results,
-            },
+            "success": True, 
+            "data": docs, 
+            "results": docs, 
+            "pagination": mapped_pagination,
             "normalized_query": result.get("normalized_query", q),
             "search_type": search_type
         }
@@ -140,7 +113,7 @@ async def search_general(
         await set_cache(cache_key, response, ttl=300)
         print(f"🔍 Redis Cache SET for general search: {q}")
         
-        print(f"✅ General search completed: {len(items)} results, type: {search_type}")
+        print(f"✅ General search completed: {len(docs)} results, type: {search_type}")
         return response
     except Exception as e:
         print(f"❌ General search failed: {e}")
