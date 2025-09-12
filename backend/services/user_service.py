@@ -221,8 +221,8 @@ async def list_users_with_pagination(
             "data": {"error": str(e)}
         }
 
-async def login(email: str, password: str) -> Optional[dict]:
-    user = await user_repo.get_by_email(email)
+async def login(email: str, password: str, app_id: Optional[str] = None) -> Optional[dict]:
+    user = await user_repo.get_by_email(email, app_id=app_id)
     if not user or not verify_password(password, user.get("password", "")):
         return None
     if user.get("is_active") is False:

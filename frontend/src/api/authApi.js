@@ -43,7 +43,8 @@ export const authApi = {
     try {
       const response = await apiClient.post('/auth/login', {
         email,
-        password
+        password,
+        app_id: APP_ID
       });
       
       const { access_token, user_id, role } = response.data;
