@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, Typography, message, Upload, Space } from 'antd';
+import { Form, Input, Button, Card, Typography, message, Upload, Space, Divider } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, UploadOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import GoogleLoginButton from '../components/GoogleLoginButton';
 
 const { Title, Text } = Typography;
 
@@ -44,6 +45,15 @@ const Register = () => {
     }
   };
 
+  const handleGoogleSuccess = (result) => {
+    console.log('Google login successful:', result);
+    navigate('/');
+  };
+
+  const handleGoogleError = (error) => {
+    console.error('Google login error:', error);
+  };
+
   const uploadProps = {
     name: 'avatar',
     listType: 'picture',
@@ -73,6 +83,17 @@ const Register = () => {
           layout="vertical"
           size="large"
         >
+          {/* Google Login Button */}
+          <GoogleLoginButton
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
+            disabled={loading}
+          />
+          
+          <Divider>
+            <Text type="secondary" style={{ fontSize: '14px' }}>Or register with email</Text>
+          </Divider>
+
           <Form.Item
             name="full_name"
             label="Full Name"

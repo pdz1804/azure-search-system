@@ -8,15 +8,17 @@ Bearer token in the `Authorization` header for protected routes.
 import os
 from typing import Optional
 from dotenv import load_dotenv
-from fastapi import APIRouter, File, Form, HTTPException,UploadFile
+from fastapi import APIRouter, File, Form, HTTPException,UploadFile, Body
 from pydantic import BaseModel, EmailStr
 from backend.services.azure_blob_service import upload_image
 from backend.model.request.login_request import LoginRequest
 from backend.utils import create_access_token, save_file
 from backend.services.user_service import create_user, login
+from backend.services.auth_service import login_with_google
 
 load_dotenv()
 BASE_URL = os.getenv("BASE_URL")
+
 auth = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
@@ -24,6 +26,11 @@ class TokenResponse(BaseModel):
     access_token: str
     user_id: str
     role: str
+
+
+class GoogleLoginRequest(BaseModel):
+    id_token: str
+    app_id: Optional[str] = None
 
 
 @auth.post("/login", response_model=TokenResponse)
@@ -69,3 +76,15 @@ async def register(
         
     token = create_access_token({"sub": user["user_id"]})
     return TokenResponse(access_token=token, user_id=user["user_id"], role=user.get("role", "user"))
+
+@auth.post("/google", response_model=TokenResponse)
+async def google_login(data: GoogleLoginRequest):
+    """Login with Google ID token"""
+    try:
+        response = await login_with_google(data.id_token, app_id=data.app_id)
+        return TokenResponse(**response)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"Google login error: {e}")
+        raise HTTPException(status_code=500, detail="Google login failed")
