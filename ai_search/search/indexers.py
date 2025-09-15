@@ -1,12 +1,16 @@
 """
-Azure AI Search Native Indexers for Cosmos DB Integration (with chunk projections).
+Azure AI Search Native Indexers for Cosmos DB Integration.
 
-What changed vs. your version:
-- Add SplitSkill to chunk long 'content' before embedding.
-- Per-chunk embeddings via AzureOpenAIEmbeddingSkill/WebApiSkill in context '/document/pages/*'.
-- ShaperSkill to shape chunk items.
-- Index Projections to a new child index 'articles-chunks-index' (multi-vector retrieval).
-- Helper to create the child chunk index once (HNSW vector config).
+CURRENT IMPLEMENTATION (Simplified):
+- Embed article abstract directly (max 8000 tokens, no splitting needed)
+- Single index for articles (no chunk projections)
+- Removed complex chunking, shaping, and projection features
+
+TO RESTORE OLD CHUNKING IMPLEMENTATION:
+1. Uncomment the "OLD IMPLEMENTATION" sections below
+2. Comment out the "NEW IMPLEMENTATION" sections
+3. Uncomment the old imports in the "OLD IMPORTS" section
+4. In indexes.py, uncomment the chunk index creation code
 """
 
 import json
@@ -16,6 +20,10 @@ from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError, HttpResponseError
 
 from azure.search.documents.indexes import SearchIndexerClient, SearchIndexClient
+
+# ==========================================
+# CURRENT IMPORTS (Simplified Implementation)
+# ==========================================
 from azure.search.documents.indexes.models import (
     # Data source / indexer
     SearchIndexerDataContainer,
@@ -30,23 +38,33 @@ from azure.search.documents.indexes.models import (
     InputFieldMappingEntry,
     SoftDeleteColumnDeletionDetectionPolicy,
     HighWaterMarkChangeDetectionPolicy,
-    # Skills
-    SplitSkill,           # Split long text into pages
-    ShaperSkill,          # Shape arrays into objects for projections
-    ConditionalSkill,     # Conditional logic for fallback scenarios
-    # Index projections (child chunk index)
-    SearchIndexerIndexProjection,
-    SearchIndexerIndexProjectionSelector,
-    SearchIndexerIndexProjectionsParameters,
-    IndexProjectionMode,
-    # Index schema for chunk index
-    SearchIndex,
-    SearchField,
-    SearchFieldDataType,
-    VectorSearch,
-    VectorSearchProfile,
-    HnswAlgorithmConfiguration,
 )
+
+# ==========================================
+# OLD IMPORTS (For Chunking Implementation)
+# ==========================================
+# Uncomment these imports to restore chunking functionality:
+#
+# from azure.search.documents.indexes.models import (
+#     # Skills for chunking and processing
+#     SplitSkill,                              # Split long text into pages
+#     ShaperSkill,                             # Shape arrays into objects for projections
+#     ConditionalSkill,                        # Conditional logic for fallback scenarios
+#     
+#     # Index projections (child chunk index)
+#     SearchIndexerIndexProjection,
+#     SearchIndexerIndexProjectionSelector,
+#     SearchIndexerIndexProjectionsParameters,
+#     IndexProjectionMode,
+#     
+#     # Index schema for chunk index
+#     SearchIndex,
+#     SearchField,
+#     SearchFieldDataType,
+#     VectorSearch,
+#     VectorSearchProfile,
+#     HnswAlgorithmConfiguration,
+# )
 
 # Try to import AzureOpenAIEmbeddingSkill - fallback to WebApiSkill if not available
 try:
@@ -173,13 +191,13 @@ class AzureIndexerManager:
         # Since we can't use conditional logic in the indexer directly
         field_mappings.append(FieldMapping(source_field_name="updated_at", target_field_name="business_date"))
         
-        # # Add output field mappings for embedding skills if enabled
-        # if SETTINGS.enable_embeddings and SETTINGS.embedding_provider.lower() == "openai":
-        #     # Use raw dict to match REST API schema
-        #     output_field_mappings.append({
-        #         "sourceFieldName": "/document/content_vector",
-        #         "targetFieldName": "content_vector"
-        #     })
+        # Add output field mappings for abstract embedding if enabled
+        if SETTINGS.enable_embeddings and SETTINGS.embedding_provider.lower() == "openai":
+            # Use raw dict to match REST API schema
+            output_field_mappings.append({
+                "sourceFieldName": "/document/abstract_vector",
+                "targetFieldName": "abstract_vector"
+            })
         
         # Indexing parameters for high-water mark change detection
         # Note: No configuration needed for Cosmos DB (dataToExtract/parsingMode not supported)
@@ -205,7 +223,7 @@ class AzureIndexerManager:
                 output_field_mappings=output_field_mappings,
                 parameters=parameters,
                 schedule=schedule,
-                description="Indexer for articles with chunk projections to child chunk index"
+                description="Indexer for articles with abstract embeddings only"
             )
         else:
             indexer = SearchIndexer(
@@ -285,156 +303,217 @@ class AzureIndexerManager:
         
         return indexer
     
-    # -----------------------------
-    # Skillsets (chunk → embed → project)
-    # -----------------------------
+    # ==========================================
+    # SKILLSETS
+    # ==========================================
+    
+    # ==========================================
+    # OLD IMPLEMENTATION: Complex Chunking & Projections
+    # ==========================================
+    # To restore chunking functionality:
+    # 1. Uncomment the method below
+    # 2. Comment out the NEW IMPLEMENTATION method
+    # 3. Uncomment the OLD IMPORTS section at the top of the file
+    # 4. In indexes.py, uncomment the chunk index creation
+    
+    # def create_articles_skillset(self) -> SearchIndexerSkillset:
+    #     """
+    #     Articles skillset:
+    #       1) Split long content (SplitSkill) to avoid token limit errors.
+    #       2) Embed per-chunk (AzureOpenAIEmbeddingSkill or WebApiSkill).
+    #       3) Shape into chunk items (ShaperSkill).
+    #       4) Project chunks (text + vector + carry-over fields) to 'articles-chunks-index'.
+
+    #     References:
+    #     - Chunk before embedding, sample wiring of SplitSkill → Embedding.  (MS Learn)  # noqa
+    #     - Index projections (one-to-many) & projected key generation.        (MS Learn)  # noqa
+    #     """
+    #     # Simple text processing skill that works reliably
+    #     skills = []
+        
+    #     # --- 0) Use content directly for processing (preprocessed_searchable_text field removed)
+    #     # COMMENTED OUT: Conditional text selection that used preprocessed_searchable_text
+    #     # conditional_skill = ConditionalSkill(
+    #     #     name="select-text-for-processing",
+    #     #     description="Use preprocessed_searchable_text if available, otherwise fallback to content",
+    #     #     context="/document",
+    #     #     inputs=[
+    #     #         InputFieldMappingEntry(name="condition", source="= $(/document/preprocessed_searchable_text) != null"),
+    #     #         InputFieldMappingEntry(name="whenTrue", source="= $(/document/preprocessed_searchable_text)"),
+    #     #         InputFieldMappingEntry(name="whenFalse", source="= $(/document/content)")
+    #     #     ],
+    #     #     outputs=[OutputFieldMappingEntry(name="output", target_name="selected_text")]
+    #     # )
+    #     # skills.append(conditional_skill)
+        
+    #     # --- 1) Split long content into pages (characters-based; robust across SDK versions)
+    #     # Tip: if you later pin a SDK supporting token-based splitting, switch to 'unit="azureOpenAITokens"'.
+    #     chunk_size_chars = getattr(SETTINGS, "chunk_size_chars", None) or 8000
+    #     chunk_overlap_chars = getattr(SETTINGS, "chunk_overlap_chars", None) or 1000
+
+    #     split_skill = SplitSkill(
+    #         name="split-content",
+    #         description="Split long preprocessed content into manageable pages for embedding",
+    #         context="/document",
+    #         text_split_mode="pages",
+    #         maximum_page_length=chunk_size_chars,
+    #         page_overlap_length=chunk_overlap_chars,
+    #         maximum_pages_to_take=2,
+    #         inputs=[InputFieldMappingEntry(name="text", source="/document/content")],  # Changed from selected_text to content
+    #         outputs=[
+    #             # Array of page texts
+    #             OutputFieldMappingEntry(name="textItems", target_name="pages"),
+    #             # Parallel ordinal positions array (optional)
+    #             OutputFieldMappingEntry(name="ordinalPositions", target_name="ordinals"),
+    #         ],
+    #     )
+    #     skills.append(split_skill)
+        
+    #     # --- 2) Embed each page (per-chunk embeddings)
+    #     if SETTINGS.enable_embeddings and SETTINGS.embedding_provider.lower() == "openai":
+    #         if AZURE_OPENAI_SKILL_AVAILABLE:
+    #             embedding_skill = AzureOpenAIEmbeddingSkill(
+    #                 name="embed-pages",
+    #                 description="Per-chunk embeddings via Azure OpenAI",
+    #                 context="/document/pages/*",  # run once per chunk
+    #                 resource_url=SETTINGS.azure_openai_endpoint,
+    #                 api_key=SETTINGS.azure_openai_key,
+    #                 deployment_name=SETTINGS.azure_openai_model_name,
+    #                 model_name=SETTINGS.azure_openai_model_name,
+    #                 inputs=[InputFieldMappingEntry(name="text", source="/document/pages/*")],
+    #                 outputs=[OutputFieldMappingEntry(name="embedding", target_name="embedding")],
+    #             )
+    #         else:
+    #             # REST fallback
+    #             embedding_skill = WebApiSkill(
+    #                 name="embed-pages",
+    #                 description="Per-chunk embeddings via Azure OpenAI REST",
+    #                 context="/document/pages/*",
+    #                 uri=f"{SETTINGS.azure_openai_endpoint}openai/deployments/{SETTINGS.azure_openai_deployment}/embeddings?api-version=2024-12-01-preview",
+    #                 http_method="POST",
+    #                 timeout="PT60S",
+    #                 batch_size=10,
+    #                 degree_of_parallelism=1,
+    #                 inputs=[InputFieldMappingEntry(name="input", source="/document/pages/*")],
+    #                 outputs=[OutputFieldMappingEntry(name="embedding", target_name="embedding")],
+    #                 http_headers={"api-key": SETTINGS.azure_openai_key or ""},
+    #             )
+            
+    #         skills.append(embedding_skill)
+        
+    #     # --- 3) Shape: zip page text + per-page embedding (+ optional ordinal) into objects
+    #     # We output /document/chunkItems/* objects with properties: text, embedding, ordinal
+    #     # Use a single nested input with source_context so the Shaper produces an array
+    #     # at /document/chunkItems/* that can be iterated by index projections.
+    #     shaper = ShaperSkill(
+    #         name="shape-chunk-items",
+    #         description="Zip pages, embeddings, and ordinals into chunkItems for projection",
+    #         context="/document",
+    #         inputs=[
+    #             InputFieldMappingEntry(
+    #                 name="chunkItems",
+    #                 source_context="/document/pages/*",
+    #                 # Nested inputs must define their own source paths (per docs)
+    #                 inputs=[
+    #                     # pages are plain strings (targetName='pages'), so read the item value itself
+    #                     InputFieldMappingEntry(name="text", source="/document/pages/*"),
+    #                     InputFieldMappingEntry(name="embedding", source="/document/pages/*/embedding"),
+    #                     InputFieldMappingEntry(name="ordinal", source="/document/ordinals/*"),
+    #                 ],
+    #             )
+    #         ],
+    #         outputs=[OutputFieldMappingEntry(name="output", target_name="chunkItems")],
+    #     )
+        
+    #     skills.append(shaper)
+        
+    #     # --- 4) Index Projections: send chunkItems → child index (per-chunk docs)
+    #     projections = SearchIndexerIndexProjection(
+    #         selectors=[
+    #             SearchIndexerIndexProjectionSelector(
+    #                 target_index_name="articles-chunks-index",
+    #                 parent_key_field_name="parent_id",
+    #                 # Iterate directly over pages produced by SplitSkill (an array)
+    #                 source_context="/document/pages/*",
+    #                 # Map child fields from the pages context and ordinals array
+    #                 mappings=[
+    #                     # chunk text is the page string itself
+    #                     InputFieldMappingEntry(name="chunk", source="/document/pages/*"),
+    #                     # per-page embedding produced by embedding skill at pages/*/embedding
+    #                     InputFieldMappingEntry(name="chunk_vector", source="/document/pages/*/embedding"),
+    #                     # ordinal positions are in /document/ordinals/*
+    #                     InputFieldMappingEntry(name="chunk_ordinal", source="/document/ordinals/*"),
+    #                     # Carry over some parent fields
+    #                     InputFieldMappingEntry(name="title", source="/document/title"),
+    #                     # Carry-over application id from parent so chunk docs can be filtered by app
+    #                     InputFieldMappingEntry(name="app_id", source="/document/app_id"),
+    #                 ],
+    #             )
+    #         ],
+    #         # Keep indexing the parent (articles-index) AND the projected children
+    #         parameters=SearchIndexerIndexProjectionsParameters(
+    #             projection_mode=IndexProjectionMode.INCLUDE_INDEXING_PARENT_DOCUMENTS
+    #         ),
+    #     )
+        
+    #     # For now, use simple skillset without index projections
+    #     # Index projections require specific index schema with parent_id field
+    #     skillset = SearchIndexerSkillset(
+    #         name="articles-skillset",
+    #         description="Split → per-chunk embed → project chunks to child index",
+    #         skills=skills,
+    #         index_projection=projections,
+    #     )
+        
+    #     return skillset
+    
+    # ==========================================
+    # NEW IMPLEMENTATION: Simplified Abstract Embedding
+    # ==========================================
     def create_articles_skillset(self) -> SearchIndexerSkillset:
         """
-        Articles skillset:
-          1) Split long content (SplitSkill) to avoid token limit errors.
-          2) Embed per-chunk (AzureOpenAIEmbeddingSkill or WebApiSkill).
-          3) Shape into chunk items (ShaperSkill).
-          4) Project chunks (text + vector + carry-over fields) to 'articles-chunks-index'.
-
-        References:
-        - Chunk before embedding, sample wiring of SplitSkill → Embedding.  (MS Learn)  # noqa
-        - Index projections (one-to-many) & projected key generation.        (MS Learn)  # noqa
+        Simplified articles skillset:
+          - Embed abstract field directly (max 8000 tokens, no splitting)
+          - Single index for articles (no chunk projections)
         """
-        # Simple text processing skill that works reliably
         skills = []
         
-        # --- 0) Use content directly for processing (preprocessed_searchable_text field removed)
-        # COMMENTED OUT: Conditional text selection that used preprocessed_searchable_text
-        # conditional_skill = ConditionalSkill(
-        #     name="select-text-for-processing",
-        #     description="Use preprocessed_searchable_text if available, otherwise fallback to content",
-        #     context="/document",
-        #     inputs=[
-        #         InputFieldMappingEntry(name="condition", source="= $(/document/preprocessed_searchable_text) != null"),
-        #         InputFieldMappingEntry(name="whenTrue", source="= $(/document/preprocessed_searchable_text)"),
-        #         InputFieldMappingEntry(name="whenFalse", source="= $(/document/content)")
-        #     ],
-        #     outputs=[OutputFieldMappingEntry(name="output", target_name="selected_text")]
-        # )
-        # skills.append(conditional_skill)
-        
-        # --- 1) Split long content into pages (characters-based; robust across SDK versions)
-        # Tip: if you later pin a SDK supporting token-based splitting, switch to 'unit="azureOpenAITokens"'.
-        chunk_size_chars = getattr(SETTINGS, "chunk_size_chars", None) or 8000
-        chunk_overlap_chars = getattr(SETTINGS, "chunk_overlap_chars", None) or 1000
-
-        split_skill = SplitSkill(
-            name="split-content",
-            description="Split long preprocessed content into manageable pages for embedding",
-            context="/document",
-            text_split_mode="pages",
-            maximum_page_length=chunk_size_chars,
-            page_overlap_length=chunk_overlap_chars,
-            maximum_pages_to_take=2,
-            inputs=[InputFieldMappingEntry(name="text", source="/document/content")],  # Changed from selected_text to content
-            outputs=[
-                # Array of page texts
-                OutputFieldMappingEntry(name="textItems", target_name="pages"),
-                # Parallel ordinal positions array (optional)
-                OutputFieldMappingEntry(name="ordinalPositions", target_name="ordinals"),
-            ],
-        )
-        skills.append(split_skill)
-        
-        # --- 2) Embed each page (per-chunk embeddings)
+        # Embed abstract directly (no splitting needed for abstracts which are typically short)
         if SETTINGS.enable_embeddings and SETTINGS.embedding_provider.lower() == "openai":
             if AZURE_OPENAI_SKILL_AVAILABLE:
                 embedding_skill = AzureOpenAIEmbeddingSkill(
-                    name="embed-pages",
-                    description="Per-chunk embeddings via Azure OpenAI",
-                    context="/document/pages/*",  # run once per chunk
+                    name="embed-abstract",
+                    description="Embed article abstract via Azure OpenAI",
+                    context="/document",
                     resource_url=SETTINGS.azure_openai_endpoint,
                     api_key=SETTINGS.azure_openai_key,
                     deployment_name=SETTINGS.azure_openai_model_name,
                     model_name=SETTINGS.azure_openai_model_name,
-                    inputs=[InputFieldMappingEntry(name="text", source="/document/pages/*")],
-                    outputs=[OutputFieldMappingEntry(name="embedding", target_name="embedding")],
+                    inputs=[InputFieldMappingEntry(name="text", source="/document/abstract")],
+                    outputs=[OutputFieldMappingEntry(name="embedding", target_name="abstract_vector")],
                 )
             else:
                 # REST fallback
                 embedding_skill = WebApiSkill(
-                    name="embed-pages",
-                    description="Per-chunk embeddings via Azure OpenAI REST",
-                    context="/document/pages/*",
+                    name="embed-abstract",
+                    description="Embed article abstract via Azure OpenAI REST",
+                    context="/document",
                     uri=f"{SETTINGS.azure_openai_endpoint}openai/deployments/{SETTINGS.azure_openai_deployment}/embeddings?api-version=2024-12-01-preview",
                     http_method="POST",
                     timeout="PT60S",
                     batch_size=10,
                     degree_of_parallelism=1,
-                    inputs=[InputFieldMappingEntry(name="input", source="/document/pages/*")],
-                    outputs=[OutputFieldMappingEntry(name="embedding", target_name="embedding")],
+                    inputs=[InputFieldMappingEntry(name="input", source="/document/abstract")],
+                    outputs=[OutputFieldMappingEntry(name="embedding", target_name="abstract_vector")],
                     http_headers={"api-key": SETTINGS.azure_openai_key or ""},
                 )
             
             skills.append(embedding_skill)
         
-        # --- 3) Shape: zip page text + per-page embedding (+ optional ordinal) into objects
-        # We output /document/chunkItems/* objects with properties: text, embedding, ordinal
-        # Use a single nested input with source_context so the Shaper produces an array
-        # at /document/chunkItems/* that can be iterated by index projections.
-        shaper = ShaperSkill(
-            name="shape-chunk-items",
-            description="Zip pages, embeddings, and ordinals into chunkItems for projection",
-            context="/document",
-            inputs=[
-                InputFieldMappingEntry(
-                    name="chunkItems",
-                    source_context="/document/pages/*",
-                    # Nested inputs must define their own source paths (per docs)
-                    inputs=[
-                        # pages are plain strings (targetName='pages'), so read the item value itself
-                        InputFieldMappingEntry(name="text", source="/document/pages/*"),
-                        InputFieldMappingEntry(name="embedding", source="/document/pages/*/embedding"),
-                        InputFieldMappingEntry(name="ordinal", source="/document/ordinals/*"),
-                    ],
-                )
-            ],
-            outputs=[OutputFieldMappingEntry(name="output", target_name="chunkItems")],
-        )
-        
-        skills.append(shaper)
-        
-        # --- 4) Index Projections: send chunkItems → child index (per-chunk docs)
-        projections = SearchIndexerIndexProjection(
-            selectors=[
-                SearchIndexerIndexProjectionSelector(
-                    target_index_name="articles-chunks-index",
-                    parent_key_field_name="parent_id",
-                    # Iterate directly over pages produced by SplitSkill (an array)
-                    source_context="/document/pages/*",
-                    # Map child fields from the pages context and ordinals array
-                    mappings=[
-                        # chunk text is the page string itself
-                        InputFieldMappingEntry(name="chunk", source="/document/pages/*"),
-                        # per-page embedding produced by embedding skill at pages/*/embedding
-                        InputFieldMappingEntry(name="chunk_vector", source="/document/pages/*/embedding"),
-                        # ordinal positions are in /document/ordinals/*
-                        InputFieldMappingEntry(name="chunk_ordinal", source="/document/ordinals/*"),
-                        # Carry over some parent fields
-                        InputFieldMappingEntry(name="title", source="/document/title"),
-                        # Carry-over application id from parent so chunk docs can be filtered by app
-                        InputFieldMappingEntry(name="app_id", source="/document/app_id"),
-                    ],
-                )
-            ],
-            # Keep indexing the parent (articles-index) AND the projected children
-            parameters=SearchIndexerIndexProjectionsParameters(
-                projection_mode=IndexProjectionMode.INCLUDE_INDEXING_PARENT_DOCUMENTS
-            ),
-        )
-        
-        # For now, use simple skillset without index projections
-        # Index projections require specific index schema with parent_id field
         skillset = SearchIndexerSkillset(
             name="articles-skillset",
-            description="Split → per-chunk embed → project chunks to child index",
+            description="Simple embedding of article abstract",
             skills=skills,
-            index_projection=projections,
         )
         
         return skillset
@@ -451,6 +530,7 @@ class AzureIndexerManager:
         
         if SETTINGS.enable_embeddings and SETTINGS.embedding_provider.lower() == "openai":
             # Use proper AzureOpenAIEmbeddingSkill for author names if available
+            # This is defined and test already
             if AZURE_OPENAI_SKILL_AVAILABLE:
                 print("✅ AzureOpenAIEmbeddingSkill available in skillset of authors-indexer")
                 embedding_skill = AzureOpenAIEmbeddingSkill(
@@ -471,6 +551,7 @@ class AzureIndexerManager:
                 skills.append(embedding_skill)
             else:
                 # Fallback to WebApiSkill for Azure OpenAI REST API
+                # This is defined but not test yet
                 embedding_skill = WebApiSkill(
                     name="generate-author-embeddings",
                     description="Generate embeddings for author names using Azure OpenAI REST API",
@@ -1054,6 +1135,45 @@ def get_cache_containers_info(storage_account_name: str) -> Dict[str, Any]:
             "You can view containers in Azure Portal or via Azure CLI"
         ]
     }
+
+
+# ==========================================
+# RESTORATION GUIDE FOR OLD CHUNKING IMPLEMENTATION
+# ==========================================
+"""
+To restore the original chunking/splitting implementation:
+
+STEP 1: In this file (indexers.py):
+--------
+1. Uncomment the "OLD IMPORTS" section (lines ~48-66)
+2. Comment out the "NEW IMPLEMENTATION" create_articles_skillset method
+3. Uncomment the "OLD IMPLEMENTATION" create_articles_skillset method
+
+STEP 2: In indexes.py:
+--------
+1. Uncomment the chunk index creation code (around lines 200-230):
+   - chunk_fields definition
+   - chunk_index creation 
+   - Adding chunk_index to the indexes loop
+
+STEP 3: In other files (if needed):
+--------
+1. Ensure search services support both articles-index and articles-chunks-index
+2. Update any queries that should use the chunk index for multi-vector retrieval
+
+The old implementation provided:
+- Content splitting into chunks (SplitSkill)
+- Per-chunk embeddings  
+- Index projections to articles-chunks-index
+- Complex shaping and conditional logic
+- Multi-vector retrieval capabilities
+
+The current simplified implementation provides:
+- Direct abstract embedding (no splitting)
+- Single articles-index only
+- Faster processing for shorter texts
+- Reduced complexity and maintenance
+"""
 
 
 

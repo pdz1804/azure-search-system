@@ -106,8 +106,8 @@ async def search_general(
             "search_type": search_type
         }
         
-        print(f"🔍 [SEARCH API DEBUG] Returning pagination: {response['pagination']}")
-        print(f"🔍 [SEARCH API DEBUG] total_results={total_results}, total_pages={total_pages}, page_size={page_size}")
+        # print(f"🔍 [SEARCH API DEBUG] Returning pagination: {response['pagination']}")
+        # print(f"🔍 [SEARCH API DEBUG] total_results={total_results}, total_pages={total_pages}, page_size={page_size}")
 
         # Cache the page so subsequent clicks for the same page are fast
         await set_cache(cache_key, response, ttl=300)
@@ -127,7 +127,8 @@ async def search_articles(
     page_size: int = Query(12, ge=1, le=100, description="Number of results per page (default 12)"),
     app_id: Optional[str] = Query(None, description="Application ID for filtering results")
 ):
-    """Search articles with hybrid scoring and optional pagination.
+    """
+    Search articles with hybrid scoring and optional pagination.
     
     Returns a combination of semantic, keyword (BM25), vector, and business logic scores
     with configurable weights. Supports pagination with page_index and page_size parameters.
@@ -150,35 +151,6 @@ async def search_articles(
         if not result or not result.get("results"):
             return JSONResponse(status_code=500, content={"success": False, "data": {"error": "Search failed - no results returned"}})
         docs = await search_response_articles(result, app_id)
-        
-        # Transform results to ArticleHit format for API response
-        # articles = [
-        #     ArticleHit(
-        #         id=item["doc"]["id"],
-        #         title=item["doc"].get("title"),
-        #         abstract=item["doc"].get("abstract"),
-        #         author_name=item["doc"].get("author_name"),
-        #         score_final=item.get("_final", 1.0),
-        #         scores={
-        #             "semantic": item.get("_semantic", 0.0), 
-        #             "bm25": item.get("_bm25", 0.0), 
-        #             "vector": item.get("_vector", 0.0), 
-        #             "business": item.get("_business", 0.0)
-        #         },
-        #         highlights=item["doc"].get("highlights")
-        #     ) for item in result.get("results", [])
-        # ]
-        
-        # response = {
-        #     "articles": articles,
-        #     "pagination": {
-        #         "page": page_index + 1 if page_index is not None else 1,
-        #         "page_size": page_size or k,
-        #         "total": (result.get("pagination") or {}).get("total_results", len(articles))
-        #     },
-        #     "normalized_query": result.get("normalized_query", q),
-        #     "search_type": result.get("search_type", "articles")
-        # }
         
         # print(f"✅ Articles search completed: {len(articles)} results")
         pagination = result.get("pagination") or {}
@@ -210,7 +182,8 @@ async def search_authors(
     page_size: int = Query(12, ge=1, le=100, description="Number of results per page (default 12)"),
     app_id: Optional[str] = Query(None, description="Application ID for filtering results")
 ):
-    """Search authors with hybrid scoring and optional pagination.
+    """
+    Search authors with hybrid scoring and optional pagination.
     
     Returns a combination of semantic and keyword (BM25) scores with configurable weights.
     Vector and business scoring can be enabled via environment variables.
@@ -235,31 +208,6 @@ async def search_authors(
 
         # print(f"Result DEBUG: {result}")
         docs = await search_response_users(result)
-        # # Transform results to AuthorHit format for API response
-        # authors = [
-        #     AuthorHit(
-        #         id=item["doc"]["id"],
-        #         full_name=item["doc"].get("full_name"),
-        #         score_final=item.get("_final", 1.0),
-        #         scores={
-        #             "semantic": item.get("_semantic", 0.0), 
-        #             "bm25": item.get("_bm25", 0.0), 
-        #             "vector": item.get("_vector", 0.0),
-        #             "business": item.get("_business", 0.0)
-        #         }
-        #     ) for item in result.get("results", [])
-        # ]
-        
-        # response = {
-        #     "results": authors,
-        #     "pagination": {
-        #         "page": page_index + 1 if page_index is not None else 1,
-        #         "page_size": page_size or k,
-        #         "total": (result.get("pagination") or {}).get("total_results", len(authors))
-        #     },
-        #     "normalized_query": result.get("normalized_query", q),
-        #     "search_type": result.get("search_type", "authors")
-        # }
         
         # print(f"✅ Authors search completed: {len(authors)} results")
         pagination = result.get("pagination") or {}

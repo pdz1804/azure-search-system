@@ -105,9 +105,26 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
         # COMMENTED OUT: Preprocessed searchable text field (removed from articles)
         # SearchableField(name="preprocessed_searchable_text", type=SearchFieldDataType.String, analyzer_name="en.lucene"),
         
-        # Vector field for hybrid search
+        # ==========================================
+        # OLD IMPLEMENTATION: Content Vector Field (COMMENTED OUT)
+        # ==========================================
+        # To restore chunking functionality, uncomment this field:
+        #
+        # # Vector field for hybrid search (content-based)
+        # SearchField(
+        #     name="content_vector",
+        #     type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
+        #     searchable=True,
+        #     vector_search_dimensions=dim,
+        #     vector_search_profile_name="vs-default",
+        # ),
+
+        # ==========================================
+        # NEW IMPLEMENTATION: Abstract Vector Field (Simplified)
+        # ==========================================
+        # Vector field for hybrid search (abstract-based)
         SearchField(
-            name="content_vector",
+            name="abstract_vector",
             type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
             searchable=True,
             vector_search_dimensions=dim,
@@ -197,36 +214,41 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
         ),
     )
 
-    # Also create the child chunk index used by the indexer projection (articles-chunks-index)
-    # This index stores per-chunk text + vector and a parent_id that links back to the article.
-    chunk_fields = [
-        SearchField(name="chunk_id", type=SearchFieldDataType.String, key=True, filterable=True, analyzer_name="keyword"),
-        SearchField(name="parent_id", type=SearchFieldDataType.String, filterable=True),
-        SearchField(name="title", type=SearchFieldDataType.String, searchable=True, filterable=True, sortable=True),
-        SearchField(name="chunk", type=SearchFieldDataType.String, searchable=True),
-        # Keep ordinal as string to avoid projection type-mismatch unless your enrichment guarantees ints
-        SearchField(name="chunk_ordinal", type=SearchFieldDataType.String, filterable=True, sortable=True),
-        
-        # Application filtering
-        SearchField(name="app_id", type=SearchFieldDataType.String, filterable=True),
-        
-        SearchField(
-            name="chunk_vector",
-            type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
-            searchable=True,
-            vector_search_dimensions=dim,
-            vector_search_profile_name="vs-default",
-        ),
-    ]
+    # ==========================================
+    # OLD IMPLEMENTATION: Chunk Index (COMMENTED OUT)
+    # ==========================================
+    # Uncomment this section to restore chunking functionality:
+    #
+    # # Also create the child chunk index used by the indexer projection (articles-chunks-index)
+    # # This index stores per-chunk text + vector and a parent_id that links back to the article.
+    # chunk_fields = [
+    #     SearchField(name="chunk_id", type=SearchFieldDataType.String, key=True, filterable=True, analyzer_name="keyword"),
+    #     SearchField(name="parent_id", type=SearchFieldDataType.String, filterable=True),
+    #     SearchField(name="title", type=SearchFieldDataType.String, searchable=True, filterable=True, sortable=True),
+    #     SearchField(name="chunk", type=SearchFieldDataType.String, searchable=True),
+    #     # Keep ordinal as string to avoid projection type-mismatch unless your enrichment guarantees ints
+    #     SearchField(name="chunk_ordinal", type=SearchFieldDataType.String, filterable=True, sortable=True),
+    #     
+    #     # Application filtering
+    #     SearchField(name="app_id", type=SearchFieldDataType.String, filterable=True),
+    #     
+    #     SearchField(
+    #         name="chunk_vector",
+    #         type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
+    #         searchable=True,
+    #         vector_search_dimensions=dim,
+    #         vector_search_profile_name="vs-default",
+    #     ),
+    # ]
 
-    chunk_index = SearchIndex(
-        name="articles-chunks-index", 
-        fields=chunk_fields, 
-        vector_search=_vector_search()
-    )
+    # chunk_index = SearchIndex(
+    #     name="articles-chunks-index", 
+    #     fields=chunk_fields, 
+    #     vector_search=_vector_search()
+    # )
 
-    # Create or update all indexes we need
-    for idx in (articles_index, authors_index, chunk_index):
+    # Create or update all indexes we need (simplified - no chunk index)
+    for idx in (articles_index, authors_index):
         if reset:
             try:
                 client.delete_index(idx.name)
@@ -273,4 +295,5 @@ def create_indexes(reset: bool = True, verbose: bool = False) -> None:
             traceback.print_exc()
             raise
 
-    print(f"Created indexes with vector dim={dim}: articles-index, authors-index, articles-chunks-index")
+    print(f"Created indexes with vector dim={dim}: articles-index, authors-index")
+    # Note: articles-chunks-index creation is commented out (see OLD IMPLEMENTATION section above)

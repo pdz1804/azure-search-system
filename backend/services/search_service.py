@@ -50,16 +50,27 @@ class BackendSearchService:
         if not articles_sc or not authors_sc:
             raise ValueError("Both articles_sc and authors_sc SearchClient instances are required")
 
-        # Support passing a tuple (parent_client, chunks_client) from the ai_search clients factory.
-        if isinstance(articles_sc, (tuple, list)):
-            self.articles_parent, self.articles_chunks = articles_sc
-        else:
-            # backward compatibility: single client used for both parent and chunks
-            self.articles_parent = articles_sc
-            self.articles_chunks = articles_sc
+        # ==========================================
+        # OLD IMPLEMENTATION: Parent + Chunks Support (COMMENTED OUT)
+        # ==========================================
+        # To restore chunking functionality, uncomment this logic:
+        #
+        # # Support passing a tuple (parent_client, chunks_client) from the ai_search clients factory.
+        # if isinstance(articles_sc, (tuple, list)):
+        #     self.articles_parent, self.articles_chunks = articles_sc
+        # else:
+        #     # backward compatibility: single client used for both parent and chunks
+        #     self.articles_parent = articles_sc
+        #     self.articles_chunks = articles_sc
+        # 
+        # # keep self.articles for existing usages but prefer articles_parent for parent-level ops
+        # self.articles = self.articles_parent
 
-        # keep self.articles for existing usages but prefer articles_parent for parent-level ops
-        self.articles = self.articles_parent
+        # ==========================================
+        # NEW IMPLEMENTATION: Single Articles Client
+        # ==========================================
+        # Simplified: single articles client (no chunks)
+        self.articles = articles_sc
         self.authors = authors_sc
         self.azure_search_available = True
         print("✅ Azure Search clients initialized")
@@ -252,6 +263,7 @@ class BackendSearchService:
             k: Number of results to return
             page_index: Page index for pagination (optional)
             page_size: Page size for pagination (optional)
+            app_id: Application ID for filtering results (optional)
             
         Returns:
             Dict containing articles search results
@@ -306,6 +318,7 @@ class BackendSearchService:
             k: Number of results to return
             page_index: Page index for pagination (optional)
             page_size: Page size for pagination (optional)
+            app_id: Application ID for filtering results (optional)
             
         Returns:
             Dict containing authors search results
@@ -352,7 +365,7 @@ class BackendSearchService:
         """Test if semantic search is available on this service."""
         try:
             # Try a simple semantic search to test capability
-            test_result = self.articles_parent.search(
+            test_result = self.articles.search(
                 search_text="test",
                 query_type="semantic",
                 semantic_configuration_name="articles-semantic",
@@ -383,6 +396,7 @@ class BackendSearchService:
         Args:
             client: SearchClient instance (articles or authors)
             document_ids: List of document IDs to retrieve
+            app_id: Application ID for filtering results (optional)
             
         Returns:
             Dict mapping document ID to document data
@@ -436,6 +450,7 @@ class BackendSearchService:
             k: Number of results to return
             page_index: Page index for pagination (optional)
             page_size: Page size for pagination (optional)
+            app_id: Application ID for filtering results (optional)
             
         Returns:
             Dict containing authors search results
@@ -547,6 +562,7 @@ class BackendSearchService:
             k: Number of results to return
             page_index: Page index for pagination (optional)
             page_size: Page size for pagination (optional)
+            app_id: Application ID for filtering results (optional)
             
         Returns:
             Dict containing articles search results
@@ -571,7 +587,7 @@ class BackendSearchService:
         
         # Continue with existing search logic but without normalization step
         try:
-            # Run text (BM25/semantic) and vector (chunk) searches concurrently using the thread pool
+            # Run text (BM25/semantic) and vector (abstract) searches concurrently using the thread pool
             # A) Text search with semantic reranker if available
             def run_text_search():
                 if self.semantic_enabled:
@@ -603,7 +619,7 @@ class BackendSearchService:
                         
                         print(f"Search params: {search_kwargs}")
                         
-                        text_res_local = self.articles_parent.search(**search_kwargs)
+                        text_res_local = self.articles.search(**search_kwargs)
                     except HttpResponseError as he:
                         # Service doesn't actually support semantic at runtime - fallback
                         if "SemanticQueriesNotAvailable" in str(he) or "FeatureNotSupportedInService" in str(he):
@@ -635,7 +651,7 @@ class BackendSearchService:
                             
                             print(f"Search params: {search_kwargs}")
                             
-                            text_res_local = self.articles_parent.search(**search_kwargs)
+                            text_res_local = self.articles.search(**search_kwargs)
                         else:
                             raise
                 else:
@@ -665,7 +681,7 @@ class BackendSearchService:
                     
                     print(f"Search params: {search_kwargs}")
                     
-                    text_res_local = self.articles_parent.search(**search_kwargs)
+                    text_res_local = self.articles.search(**search_kwargs)
                 
                 rows_local: List[Dict[str, Any]] = []
                 text_count_local = 0
@@ -683,21 +699,58 @@ class BackendSearchService:
                 print(f"✅ Text search returned {text_count_local} results")
                 return rows_local, text_count_local
 
-            # B) Vector search for chunks
+            # ==========================================
+            # OLD IMPLEMENTATION: Vector Search for Chunks (COMMENTED OUT)
+            # ==========================================
+            # To restore chunking functionality, uncomment this section:
+            #
+            # # B) Vector search for chunks
+            # def run_vector_search():
+            #     print("🧮 Generating query embedding for vector search...")
+            #     qvec = encode(normalized_query)
+            #     print(f"✅ Generated embedding vector (dim={len(qvec)})")
+            #     print("🔍 Executing vector search for chunks (articles-chunks-index)...")
+            #
+            #     # Determine number of chunk-level hits to request. Heuristic: request up to search_k * 4 chunks
+            #     chunk_hits = int(search_k * 4)
+            #
+            #     vector_search_kwargs = {
+            #         "search_text": None,
+            #         "vector_queries": [VectorizedQuery(vector=qvec, fields="chunk_vector")],
+            #         "top": chunk_hits,
+            #         "select": ["chunk_id", "parent_id", "chunk", "chunk_ordinal"]
+            #     }
+            #
+            #     # Add same filter, order_by parameters from LLM enhancement for consistent results
+            #     if search_params.get("filter"):
+            #         vector_search_kwargs["filter"] = search_params["filter"]
+            #     if search_params.get("order_by"):
+            #         vector_search_kwargs["order_by"] = search_params["order_by"]
+            #     
+            #     # Apply app_id filter
+            #     app_filter = self._get_app_id_filter(app_id)
+            #     if app_filter:
+            #         existing_filter = vector_search_kwargs.get("filter", "")
+            #         vector_search_kwargs["filter"] = self._merge_filters(existing_filter, app_filter)
+            #
+            #     print(f"Vector search params: {vector_search_kwargs}")
+            #
+            #     return list(self.articles_chunks.search(**vector_search_kwargs))
+
+            # ==========================================
+            # NEW IMPLEMENTATION: Vector Search for Abstract (Simplified)
+            # ==========================================
             def run_vector_search():
-                print("🧮 Generating query embedding for vector search...")
+                print("🧮 Generating query embedding for abstract vector search...")
                 qvec = encode(normalized_query)
                 print(f"✅ Generated embedding vector (dim={len(qvec)})")
-                print("🔍 Executing vector search for chunks (articles-chunks-index)...")
-
-                # Determine number of chunk-level hits to request. Heuristic: request up to search_k * 4 chunks
-                chunk_hits = int(search_k * 4)
+                print("🔍 Executing vector search for articles using abstract_vector...")
 
                 vector_search_kwargs = {
                     "search_text": None,
-                    "vector_queries": [VectorizedQuery(vector=qvec, fields="chunk_vector")],
-                    "top": chunk_hits,
-                    "select": ["chunk_id", "parent_id", "chunk", "chunk_ordinal"]
+                    "vector_queries": [VectorizedQuery(vector=qvec, fields="abstract_vector")],
+                    "top": int(search_k * 1.2),
+                    "select": ["id", "title", "abstract", "author_name", "business_date"]
                 }
 
                 # Add same filter, order_by parameters from LLM enhancement for consistent results
@@ -714,7 +767,7 @@ class BackendSearchService:
 
                 print(f"Vector search params: {vector_search_kwargs}")
 
-                return list(self.articles_chunks.search(**vector_search_kwargs))
+                return list(self.articles.search(**vector_search_kwargs))
 
             # Submit both tasks to the executor to allow overlap of network I/O
             text_future = self.executor.submit(run_text_search)
@@ -725,60 +778,91 @@ class BackendSearchService:
             vec_res = vector_future.result()
             
             id_to_row = {r["id"]: r for r in rows}
-            vec_count = 0
-            vec_new_ids = []
+            vec_count = len(vec_res)
             
-            # vec_res are chunk documents; aggregate by parent_id to form article-level vector scores
-            parent_scores: Dict[str, Dict[str, Any]] = {}
+            # ==========================================
+            # OLD IMPLEMENTATION: Chunk Processing (COMMENTED OUT)
+            # ==========================================
+            # To restore chunking functionality, uncomment this section:
+            #
+            # # vec_res are chunk documents; aggregate by parent_id to form article-level vector scores
+            # parent_scores: Dict[str, Dict[str, Any]] = {}
+            # for d in vec_res:
+            #     try:
+            #         vec_count += 1
+            #         parent = d.get("parent_id")
+            #         if not parent:
+            #             continue
+            #         score = d.get("@search.score", 0.0)
+            #         if parent not in parent_scores:
+            #             parent_scores[parent] = {
+            #                 "id": parent,
+            #                 "_vector": score,
+            #                 "chunks": [d],
+            #                 "_bm25": 0.0,
+            #                 "_semantic": 0.0,
+            #                 "_business": 0.0,
+            #             }
+            #         else:
+            #             parent_scores[parent]["_vector"] = max(parent_scores[parent]["_vector"], score)
+            #             parent_scores[parent]["chunks"].append(d)
+            #     except Exception:
+            #         continue
+            #
+            # # Merge parent-level vector scores into id_to_row
+            # for pid, pdata in parent_scores.items():
+            #     if pid in id_to_row:
+            #         id_to_row[pid]["_vector"] = max(id_to_row[pid].get("_vector", 0.0), pdata["_vector"])
+            #     else:
+            #         id_to_row[pid] = {
+            #             "id": pid,
+            #             "doc": None,
+            #             "_bm25": 0.0,
+            #             "_semantic": 0.0,
+            #             "_vector": pdata["_vector"],
+            #             "_business": 0.0,
+            #             "_chunks": pdata["chunks"],
+            #         }
+
+            # ==========================================
+            # NEW IMPLEMENTATION: Direct Article Processing (Simplified)
+            # ==========================================
+            # vec_res are article documents directly from abstract vector search
             for d in vec_res:
                 try:
-                    vec_count += 1
-                    parent = d.get("parent_id")
-                    if not parent:
+                    article_id = d.get("id")
+                    if not article_id:
                         continue
                     score = d.get("@search.score", 0.0)
-                    if parent not in parent_scores:
-                        parent_scores[parent] = {
-                            "id": parent,
-                            "_vector": score,
-                            "chunks": [d],
+                    
+                    if article_id in id_to_row:
+                        # Merge vector score with existing text search result
+                        id_to_row[article_id]["_vector"] = score
+                    else:
+                        # New result from vector search only
+                        id_to_row[article_id] = {
+                            "id": article_id,
+                            "doc": d,
                             "_bm25": 0.0,
                             "_semantic": 0.0,
+                            "_vector": score,
                             "_business": 0.0,
                         }
-                    else:
-                        parent_scores[parent]["_vector"] = max(parent_scores[parent]["_vector"], score)
-                        parent_scores[parent]["chunks"].append(d)
                 except Exception:
                     continue
 
-            # Merge parent-level vector scores into id_to_row
-            for pid, pdata in parent_scores.items():
-                if pid in id_to_row:
-                    id_to_row[pid]["_vector"] = max(id_to_row[pid].get("_vector", 0.0), pdata["_vector"])
-                else:
-                    id_to_row[pid] = {
-                        "id": pid,
-                        "doc": None,
-                        "_bm25": 0.0,
-                        "_semantic": 0.0,
-                        "_vector": pdata["_vector"],
-                        "_business": 0.0,
-                        "_chunks": pdata["chunks"],
-                    }
+            print(f"✅ Vector search returned {vec_count} article results")
 
-            print(f"✅ Vector (chunk) search returned {vec_count} chunk results across {len(parent_scores)} parents")
-
-            # Batch retrieve parent docs for any ids missing the doc payload
-            missing_parent_ids = [pid for pid, row in id_to_row.items() if row.get("doc") is None]
-            if missing_parent_ids:
-                print(f"📦 Fetching {len(missing_parent_ids)} parent article documents")
-                batch_parents = self._batch_get_documents(self.articles_parent, missing_parent_ids, app_id)
-                for pid in missing_parent_ids:
-                    if pid in batch_parents:
-                        parent_doc = batch_parents[pid]
-                        id_to_row[pid]["doc"] = parent_doc
-                        id_to_row[pid]["_business"] = business_freshness(parent_doc.get("business_date"))
+            # Batch retrieve article docs for any ids missing the doc payload
+            missing_article_ids = [aid for aid, row in id_to_row.items() if row.get("doc") is None]
+            if missing_article_ids:
+                print(f"📦 Fetching {len(missing_article_ids)} article documents")
+                batch_articles = self._batch_get_documents(self.articles, missing_article_ids, app_id)
+                for aid in missing_article_ids:
+                    if aid in batch_articles:
+                        article_doc = batch_articles[aid]
+                        id_to_row[aid]["doc"] = article_doc
+                        id_to_row[aid]["_business"] = business_freshness(article_doc.get("business_date"))
 
             print("⚖️ Fusing article scores...")
             all_fused_results = fuse_articles(list(id_to_row.values()))
@@ -832,6 +916,8 @@ class BackendSearchService:
     def _get_all_authors(self, app_id: str = None) -> List[Dict[str, Any]]:
         """
         Get all authors from the index for fuzzy matching.
+        Args:
+            app_id: Application ID for filtering results (optional)
         
         Returns:
             List of all author documents

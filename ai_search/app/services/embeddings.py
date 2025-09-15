@@ -122,3 +122,5 @@ def encode(text: str) -> List[float]:
     except Exception as e:
         print(f"❌ Embedding generation failed: {e}")
         raise
+
+

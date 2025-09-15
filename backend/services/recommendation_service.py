@@ -128,8 +128,10 @@ class RecommendationService:
         
         try:
             # Create search query from article title and abstract
-            title_text = article.get('title', '')
+            # title_text = article.get('title', '')
+            title_text = ''
             abstract_text = article.get('abstract', '')
+            # abstract_text = ''
             content_query = f"{title_text} {abstract_text}".strip()
             
             if not content_query:
