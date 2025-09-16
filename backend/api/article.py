@@ -1,5 +1,3 @@
-import os
-from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File, Query, Request
 from fastapi.responses import JSONResponse
 from typing import Optional, List
@@ -21,9 +19,6 @@ from backend.services.article_service import (
 from backend.services.tag_service import tag_service
 from backend.services.search_service import search_service
 from backend.services.recommendation_service import get_recommendation_service
-
-load_dotenv()
-BASE_URL = os.getenv("BASE_URL")
 
 articles = APIRouter(prefix="/api/articles", tags=["articles"])
 

@@ -5,9 +5,7 @@ endpoints return a JWT `access_token` that should be supplied as a
 Bearer token in the `Authorization` header for protected routes.
 """
 
-import os
 from typing import Optional
-from dotenv import load_dotenv
 from fastapi import APIRouter, File, Form, HTTPException,UploadFile
 from pydantic import BaseModel, EmailStr
 from backend.services.azure_blob_service import upload_image
@@ -15,16 +13,12 @@ from backend.model.request.login_request import LoginRequest
 from backend.utils import create_access_token, save_file
 from backend.services.user_service import create_user, login
 
-load_dotenv()
-BASE_URL = os.getenv("BASE_URL")
 auth = APIRouter(prefix="/api/auth", tags=["auth"])
-
 
 class TokenResponse(BaseModel):
     access_token: str
     user_id: str
     role: str
-
 
 @auth.post("/login", response_model=TokenResponse)
 async def login_user(data: LoginRequest):
