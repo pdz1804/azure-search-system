@@ -136,6 +136,43 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const googleLogin = async (idToken) => {
+    try {
+      const response = await authApi.googleLogin(idToken);
+      console.log('Google Login API Response:', response);
+      
+      if (!response.success) {
+        return { 
+          success: false, 
+          error: response.error || 'Google login failed' 
+        };
+      }
+      
+      const { access_token, user_id, role, user: userData } = response.data;
+      
+      // normalize user object
+      const userInfo = userData || {
+        id: user_id,
+        role: role,
+        full_name: `User ${user_id?.slice ? user_id.slice(0, 8) : user_id}`
+      };
+
+      setToken(access_token);
+      setUser(userInfo);
+
+      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('user', JSON.stringify(userInfo));
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Google login error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Google login failed' 
+      };
+    }
+  };
+
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -182,6 +219,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     register,
+    googleLogin,
     logout,
     updateUser,
     refreshUser,

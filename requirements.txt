@@ -20,3 +20,4 @@ azure-functions
 openai
 numpy
 pytest
+google-auth

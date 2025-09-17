@@ -139,6 +139,50 @@ export const authApi = {
     }
   },
 
+  // Google login
+  googleLogin: async (idToken) => {
+    try {
+      const response = await apiClient.post('/auth/google', {
+        id_token: idToken,
+        app_id: APP_ID
+      });
+      
+      const { access_token, user_id, role } = response.data;
+      
+      // Store authentication data
+      setAuthToken(access_token);
+      localStorage.setItem('user_id', user_id);
+      localStorage.setItem('role', role);
+      
+      // Fetch full user profile
+      const userResponse = await apiClient.get(`/users/${user_id}`, {
+        params: { app_id: APP_ID }
+      });
+      let userObj = userResponse.data?.data || userResponse.data;
+      
+      // Normalize user data
+      userObj = normalizeUserData(userObj);
+      
+      // persist normalized user object
+      localStorage.setItem('user', JSON.stringify(userObj));
+      
+      return {
+        success: true,
+        data: {
+          access_token,
+          user_id,
+          role,
+          user: userObj
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Google login failed'
+      };
+    }
+  },
+
   // Logout user
   logout: async () => {
     try {

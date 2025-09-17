@@ -21,3 +21,6 @@ REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
 APP_HOST: str = os.getenv("APP_HOST", "0.0.0.0")
 APP_PORT: int = int(os.getenv("APP_PORT", "8001"))
 DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
+
+GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET")
