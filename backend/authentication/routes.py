@@ -1,4 +1,10 @@
-import os
+"""Authentication routes.
+
+Handles login and registration. On successful login/register the
+endpoints return a JWT `access_token` that should be supplied as a
+Bearer token in the `Authorization` header for protected routes.
+"""
+
 from typing import Optional
 from dotenv import load_dotenv
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -9,11 +15,7 @@ from backend.utils import create_access_token
 from backend.services.user_service import create_user, login
 from backend.services.auth_service import login_with_google
 
-load_dotenv()
-BASE_URL = os.getenv("BASE_URL")
-
 auth = APIRouter(prefix="/api/auth", tags=["auth"])
-
 
 class TokenResponse(BaseModel):
     access_token: str
