@@ -1,21 +1,8 @@
 """
 Search Service for Azure AI Search Integration
 
-This module implements a high-level search service that combines multiple scoring methods 
-for both articles and authors:
-
-Articles search combines:
- - Semantic search (natural language understanding)
- - BM25 (keyword matching)
- - Vector search (embedding similarity)
- - Business logic (freshness boost)
-
-Authors search combines:
- - Semantic search (natural language understanding)
- - BM25 (keyword matching)
- - Optional vector/business components if weights > 0
-
 The service handles pagination, error recovery, and score fusion with configurable weights.
+We apply score threshold of 0.4 for both articles and authors.
 """
 
 import json
@@ -51,22 +38,6 @@ class BackendSearchService:
             raise ValueError("Both articles_sc and authors_sc SearchClient instances are required")
 
         # ==========================================
-        # OLD IMPLEMENTATION: Parent + Chunks Support (COMMENTED OUT)
-        # ==========================================
-        # To restore chunking functionality, uncomment this logic:
-        #
-        # # Support passing a tuple (parent_client, chunks_client) from the ai_search clients factory.
-        # if isinstance(articles_sc, (tuple, list)):
-        #     self.articles_parent, self.articles_chunks = articles_sc
-        # else:
-        #     # backward compatibility: single client used for both parent and chunks
-        #     self.articles_parent = articles_sc
-        #     self.articles_chunks = articles_sc
-        # 
-        # # keep self.articles for existing usages but prefer articles_parent for parent-level ops
-        # self.articles = self.articles_parent
-
-        # ==========================================
         # NEW IMPLEMENTATION: Single Articles Client
         # ==========================================
         # Simplified: single articles client (no chunks)
@@ -97,15 +68,7 @@ class BackendSearchService:
         print("✅ BackendSearchService initialized successfully")
     
     def _apply_score_threshold(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        Apply score threshold filtering to search results.
-        
-        Args:
-            results: List of search results with _final scores
-            
-        Returns:
-            Filtered list of results above the score threshold
-        """
+        """Apply score threshold filtering to search results."""
         if not SETTINGS.enable_score_filtering:
             return results
         
@@ -122,15 +85,7 @@ class BackendSearchService:
         return filtered_results
     
     def _get_app_id_filter(self, app_id: str = None) -> str:
-        """
-        Get the app_id filter string for the current application.
-        
-        Args:
-            app_id: Application ID to filter by
-        
-        Returns:
-            Filter string for app_id, or empty string if not provided
-        """
+        """Get the app_id filter string for the current application."""
         if not app_id:
             print("⚠️ No app_id provided, skipping app filtering")
             return ""
@@ -140,16 +95,7 @@ class BackendSearchService:
         return app_filter
     
     def _merge_filters(self, existing_filter: str, app_filter: str) -> str:
-        """
-        Merge existing filter with app_id filter.
-        
-        Args:
-            existing_filter: Existing filter string
-            app_filter: App ID filter string
-            
-        Returns:
-            Combined filter string
-        """
+        """Merge existing filter with app_id filter."""
         if not app_filter:
             return existing_filter
         
@@ -160,15 +106,7 @@ class BackendSearchService:
         return f"({existing_filter}) and ({app_filter})"
     
     def _normalize_text(self, text: str) -> str:
-        """
-        Normalize text for better fuzzy matching by removing diacritics and standardizing.
-        
-        Args:
-            text: Input text to normalize
-            
-        Returns:
-            Normalized text without diacritics, lowercase, and cleaned
-        """
+        """Normalize text for better fuzzy matching by removing diacritics and standardizing."""
         if not text:
             return ""
         
@@ -188,96 +126,77 @@ class BackendSearchService:
         return cleaned
     
     def search(self, query: str, k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None, app_id: str = None) -> Dict[str, Any]:
-        """
-        General search function that uses LLM planning to classify and route queries.
-        
-        This is the main entry point for all search operations. It:
-        1. Uses LLM to plan the query (classify type and normalize)
-        2. Routes to appropriate search function based on classification
-        3. Returns unified response format
-        
-        Args:
-            query: User search query
-            k: Number of results to return
-            page_index: Page index for pagination (optional)
-            page_size: Page size for pagination (optional)
-            app_id: Application ID for filtering results (optional)
-            
-        Returns:
-            Dict containing search results with unified format
-        """
+        """General search function that normalizes query and searches both articles and authors."""
         print(f"🔍 General search initiated: '{query}'")
         
-        # Step 1: Plan the query using LLM
-        if self.llm_service:
-            plan = self.llm_service.plan_query(query)
+        # Step 1: Normalize the query using LLM (if query is 5+ words)
+        normalized_query = query
+        if self.llm_service and len(query.split()) >= 5:
+            try:
+                plan = self.llm_service.plan_query(query)
+                normalized_query = plan.get("normalized_query", query)
+                print(f"✅ Query normalized: '{query}' -> '{normalized_query}'")
+            except Exception as e:
+                print(f"⚠️ LLM normalization failed: {e}, using original query")
+                normalized_query = query
         else:
-            print("⚠️ LLM service not available, using fallback plan")
-            # Fallback plan when LLM service is not available
-            plan = {
-                "isMeaningful": True,
-                "search_type": "articles",
-                "normalized_query": query,
-                "search_parameters": {}
-            }
+            if not self.llm_service:
+                print("⚠️ LLM service not available, using original query")
+            else:
+                print(f"📝 Query too short ({len(query.split())} words), keeping original")
         
-        # Step 2: Handle non-meaningful queries
-        if not plan.get("isMeaningful", True):
-            print(f"❌ Query classified as non-meaningful")
-            return {
-                "results": [],
-                "normalized_query": "I'm sorry, but your query doesn't appear to be meaningful or searchable. Please try rephrasing your question with clear, specific terms.",
-                "pagination": {
-                    "page_index": page_index,
-                    "page_size": page_size,
-                    "total_results": 0,
-                    "total_pages": 0,
-                    "has_next": False,
-                    "has_previous": False
-                } if page_index is not None and page_size is not None else None,
-                "search_type": plan.get("search_type", "unmeaningful")
-            }
+        # Step 2: Search both articles and authors
+        print("🔍 Searching both articles and authors...")
         
-        # Step 3: Route to appropriate search function based on classification
-        search_type = plan.get("search_type", "articles")
-
-        print(f"🔍 Search type: {search_type}")
+        # Search articles
+        try:
+            articles_result = self.search_articles(normalized_query, k, page_index, page_size, app_id)
+            # Apply score threshold of 0.4 for articles
+            # filtered_articles = [r for r in articles_result.get("results", []) if r.get("_final", 0.0) >= 0.4]
+            # articles_result["results"] = filtered_articles
+            # print(f"📖 Articles search: {len(filtered_articles)} results after 0.4 threshold")
+        except Exception as e:
+            print(f"❌ Articles search failed: {e}")
+            articles_result = {"results": [], "normalized_query": normalized_query, "pagination": None, "search_type": "articles"}
         
-        if search_type == "authors":
-            print(f"📋 Routing to authors search")
-            return self._search_authors_planned(query, plan, k, page_index, page_size, app_id)
-        elif search_type == "articles":
-            print(f"📋 Routing to articles search")
-            return self._search_articles_planned(query, plan, k, page_index, page_size, app_id)
-        else:
-            # Fallback for unmeaningful or unknown types
-            print(f"❓ Unknown search type: {search_type}, defaulting to articles")
-            return self._search_articles_planned(query, plan, k, page_index, page_size, app_id)
+        # Search authors
+        try:
+            authors_result = self.search_authors(normalized_query, k, page_index, page_size, app_id)
+            # Apply score threshold of 0.4 for authors
+            # filtered_authors = [r for r in authors_result.get("results", []) if r.get("_final", 0.0) >= 0.4]
+            # authors_result["results"] = filtered_authors
+            # print(f"👤 Authors search: {len(filtered_authors)} results after 0.4 threshold")
+        except Exception as e:
+            print(f"❌ Authors search failed: {e}")
+            authors_result = {"results": [], "normalized_query": normalized_query, "pagination": None, "search_type": "authors"}
+        
+        # Step 3: Return combined results
+        print(f"✅ General search completed: {len(articles_result.get('results', []))} articles, {len(authors_result.get('results', []))} authors")
+        
+        return {
+            "article": articles_result,
+            "author": authors_result
+        }
     
     def search_articles(self, query: str, k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None, app_id: str = None) -> Dict[str, Any]:
-        """
-        Search for articles using LLM planning for query enhancement.
-        
-        Args:
-            query: User search query
-            k: Number of results to return
-            page_index: Page index for pagination (optional)
-            page_size: Page size for pagination (optional)
-            app_id: Application ID for filtering results (optional)
-            
-        Returns:
-            Dict containing articles search results
-        """
+        """Search for articles using LLM planning for query enhancement."""
         print(f"📖 Articles search: '{query}'")
         
         # Use LLM planning to enhance the query
         if self.llm_service:
-            plan = self.llm_service.plan_query(query)
+            try:
+                plan = self.llm_service.plan_query(query)
+            except Exception as e:
+                print(f"⚠️ LLM planning failed: {e}, using fallback plan")
+                plan = {
+                    "search_type": "articles", 
+                    "normalized_query": query,
+                    "search_parameters": {}
+                }
         else:
             print("⚠️ LLM service not available, using fallback plan")
             # Fallback plan when LLM service is not available
             plan = {
-                "isMeaningful": True,
                 "search_type": "articles", 
                 "normalized_query": query,
                 "search_parameters": {}
@@ -286,53 +205,28 @@ class BackendSearchService:
         # Force search type to articles for this endpoint
         plan["search_type"] = "articles"
         
-        # Handle non-meaningful queries
-        if not plan.get("isMeaningful", True):
-            print(f"❌ Query is not meaningful: '{query}'")
-            
-            return {
-                "results": [],
-                "normalized_query": "I'm sorry, but your query doesn't appear to be meaningful or searchable. Please try rephrasing your question with clear, specific terms.",
-                "pagination": {
-                    "page_index": page_index,
-                    "page_size": page_size,
-                    "total_results": 0,
-                    "total_pages": 0,
-                    "has_next": False,
-                    "has_previous": False
-                } if page_index is not None and page_size is not None else None,
-                "search_type": "articles",
-                "confidence": plan.get("confidence", 0.0),
-                "explanation": plan.get("explanation", "Query appears to be meaningless")
-            }
-        
         # Use the planned search function
         return self._search_articles_planned(query, plan, k, page_index, page_size, app_id)
 
     def search_authors(self, query: str, k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None, app_id: str = None) -> Dict[str, Any]:
-        """
-        Search for authors using LLM planning for query enhancement.
-        
-        Args:
-            query: User search query
-            k: Number of results to return
-            page_index: Page index for pagination (optional)
-            page_size: Page size for pagination (optional)
-            app_id: Application ID for filtering results (optional)
-            
-        Returns:
-            Dict containing authors search results
-        """
+        """Search for authors using LLM planning for query enhancement."""
         print(f"👤 Authors search: '{query}'")
         
         # Use LLM planning to enhance the query
         if self.llm_service:
-            plan = self.llm_service.plan_query(query)
+            try:
+                plan = self.llm_service.plan_query(query)
+            except Exception as e:
+                print(f"⚠️ LLM planning failed: {e}, using fallback plan")
+                plan = {
+                    "search_type": "authors", 
+                    "normalized_query": query,
+                    "search_parameters": {}
+                }
         else:
             print("⚠️ LLM service not available, using fallback plan")
             # Fallback plan when LLM service is not available
             plan = {
-                "isMeaningful": True,
                 "search_type": "authors", 
                 "normalized_query": query,
                 "search_parameters": {}
@@ -340,23 +234,6 @@ class BackendSearchService:
         
         # Force search type to authors for this endpoint
         plan["search_type"] = "authors"
-        
-        # Handle non-meaningful queries
-        if not plan.get("isMeaningful", True):
-            print(f"❌ Query is not meaningful: '{query}'")
-            return {
-                "results": [],
-                "normalized_query": "I'm sorry, but your query doesn't appear to be meaningful or searchable. Please try rephrasing your question with clear, specific terms.",
-                "pagination": {
-                    "page_index": page_index,
-                    "page_size": page_size,
-                    "total_results": 0,
-                    "total_pages": 0,
-                    "has_next": False,
-                    "has_previous": False
-                } if page_index is not None and page_size is not None else None,
-                "search_type": "authors"
-            }
         
         # Use the planned search function
         return self._search_authors_planned(query, plan, k, page_index, page_size, app_id)
@@ -390,17 +267,7 @@ class BackendSearchService:
             return False
     
     def _batch_get_documents(self, client: SearchClient, document_ids: List[str], app_id: str = None) -> Dict[str, Dict[str, Any]]:
-        """
-        Batch retrieve documents by IDs to avoid N+1 query problem.
-        
-        Args:
-            client: SearchClient instance (articles or authors)
-            document_ids: List of document IDs to retrieve
-            app_id: Application ID for filtering results (optional)
-            
-        Returns:
-            Dict mapping document ID to document data
-        """
+        """Batch retrieve documents by IDs to avoid N+1 query problem."""
         if not document_ids:
             return {}
         
@@ -441,20 +308,7 @@ class BackendSearchService:
             return doc_dict
 
     def _search_authors_planned(self, original_query: str, plan: Dict[str, Any], k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None, app_id: str = None) -> Dict[str, Any]:
-        """
-        Internal authors search function that uses pre-planned query data.
-        
-        Args:
-            original_query: Original user query
-            plan: Query plan from LLM containing normalized_query and search_parameters
-            k: Number of results to return
-            page_index: Page index for pagination (optional)
-            page_size: Page size for pagination (optional)
-            app_id: Application ID for filtering results (optional)
-            
-        Returns:
-            Dict containing authors search results
-        """
+        """Internal authors search function that uses pre-planned query data."""
         normalized_query = plan["normalized_query"]
         
         # Handle pagination parameters
@@ -553,20 +407,7 @@ class BackendSearchService:
             raise
     
     def _search_articles_planned(self, original_query: str, plan: Dict[str, Any], k: int = 10, page_index: Optional[int] = None, page_size: Optional[int] = None, app_id: str = None) -> Dict[str, Any]:
-        """
-        Internal articles search function that uses pre-planned query data.
-        
-        Args:
-            original_query: Original user query
-            plan: Query plan from LLM containing normalized_query and search_parameters
-            k: Number of results to return
-            page_index: Page index for pagination (optional)
-            page_size: Page size for pagination (optional)
-            app_id: Application ID for filtering results (optional)
-            
-        Returns:
-            Dict containing articles search results
-        """
+        """Internal articles search function that uses pre-planned query data."""
         normalized_query = plan["normalized_query"]
         search_params = plan["search_parameters"]
         
@@ -700,44 +541,6 @@ class BackendSearchService:
                 return rows_local, text_count_local
 
             # ==========================================
-            # OLD IMPLEMENTATION: Vector Search for Chunks (COMMENTED OUT)
-            # ==========================================
-            # To restore chunking functionality, uncomment this section:
-            #
-            # # B) Vector search for chunks
-            # def run_vector_search():
-            #     print("🧮 Generating query embedding for vector search...")
-            #     qvec = encode(normalized_query)
-            #     print(f"✅ Generated embedding vector (dim={len(qvec)})")
-            #     print("🔍 Executing vector search for chunks (articles-chunks-index)...")
-            #
-            #     # Determine number of chunk-level hits to request. Heuristic: request up to search_k * 4 chunks
-            #     chunk_hits = int(search_k * 4)
-            #
-            #     vector_search_kwargs = {
-            #         "search_text": None,
-            #         "vector_queries": [VectorizedQuery(vector=qvec, fields="chunk_vector")],
-            #         "top": chunk_hits,
-            #         "select": ["chunk_id", "parent_id", "chunk", "chunk_ordinal"]
-            #     }
-            #
-            #     # Add same filter, order_by parameters from LLM enhancement for consistent results
-            #     if search_params.get("filter"):
-            #         vector_search_kwargs["filter"] = search_params["filter"]
-            #     if search_params.get("order_by"):
-            #         vector_search_kwargs["order_by"] = search_params["order_by"]
-            #     
-            #     # Apply app_id filter
-            #     app_filter = self._get_app_id_filter(app_id)
-            #     if app_filter:
-            #         existing_filter = vector_search_kwargs.get("filter", "")
-            #         vector_search_kwargs["filter"] = self._merge_filters(existing_filter, app_filter)
-            #
-            #     print(f"Vector search params: {vector_search_kwargs}")
-            #
-            #     return list(self.articles_chunks.search(**vector_search_kwargs))
-
-            # ==========================================
             # NEW IMPLEMENTATION: Vector Search for Abstract (Simplified)
             # ==========================================
             def run_vector_search():
@@ -780,50 +583,6 @@ class BackendSearchService:
             id_to_row = {r["id"]: r for r in rows}
             vec_count = len(vec_res)
             
-            # ==========================================
-            # OLD IMPLEMENTATION: Chunk Processing (COMMENTED OUT)
-            # ==========================================
-            # To restore chunking functionality, uncomment this section:
-            #
-            # # vec_res are chunk documents; aggregate by parent_id to form article-level vector scores
-            # parent_scores: Dict[str, Dict[str, Any]] = {}
-            # for d in vec_res:
-            #     try:
-            #         vec_count += 1
-            #         parent = d.get("parent_id")
-            #         if not parent:
-            #             continue
-            #         score = d.get("@search.score", 0.0)
-            #         if parent not in parent_scores:
-            #             parent_scores[parent] = {
-            #                 "id": parent,
-            #                 "_vector": score,
-            #                 "chunks": [d],
-            #                 "_bm25": 0.0,
-            #                 "_semantic": 0.0,
-            #                 "_business": 0.0,
-            #             }
-            #         else:
-            #             parent_scores[parent]["_vector"] = max(parent_scores[parent]["_vector"], score)
-            #             parent_scores[parent]["chunks"].append(d)
-            #     except Exception:
-            #         continue
-            #
-            # # Merge parent-level vector scores into id_to_row
-            # for pid, pdata in parent_scores.items():
-            #     if pid in id_to_row:
-            #         id_to_row[pid]["_vector"] = max(id_to_row[pid].get("_vector", 0.0), pdata["_vector"])
-            #     else:
-            #         id_to_row[pid] = {
-            #             "id": pid,
-            #             "doc": None,
-            #             "_bm25": 0.0,
-            #             "_semantic": 0.0,
-            #             "_vector": pdata["_vector"],
-            #             "_business": 0.0,
-            #             "_chunks": pdata["chunks"],
-            #         }
-
             # ==========================================
             # NEW IMPLEMENTATION: Direct Article Processing (Simplified)
             # ==========================================
@@ -914,14 +673,7 @@ class BackendSearchService:
             raise
 
     def _get_all_authors(self, app_id: str = None) -> List[Dict[str, Any]]:
-        """
-        Get all authors from the index for fuzzy matching.
-        Args:
-            app_id: Application ID for filtering results (optional)
-        
-        Returns:
-            List of all author documents
-        """
+        """Get all authors from the index for fuzzy matching."""
         try:
             # Use wildcard search to get all authors
             search_kwargs = {
@@ -949,17 +701,7 @@ class BackendSearchService:
             return []
     
     def _fuzzy_match_authors(self, query: str, all_authors: List[Dict[str, Any]], k: int) -> List[Tuple[Dict[str, Any], float]]:
-        """
-        Perform robust fuzzy matching against all author names with Unicode and diacritic support.
-        
-        Args:
-            query: Search query
-            all_authors: List of all author documents
-            k: Number of top matches to return
-            
-        Returns:
-            List of tuples (author_doc, similarity_score) sorted by score descending
-        """
+        """Perform robust fuzzy matching against all author names with Unicode and diacritic support."""
         if not all_authors:
             return []
         

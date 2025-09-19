@@ -36,27 +36,22 @@ class LLMService:
         )
         print("✅ LLM Service initialized successfully")
     
-    
     def plan_query(self, user_query: str, mode: str = "simple") -> Dict[str, Any]:
         """
-        Comprehensive query planning that combines normalization and classification.
+        Query enhancement and normalization for better search results.
         
-        This function replaces the separate normalize_query functionality by providing:
-        1. Query meaningfulness assessment
-        2. Search type classification (articles vs authors)
-        3. Query normalization and enhancement
-        4. Search parameter generation (advanced mode only)
+        This function provides:
+        1. Query normalization and enhancement with synonyms/related terms
+        2. Search parameter generation (advanced mode only)
         
         Args:
             user_query: Raw user query string
-            mode: "simple" for basic classification, "advanced" for full search parameters
+            mode: "simple" for basic enhancement, "advanced" for full search parameters
             
         Returns:
             Dict containing:
             - normalized_query: Enhanced search text
-            - search_type: "articles", "authors", or "unmeaningful"
             - search_parameters: Dict with search parameters (advanced mode) or empty dict (simple mode)
-            - isMeaningful: Boolean indicating if query has search intent
         """
         print(f"🎯 Planning query: '{user_query}'")
         
@@ -90,37 +85,29 @@ class LLMService:
                 result = json.loads(response_text)
                 
                 # Ensure required fields exist with defaults
-                if "isMeaningful" not in result:
-                    result["isMeaningful"] = True
                 if "search_parameters" not in result:
                     result["search_parameters"] = {}
-                if "search_type" not in result:
-                    result["search_type"] = "articles"  # Default to articles
+                if "normalized_query" not in result:
+                    result["normalized_query"] = user_query
                     
-                print(f"✅ Query planned: type='{result.get('search_type')}', meaningful={result.get('isMeaningful')}")
+                print(f"✅ Query enhanced: '{user_query}' -> '{result.get('normalized_query')}'")
                 
                 return result
                 
             except json.JSONDecodeError as e:
-                print(f"❌ Failed to parse LLM planning response: {e}")
+                print(f"❌ Failed to parse LLM enhancement response: {e}")
                 # Fallback response
                 return {
                     "normalized_query": user_query,
-                    "search_type": "articles",
-                    "search_parameters": {},
-                    "isMeaningful": True
+                    "search_parameters": {}
                 }
                 
         except Exception as e:
-            print(f"❌ Query planning failed: {e}")
+            print(f"❌ Query enhancement failed: {e}")
             # Fallback response
             return {
                 "normalized_query": user_query,
-                "search_type": "articles", 
-                "search_parameters": {},
-                "isMeaningful": True,
-                "explanation": f"LLM call failed: {str(e)}",
-                "confidence": 0.5
+                "search_parameters": {}
             }
     
     def generate_answer(self, user_query: str, search_results: List[Dict[str, Any]], search_type: str = "articles") -> str:

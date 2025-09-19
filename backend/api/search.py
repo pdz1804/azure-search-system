@@ -47,13 +47,10 @@ async def search_general(
     page_size: int = Query(12, ge=1, le=100, description="Number of results per page (default 12)"),
     app_id: Optional[str] = Query(None, description="Application ID for filtering results")
 ):
-    """General search endpoint with intelligent query classification and routing.
+    """General search endpoint that searches both articles and authors.
     
-    Uses intelligent planning to:
-    1. Determine if query is meaningful
-    2. Classify query type (articles vs authors)
-    3. Route to appropriate search function
-    4. Return unified response format
+    Returns combined results from both article and author searches with score filtering.
+    Both result sets are filtered with a 0.4 score threshold.
     
     Supports pagination with page_index and page_size parameters.
     """
@@ -72,48 +69,69 @@ async def search_general(
         search_service = get_search_service()
         result = search_service.search(q, k, page_index, page_size, app_id)
 
-        if not result or not result.get("results"):
+        if not result or (not result.get("article") and not result.get("author")):
             raise HTTPException(status_code=500, detail="Search failed - no results returned")
 
-        # Transform results to match the same format as specific endpoints
-        search_type = result.get("search_type", "articles")
+        # Transform both article and author results
+        articles_data = []
+        authors_data = []
         
-        if search_type == "authors":
-            # Use the same transformation as /search/authors endpoint
-            docs = await search_response_users(result)
-        else:
-            # Use the same transformation as /search/articles endpoint  
-            docs = await search_response_articles(result, app_id)
+        # Process article results
+        article_result = result.get("article", {})
+        if article_result.get("results"):
+            articles_data = await search_response_articles(article_result, app_id)
         
-        # Build pagination in the same format as specific endpoints
-        pagination = result.get("pagination") or {}
-        total_results = pagination.get("total_results", len(docs))
-        total_pages = math.ceil(total_results / page_size) if page_size else 1
-        mapped_pagination = {
-            "page": (pagination.get("page_index") or page_index) + 1,
-            "page_size": pagination.get("page_size") or page_size,
-            "total": total_pages,
-            "total_results": total_results,
+        # Process author results
+        author_result = result.get("author", {})
+        if author_result.get("results"):
+            authors_data = await search_response_users(author_result)
+        
+        # Build pagination for articles (using article pagination if available)
+        article_pagination = article_result.get("pagination") or {}
+        article_total_results = article_pagination.get("total_results", len(articles_data))
+        article_total_pages = math.ceil(article_total_results / page_size) if page_size else 1
+        article_mapped_pagination = {
+            "page": (article_pagination.get("page_index") or page_index) + 1,
+            "page_size": article_pagination.get("page_size") or page_size,
+            "total": article_total_pages,
+            "total_results": article_total_results,
+        }
+        
+        # Build pagination for authors (using author pagination if available)
+        author_pagination = author_result.get("pagination") or {}
+        author_total_results = author_pagination.get("total_results", len(authors_data))
+        author_total_pages = math.ceil(author_total_results / page_size) if page_size else 1
+        author_mapped_pagination = {
+            "page": (author_pagination.get("page_index") or page_index) + 1,
+            "page_size": author_pagination.get("page_size") or page_size,
+            "total": author_total_pages,
+            "total_results": author_total_results,
         }
 
-        # Return the exact same format as specific endpoints
+        # Return combined results with separate sections
         response = {
-            "success": True, 
-            "data": docs, 
-            "results": docs, 
-            "pagination": mapped_pagination,
-            "normalized_query": result.get("normalized_query", q),
-            "search_type": search_type
+            "success": True,
+            "article": {
+                # "data": articles_data,
+                "results": articles_data,
+                "pagination": article_mapped_pagination,
+                "normalized_query": article_result.get("normalized_query", q),
+                "search_type": "articles"
+            },
+            "author": {
+                # "data": authors_data,
+                "results": authors_data,
+                "pagination": author_mapped_pagination,
+                "normalized_query": author_result.get("normalized_query", q),
+                "search_type": "authors"
+            }
         }
-        
-        # print(f"🔍 [SEARCH API DEBUG] Returning pagination: {response['pagination']}")
-        # print(f"🔍 [SEARCH API DEBUG] total_results={total_results}, total_pages={total_pages}, page_size={page_size}")
 
         # Cache the page so subsequent clicks for the same page are fast
         await set_cache(cache_key, response, ttl=300)
         print(f"🔍 Redis Cache SET for general search: {q}")
         
-        print(f"✅ General search completed: {len(docs)} results, type: {search_type}")
+        print(f"✅ General search completed: {len(articles_data)} articles, {len(authors_data)} authors")
         return response
     except Exception as e:
         print(f"❌ General search failed: {e}")
