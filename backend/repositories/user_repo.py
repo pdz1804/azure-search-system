@@ -1,9 +1,3 @@
-"""Repository functions that read/write user documents in Cosmos DB.
-
-Encapsulates Cosmos-specific queries so services can call simple
-functions like `get_by_email`, `follow_user`, `like_article`, etc.
-"""
-
 from typing import Optional
 from datetime import datetime
 from backend.database.cosmos import get_users_container
@@ -12,17 +6,10 @@ from backend.database.cosmos import get_users_container
 async def get_users():
     return await get_users_container()
 
+
 async def get_list_user(app_id: Optional[str] = None):
     users = await get_users()
     
-    # Filter users by app_id if provided
-    # if app_id:
-    #     query = "SELECT * FROM c WHERE c.app_id = @app_id AND c.is_active = true"
-    #     parameters = [{"name": "@app_id", "value": app_id}]
-    # else:
-    #     query = "SELECT * FROM c WHERE c.is_active = true"
-    #     parameters = []
-
     if app_id:
         query = "SELECT * FROM c WHERE c.app_id = @app_id"
         parameters = [{"name": "@app_id", "value": app_id}]
@@ -38,10 +25,10 @@ async def get_list_user(app_id: Optional[str] = None):
         results.append(item)
     return results
 
+
 async def get_by_email(email: str, app_id: Optional[str] = None) -> Optional[dict]:
     users = await get_users()
     
-    # Build query with app_id filter if provided
     if app_id:
         query = "SELECT * FROM c WHERE c.email = @email AND c.app_id = @app_id"
         parameters = [{"name": "@email", "value": email}, {"name": "@app_id", "value": app_id}]
@@ -62,7 +49,6 @@ async def get_by_email(email: str, app_id: Optional[str] = None) -> Optional[dic
 async def get_by_full_name(full_name: str, app_id: Optional[str] = None) -> Optional[dict]:
     users = await get_users()
     
-    # Build query with app_id filter if provided
     if app_id:
         query = "SELECT * FROM c WHERE c.full_name = @full_name AND c.app_id = @app_id"
         parameters = [{"name": "@full_name", "value": full_name}, {"name": "@app_id", "value": app_id}]
@@ -79,10 +65,10 @@ async def get_by_full_name(full_name: str, app_id: Optional[str] = None) -> Opti
 
     return results[0] if results else None
 
+
 async def get_user_by_id(user_id: str, app_id: Optional[str] = None) -> Optional[dict]:
     users = await get_users()
     
-    # Build query with app_id filter if provided
     if app_id:
         query = "SELECT * FROM c WHERE c.id = @user_id AND c.app_id = @app_id"
         parameters = [{"name": "@user_id", "value": user_id}, {"name": "@app_id", "value": app_id}]
@@ -105,25 +91,20 @@ async def insert(doc: dict):
 
 
 async def update_user(user_id: str, update_data: dict) -> Optional[dict]:
-    """Update user document in Cosmos DB"""
     try:
         users = await get_users()
         
-        # Get the existing user document
         existing_user = await get_user_by_id(user_id)
         if not existing_user:
             return None
         
-        # Update the user document with new data
         for key, value in update_data.items():
             existing_user[key] = value
         
-        # Use upsert to update the document
         updated_user = await users.upsert_item(body=existing_user)
         return updated_user
         
-    except Exception as e:
-        print(f"Error updating user in repository: {e}")
+    except Exception:
         raise
 
 async def follow_user(follower_id: str, followee_id: str, app_id: Optional[str] = None) -> bool:
@@ -133,8 +114,6 @@ async def follow_user(follower_id: str, followee_id: str, app_id: Optional[str] 
         if not follower:
             return False
         following = set(follower.get("following", []))
-        if followee_id in following:
-            return True  # Already following, consider this a success
         following.add(followee_id)
         follower["following"] = list(following)
         await users.upsert_item(body=follower)
@@ -168,13 +147,11 @@ async def unfollow_user(follower_id: str, followee_id: str, app_id: Optional[str
         await users.upsert_item(body=followee)
 
         return True
-    except Exception as e:
-        print(f"Error unfollowing user: {e}")
+    except Exception:
         return False
 
 
 async def check_follow_status(follower_id: str, followee_id: str, app_id: Optional[str] = None) -> bool:
-    users = await get_users()
     try:
         follower = await get_user_by_id(follower_id, app_id)
         if not follower:
@@ -278,33 +255,24 @@ async def get_users_by_ids(user_ids: list, app_id: Optional[str] = None) -> list
     order_map = {id_: idx for idx, id_ in enumerate(user_ids)}
     results.sort(key=lambda x: order_map.get(x['id'], len(user_ids)))
 
-    print(f"👥 [GET USERS BY IDS] Results: {results}")
-
     return results
 
 
 async def delete_user(user_id: str) -> bool:
-    """Delete a user from Cosmos DB"""
     try:
         users = await get_users()
         
-        # Get the existing user document
         existing_user = await get_user_by_id(user_id)
         if not existing_user:
-            print(f"❌ User {user_id} not found for deletion")
             return False
         
-        # Mark user as inactive instead of hard deletion
         existing_user["is_active"] = False
         existing_user["deleted_at"] = datetime.utcnow().isoformat()
         
-        # Use upsert to update the document
         await users.upsert_item(body=existing_user)
         
-        print(f"✅ User {user_id} marked as inactive")
         return True
         
-    except Exception as e:
-        print(f"❌ Error deleting user {user_id} in repository: {e}")
+    except Exception:
         return False
     

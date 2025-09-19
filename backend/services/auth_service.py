@@ -1,12 +1,12 @@
 
+from typing import Optional
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 from backend.config import settings
 from backend.repositories.user_repo import get_by_email
 from backend.services.user_service import create_user
 from backend.utils import create_access_token
-from typing import Optional
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
 
 
 async def login_with_google(id_token_str: str, app_id: Optional[str] = None):
@@ -25,11 +25,10 @@ async def login_with_google(id_token_str: str, app_id: Optional[str] = None):
                 "email": email,
                 "avatar_url": idinfo.get("picture"),
                 "role": "user",
-                "password": "",  # Google users don't need password
+                "password": "",
             }
             user = await create_user(user_data, app_id=app_id)
 
-        # Use user_id from the user object (could be 'id' or 'user_id')
         user_id = user.get("user_id") or user.get("id")
         token = create_access_token({"sub": user_id})
 
@@ -42,5 +41,4 @@ async def login_with_google(id_token_str: str, app_id: Optional[str] = None):
     except ValueError as e:
         raise ValueError(f"Token không hợp lệ: {str(e)}") from e
     except Exception as e:
-        print(f"Google login error: {e}")
         raise RuntimeError(f"Lỗi lấy Google user info: {str(e)}") from e

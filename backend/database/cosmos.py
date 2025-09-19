@@ -11,12 +11,6 @@ DATABASE_NAME = os.getenv("COSMOS_DB")
 ARTICLES_CONTAINER = os.getenv("COSMOS_ARTICLES")
 USERS_CONTAINER = os.getenv("COSMOS_USERS")
 
-# Debug: Print environment variables (remove in production)
-print(f"🔍 Cosmos Config: ENDPOINT={ENDPOINT}, DB={DATABASE_NAME}, ARTICLES={ARTICLES_CONTAINER}, USERS={USERS_CONTAINER}")
-
-# Cosmos client and container references are kept in module-level globals
-# so they can be lazily initialized and reused across requests. These are
-# asynchronous clients from azure.cosmos.aio.
 client: CosmosClient = None
 database = None
 articles = None
@@ -24,14 +18,8 @@ users = None
 
 
 async def connect_cosmos():
-    """Create the CosmosClient and container references.
-
-    This is called during app startup (see `backend.main`) and will
-    create the database and containers if they do not exist.
-    """
     global client, database, articles, users
 
-    # Validate required environment variables
     if not all([ENDPOINT, KEY, DATABASE_NAME, ARTICLES_CONTAINER, USERS_CONTAINER]):
         missing = []
         if not ENDPOINT: missing.append("COSMOS_ENDPOINT")
@@ -55,28 +43,19 @@ async def connect_cosmos():
             partition_key=PartitionKey(path="/id")
         )
 
-        print("✅ Connected to Azure Cosmos DB")
-
 
 async def close_cosmos():
-    """Close the Cosmos async client and clear module references.
-
-    Properly awaiting client.close() prevents unclosed aiohttp sessions
-    and related warnings during application shutdown.
-    """
     global client, database, articles, users
     try:
         if client:
-            # Azure Cosmos async client exposes an async close
             await client.close()
-    except Exception as e:
-        print(f"Error closing Cosmos client: {e}")
+    except Exception:
+        pass
     finally:
         client = None
         database = None
         articles = None
         users = None
-        print("🛑 Cosmos DB connection closed")
 
 
 async def get_articles_container():

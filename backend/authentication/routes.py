@@ -1,18 +1,11 @@
-"""Authentication routes.
-
-Handles login and registration. On successful login/register the
-endpoints return a JWT `access_token` that should be supplied as a
-Bearer token in the `Authorization` header for protected routes.
-"""
-
 import os
 from typing import Optional
 from dotenv import load_dotenv
-from fastapi import APIRouter, File, Form, HTTPException,UploadFile, Body
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, EmailStr
 from backend.services.azure_blob_service import upload_image
 from backend.model.request.login_request import LoginRequest
-from backend.utils import create_access_token, save_file
+from backend.utils import create_access_token
 from backend.services.user_service import create_user, login
 from backend.services.auth_service import login_with_google
 
@@ -35,8 +28,7 @@ class GoogleLoginRequest(BaseModel):
 
 @auth.post("/login", response_model=TokenResponse)
 async def login_user(data: LoginRequest):
-    # Authenticate using user_service which validates password.
-    user = await login(data.email, data.password,data.app_id)
+    user = await login(data.email, data.password, data.app_id)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"sub": user["id"]})
@@ -52,7 +44,6 @@ async def register(
     app_id: Optional[str] = Form(None),
     avatar: Optional[UploadFile] = File(None)
 ):
-    # Collect registration fields and optionally upload avatar to blob
     user_data = {
         "full_name": full_name,
         "email": email,
@@ -62,13 +53,10 @@ async def register(
 
     if avatar and hasattr(avatar, 'filename') and avatar.filename:
         try:
-            # upload_image returns a URL to the blob storage  
             image_url = upload_image(avatar.file)
             user_data["avatar_url"] = image_url
-            print(f"Avatar uploaded successfully for user: {user_data['email']}")
-        except Exception as e:
-            print(f"Failed uploading avatar: {e}")
-            # Continue without avatar rather than failing registration
+        except Exception:
+            pass
 
     user = await create_user(user_data, app_id=app_id)
     if not user:
@@ -77,14 +65,13 @@ async def register(
     token = create_access_token({"sub": user["user_id"]})
     return TokenResponse(access_token=token, user_id=user["user_id"], role=user.get("role", "user"))
 
+
 @auth.post("/google", response_model=TokenResponse)
 async def google_login(data: GoogleLoginRequest):
-    """Login with Google ID token"""
     try:
         response = await login_with_google(data.id_token, app_id=data.app_id)
         return TokenResponse(**response)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        print(f"Google login error: {e}")
         raise HTTPException(status_code=500, detail="Google login failed")
