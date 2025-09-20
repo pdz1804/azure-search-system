@@ -17,7 +17,7 @@ from backend.services.tag_service import tag_service
 
 articles = APIRouter(prefix="/api/articles", tags=["articles"])
 
-@articles.post("")
+@articles.post("/")
 async def create(
     request: Request,
     title: str = Form(...),
