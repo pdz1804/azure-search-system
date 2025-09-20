@@ -27,7 +27,7 @@ async def create(
     image: UploadFile = File(None),
     app_id: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user),
-    image_url: Optional[str] = Form(...)
+    image_url: Optional[str] = Form(None)
 ):
     require_role(current_user, [Role.WRITER, Role.ADMIN])
     doc = {
