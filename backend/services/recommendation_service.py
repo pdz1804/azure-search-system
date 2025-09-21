@@ -22,13 +22,10 @@ Usage:
     detailed_recs = await service.fetch_article_details_for_recommendations(recommendations)
 """
 
-import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple
-from backend.services.search_service import get_search_service
 from backend.services.article_service import update_article
 from backend.repositories.article_repo import get_article_by_id as get_article_by_id_repo
-
 
 class RecommendationService:
     """
@@ -58,10 +55,12 @@ class RecommendationService:
     """
 
     def __init__(self):
-        """Initialize the recommendation service with search capabilities."""
-        self.search_service = get_search_service()
-        self.cache_duration_minutes = 60  # Cache duration in minutes
-        print("✅ RecommendationService initialized with 60-minute cache")
+        try:
+            from backend.services.search_service import get_search_service
+            self.search_service = get_search_service()
+        except ImportError:
+            self.search_service = None
+        self.cache_duration_minutes = 60
 
     def is_recommendations_cache_valid(self, article: Dict) -> bool:
         """
@@ -86,17 +85,15 @@ class RecommendationService:
             current_time = datetime.utcnow()
             time_diff = current_time - recommended_time
             
-            # Cache is valid if less than configured minutes old
             is_valid = time_diff.total_seconds() < self.cache_duration_minutes * 60
             
             if is_valid:
-                print(f"✅ Cache valid: {time_diff.total_seconds():.0f}s old")
+                return True
             else:
-                print(f"⏰ Cache expired: {time_diff.total_seconds():.0f}s old (max {self.cache_duration_minutes * 60}s)")
+                return False
             
             return is_valid
-        except (ValueError, TypeError) as e:
-            print(f"⚠️ Error parsing recommended_time '{article.get('recommended_time')}': {e}")
+        except (ValueError, TypeError):
             return False
 
     def _generate_fresh_recommendations(self, article: Dict, app_id: Optional[str] = None) -> List[Dict]:
@@ -124,80 +121,64 @@ class RecommendationService:
             - Stores only minimal data to reduce database footprint
         """
         article_id = article.get('id')
-        print(f"🔍 Generating fresh recommendations for article: {article.get('title', 'Unknown')[:50]}...")
         
         try:
-            # Create search query from article title and abstract
-            # title_text = article.get('title', '')
+            if not self.search_service:
+                return []
+                
             title_text = ''
             abstract_text = article.get('abstract', '')
-            # abstract_text = ''
             content_query = f"{title_text} {abstract_text}".strip()
             
             if not content_query:
-                print("⚠️ No title or abstract available for recommendation generation")
                 return []
             
-            # Search for similar articles (request more to ensure we get enough after filtering)
-            # Increased from 15 to 25 to account for potential filtering and ensure we get 10+ recommendations
             search_results = self.search_service.search_articles(
                 query=content_query,
-                k=25,  # Request more to ensure we get 10+ after filtering
+                k=25,
                 page_index=None,
                 page_size=None,
-                app_id=app_id  # Filter by app_id for multi-tenant support
+                app_id=app_id
             )
             
-            # Extract only article IDs and scores, filter out the current article
             recommendations = []
             if search_results and 'results' in search_results:
                 for result in search_results['results']:
-                    if result.get('id') != article_id:  # Exclude the current article
-                        # Store only ID and score to save database space
+                    if result.get('id') != article_id:
                         recommendations.append({
                             'article_id': result.get('id'),
                             'score': result.get('score', 0.0)
                         })
                     
-                    # Stop when we have 10 recommendations
                     if len(recommendations) >= 10:
                         break
             
-            # If we don't have enough recommendations, try a broader search
-            if len(recommendations) < 8:  # Threshold for "not enough" recommendations
-                print(f"⚠️ Only got {len(recommendations)} recommendations, trying broader search...")
+            if len(recommendations) < 8:
                 
-                # Try a broader search with just the title
                 if title_text:
                     broader_results = self.search_service.search_articles(
                         query=title_text,
-                        k=30,  # Request even more for broader search
+                        k=30,
                         page_index=None,
                         page_size=None,
                         app_id=app_id
                     )
                     
                     if broader_results and 'results' in broader_results:
-                        # Add more recommendations from broader search
                         for result in broader_results['results']:
                             result_id = result.get('id')
-                            # Skip if already in recommendations or is the current article
                             if result_id != article_id and not any(r['article_id'] == result_id for r in recommendations):
                                 recommendations.append({
                                     'article_id': result_id,
-                                    'score': result.get('score', 0.0) * 0.8  # Slightly lower score for broader matches
+                                    'score': result.get('score', 0.0) * 0.8
                                 })
                                 
                                 if len(recommendations) >= 10:
                                     break
-                
-                print(f"📊 After broader search: {len(recommendations)} recommendations")
-            
-            print(f"📊 Generated {len(recommendations)} recommendations (IDs only)")
+
             return recommendations
             
-        except Exception as e:
-            print(f"❌ Error generating recommendations: {e}")
+        except Exception:
             return []
 
     async def get_article_recommendations(self, article_id: str, app_id: Optional[str] = None) -> Tuple[List[Dict], bool]:
@@ -224,69 +205,47 @@ class RecommendationService:
         Example:
             recommendations, was_refreshed = await service.get_article_recommendations('abc123')
             if was_refreshed:
-                print("Fresh recommendations generated")
                 
         Note:
             - Returns empty list if article not found or generation fails
             - Cached recommendations returned as fallback if fresh generation fails
             - Database automatically updated with fresh recommendations and timestamp
         """
-        print(f"📖 Getting recommendations for article: {article_id}")
         
         try:
-            # Fetch the current article using repository to avoid circular dependency
             article = await get_article_by_id_repo(article_id)
             if not article:
-                print(f"❌ Article {article_id} not found")
                 return [], False
             
-            # Check if we have valid cached recommendations
             cached_recommendations = article.get('recommended', [])
-            recommended_time = article.get('recommended_time')
             
             if cached_recommendations and self.is_recommendations_cache_valid(article):
-                # Return cached recommendations
-                print(f"💾 Using cached recommendations ({len(cached_recommendations)} items)")
                 return cached_recommendations, False
             
-            # Generate fresh recommendations
-            print("🔄 Generating fresh recommendations...")
             fresh_recommendations = self._generate_fresh_recommendations(article, app_id)
             
             if not fresh_recommendations:
-                # If generation failed, return cached ones if available
                 if cached_recommendations:
-                    print("⚠️ Fresh generation failed, using cached recommendations")
                     return cached_recommendations, False
                 else:
-                    print("⚠️ No recommendations available")
                     return [], False
             
-            # Update the article with fresh recommendations
             now = datetime.utcnow().isoformat()
             update_data = {
                 'recommended': fresh_recommendations,
                 'recommended_time': now
             }
-            
-            print(f"🔄 About to update article {article_id} with recommendations in Cosmos DB")
-            print(f"📝 Update data keys: {list(update_data.keys())}")
-            
+
             updated_article = await update_article(article_id, update_data)
-            print(f"💾 Updated article with {len(fresh_recommendations)} fresh recommendations")
             
-            # Verify the update was successful
             if updated_article and updated_article.get('recommended_time') == now:
-                print(f"✅ Database update verified: recommended_time = {updated_article.get('recommended_time')}")
+                pass
             else:
-                print(f"⚠️ Database update verification failed")
-                print(f"   Expected recommended_time: {now}")
-                print(f"   Actual recommended_time: {updated_article.get('recommended_time') if updated_article else 'None'}")
+                pass
             
             return fresh_recommendations, True
             
-        except Exception as e:
-            print(f"❌ Error getting recommendations for article {article_id}: {e}")
+        except Exception:
             return [], False
 
     async def fetch_article_details_for_recommendations(self, recommendations: List[Dict], app_id: Optional[str] = None) -> List[Dict]:
@@ -312,15 +271,12 @@ class RecommendationService:
         Example:
             minimal_recs = [{'article_id': 'abc123', 'score': 0.85}]
             detailed_recs = await service.fetch_article_details_for_recommendations(minimal_recs)
-            # detailed_recs[0] contains full article + recommendation_score: 0.85
             
         Note:
             - Silently skips articles that can't be fetched (deleted, private, etc.)
             - Preserves recommendation scores for ranking and display
             - Used by frontend to get rich article metadata for display
         """
-        from backend.repositories.article_repo import get_article_by_id as get_article_by_id_repo
-        
         detailed_recommendations = []
         
         for rec in recommendations:
@@ -328,23 +284,18 @@ class RecommendationService:
             score = rec.get('score', 0.0)
             
             try:
-                # Use app_id filtering when fetching article details
                 article_details = await get_article_by_id_repo(article_id, app_id=app_id)
                 if article_details:
-                    # Additional app_id check for safety
                     if app_id and article_details.get('app_id') != app_id:
-                        print(f"🔒 Filtering recommendation {article_id} - different app_id: {article_details.get('app_id')} != {app_id}")
                         continue
                     
                     article_details['recommendation_score'] = score
                     detailed_recommendations.append(article_details)
                 else:
-                    print(f"⚠️ Article {article_id} not found or filtered out by app_id")
-            except Exception as e:
-                print(f"⚠️ Failed to fetch article {article_id}: {e}")
+                    pass
+            except Exception:
                 continue
         
-        print(f"📊 Fetched {len(detailed_recommendations)} detailed recommendations (filtered by app_id: {app_id})")
         return detailed_recommendations
 
     def format_recommendations_for_display(self, detailed_recommendations: List[Dict]) -> Dict[str, List[Dict]]:
@@ -393,7 +344,6 @@ class RecommendationService:
         if not detailed_recommendations:
             return {"top5": [], "more5": []}
         
-        # Take first 10 recommendations and split into top 5 and more 5
         top_10 = detailed_recommendations[:10]
         
         formatted_top5 = []
@@ -403,9 +353,9 @@ class RecommendationService:
             formatted_rec = {
                 "id": article.get("id"),
                 "title": article.get("title", "Untitled"),
-                "abstract": article.get("abstract", "")[:200],  # Truncate abstract
-                "author": article.get("author_name", "Unknown Author"),  # Fixed field name
-                "image": article.get("image", "/default-image.jpg"),  # Fixed field name
+                "abstract": article.get("abstract", "")[:200],
+                "author": article.get("author_name", "Unknown Author"),
+                "image": article.get("image", "/default-image.jpg"),
                 "score": article.get("recommendation_score", 0),
                 "created_at": article.get("created_at"),
                 "updated_at": article.get("updated_at")
@@ -441,24 +391,17 @@ class RecommendationService:
                            False = refresh failed for that article
 
         """
-        print(f"🔄 Batch refreshing recommendations for {len(article_ids)} articles")
         
         results = {}
         for article_id in article_ids:
             try:
                 _, was_refreshed = await self.get_article_recommendations(article_id, app_id)
                 results[article_id] = was_refreshed
-            except Exception as e:
-                print(f"❌ Failed to refresh recommendations for {article_id}: {e}")
+            except Exception:
                 results[article_id] = False
         
-        success_count = sum(results.values())        
-        print(f"✅ Batch refresh completed: {sum(results.values())}/{len(article_ids)} successful")
         return results
 
-
-# Singleton Pattern Implementation
-# This ensures only one RecommendationService instance exists throughout the application
 _recommendation_service = None
 
 def get_recommendation_service() -> RecommendationService:
