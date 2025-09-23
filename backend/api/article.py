@@ -5,6 +5,7 @@ from typing import Optional, List
 from backend.services.azure_blob_service import upload_image
 from backend.enum.roles import Role
 from backend.utils import get_current_user, require_role
+from backend.services.article_service import get_articles_by_category as get_articles_by_category_service
 from backend.services.article_service import (
     get_article_by_id,
     create_article,
@@ -280,3 +281,22 @@ async def articles_by_author(author_id: str, page: int = 1, page_size: int = 20,
             "success": False,
             "data": {"error": str(e)}
         })
+
+
+@articles.get("/categories/{category_name}")
+async def get_articles_by_category(
+    category_name: str,
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    app_id: Optional[str] = Query(None, description="Application ID for filtering results")
+):
+    """Get articles by category."""
+    try:
+        result = await get_articles_by_category_service(category_name, page, limit, app_id)
+        return result
+    except Exception as e:
+        print(f"Error fetching articles by category: {e}")
+        return {
+            "success": False,
+            "data": {"error": str(e)}
+        }
